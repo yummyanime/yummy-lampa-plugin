@@ -6,7 +6,6 @@ const FILES = {
     config: 'src/config.js',
     readme: 'README.md',
     changelog: 'CHANGELOG.md',
-    docsRu: 'docs/README.ru.md',
     docsEn: 'docs/README.en.md'
 };
 
@@ -69,12 +68,20 @@ function updateReadme(source, from, to) {
     );
 }
 
+const NOTE_PREFIX = /^(Fix|Add|Remove|Refactor)\s+\S/;
+
 function formatNotes(notes) {
     const items = (Array.isArray(notes) ? notes : [notes]).map(function (note) {
-        return String(note || '').replace(/^\s*-\s*/, '').trim();
+        return String(note || '').replace(/^\s*-\s*/, '').replace(/\.+\s*$/, '').trim();
     }).filter(Boolean);
     if (!items.length) throw new Error('Provide at least one changelog note');
-    return items.map(function (note) { return '- ' + note; }).join('\n');
+    return items.map(function (note) {
+        const parts = note.split(/\s*\|\s*/).filter(Boolean);
+        if (!parts.length || parts.some(function (part) { return !NOTE_PREFIX.test(part); })) {
+            throw new Error('Changelog notes must start with Fix / Add / Remove / Refactor, e.g. "Fix button styles | Remove unused styles"');
+        }
+        return '- ' + parts.join(' | ');
+    }).join('\n');
 }
 
 function newline(source) {
@@ -152,6 +159,7 @@ function usage() {
     return [
         'Usage: node scripts/bump-version.js [patch|minor|major|<version>] [--date YYYY-MM-DD] [--dry-run] [-m note] [note...]',
         '',
+        'Notes must start with Fix, Add, Remove, or Refactor. Use | for related changes.',
         'Updates src/config.js, README version, CHANGELOG, and dist/index.js together.'
     ].join('\n');
 }
@@ -180,5 +188,6 @@ module.exports = {
     updateChangelog: updateChangelog,
     applyVersion: applyVersion,
     parseArgs: parseArgs,
+    formatNotes: formatNotes,
     today: today
 };

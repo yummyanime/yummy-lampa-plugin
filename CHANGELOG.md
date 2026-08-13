@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.42.0 — 2026-08-14
+
+- Add official YummyAnime extension label
+- Fix dist bundle newlines | Fix Linux CI CRLF mismatch
+- Remove Russian documentation
+
 ## 0.41.46 — 2026-08-13
 
 - Show unread notifications on the home tile even when the counts API returns 0, by checking the notification list and keeping the cache in sync.
