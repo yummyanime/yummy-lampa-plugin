@@ -22,7 +22,7 @@ ${body}
             type: 'other',
             version: LampaYaniConfig.version,
             name: 'YummyAnime',
-            author: 'Andrew Codeman',
+            author: 'YummyAnime',
             description: 'YummyAnime catalog, ratings, lists and account integration',
             component: 'yani_home'
         };

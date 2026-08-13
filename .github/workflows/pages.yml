@@ -82,7 +82,7 @@ jobs:
         run: |
           mkdir -p _pages
           cp -R dist assets status _pages/
-          cp index.js style.css LICENSE README.md _pages/
+          cp index.js style.css README.md _pages/
           if [ -d stable ]; then cp -R stable _pages/stable; fi
           if [ -f stable.json ]; then cp stable.json _pages/; fi
 

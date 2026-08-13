@@ -8,8 +8,8 @@ const source = fs.readFileSync('scripts/release.js', 'utf8');
 const pages = fs.readFileSync('.github/workflows/pages.yml', 'utf8');
 const workflow = fs.readFileSync('.github/workflows/release.yml', 'utf8');
 
-assert.strictEqual(release.STABLE_URL, 'https://andrewcodeman.github.io/lampa_yani/stable/index.js');
-assert.strictEqual(release.TEST_URL, 'https://andrewcodeman.github.io/lampa_yani/dist/index.js');
+assert.strictEqual(release.STABLE_URL, 'https://yummyanime.github.io/yummy-lampa-plugin/stable/index.js');
+assert.strictEqual(release.TEST_URL, 'https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js');
 assert.doesNotMatch(source, /TEST_URL \+ '\?v='/);
 assert.strictEqual(release.tagName('0.41.38'), 'v0.41.38');
 assert.strictEqual(release.normalizeVersion('v0.41.38'), '0.41.38');

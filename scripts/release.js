@@ -4,7 +4,7 @@ const {execFileSync} = require('child_process');
 
 const bump = require('./bump-version');
 
-const PAGES_BASE = 'https://andrewcodeman.github.io/lampa_yani';
+const PAGES_BASE = 'https://yummyanime.github.io/yummy-lampa-plugin';
 const STABLE_PATH = 'stable/index.js';
 const STABLE_META = 'stable.json';
 const TEST_PATH = 'dist/index.js';

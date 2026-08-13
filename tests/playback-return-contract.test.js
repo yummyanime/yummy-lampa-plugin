@@ -30,11 +30,11 @@ assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPla
 assert.match(sources, /var beginPlaybackNavigation = playbackMenu\.beginPlaybackNavigation|function beginPlaybackNavigation/);
 
 const settingsStart = ui.indexOf("param: {name: 'yani_home_sections_title'");
-const licenseIndex = ui.indexOf("param: {name: 'yani_license_notice', type: 'title'}");
-assert.ok(settingsStart >= 0 && licenseIndex > settingsStart, 'license notice must remain at the bottom of settings');
-assert.ok(!ui.slice(licenseIndex, licenseIndex + 250).includes('onChange'), 'license notice must not be actionable');
+const noticeIndex = ui.indexOf("param: {name: 'yani_repo_notice', type: 'title'}");
+assert.ok(settingsStart >= 0 && noticeIndex > settingsStart, 'repository notice must remain at the bottom of settings');
+assert.ok(!ui.slice(noticeIndex, noticeIndex + 250).includes('onChange'), 'repository notice must not be actionable');
 ['ru', 'en', 'uk'].forEach((language) => {
-    assert.match(i18n, new RegExp(`messages\\.${language}\\.license_notice\\s*=`));
+    assert.match(i18n, new RegExp(`messages\\.${language}\\.repo_notice\\s*=`));
 });
 
 console.log('playback return contract checks passed');

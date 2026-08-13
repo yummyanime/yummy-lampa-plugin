@@ -27,11 +27,11 @@ fs.writeFileSync(path.join(root, 'src/config.js'), "window.LampaYaniConfig = { v
 fs.writeFileSync(path.join(root, 'README.md'), [
     'Current version: `0.41.39`',
     '',
-    '`https://andrewcodeman.github.io/lampa_yani/stable/index.js`',
-    '`https://andrewcodeman.github.io/lampa_yani/dist/index.js`'
+    '`https://yummyanime.github.io/yummy-lampa-plugin/stable/index.js`',
+    '`https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js`'
 ].join('\n'));
-fs.writeFileSync(path.join(root, 'docs/README.ru.md'), '`https://andrewcodeman.github.io/lampa_yani/dist/index.js`\n');
-fs.writeFileSync(path.join(root, 'docs/README.en.md'), '`https://andrewcodeman.github.io/lampa_yani/dist/index.js`\n');
+fs.writeFileSync(path.join(root, 'docs/README.ru.md'), '`https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js`\n');
+fs.writeFileSync(path.join(root, 'docs/README.en.md'), '`https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js`\n');
 fs.writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\r\n\r\n## 0.41.39 — 2026-08-13\r\n\r\n- Previous.\r\n');
 
 let built = false;

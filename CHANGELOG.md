@@ -1118,7 +1118,7 @@
 
 ## 0.18.11 — 2026-08-08
 
-- Added `Andrew Codeman` as the YummyAnime extension author in Lampa metadata.
+- Added `YummyAnime` as the YummyAnime extension author in Lampa metadata.
 
 ## 0.18.10 — 2026-08-08
 

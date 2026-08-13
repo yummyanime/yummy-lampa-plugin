@@ -17,8 +17,8 @@ assert.match(root, new RegExp('Current version: `' + escaped + '`'));
 assert.match(changelog, new RegExp('^## ' + escaped + ' — ', 'm'));
 assert.match(dist, new RegExp("version: '" + escaped + "'"));
 [root, ru, en].forEach((document) => {
-    assert.match(document, /lampa_yani\/stable\/index\.js/);
-    assert.match(document, /lampa_yani\/dist\/index\.js/);
+    assert.match(document, /yummy-lampa-plugin\/stable\/index\.js/);
+    assert.match(document, /yummy-lampa-plugin\/dist\/index\.js/);
     assert.doesNotMatch(document, /stable\/index\.js\?v=/);
     assert.doesNotMatch(document, /dist\/index\.js\?v=/);
 });

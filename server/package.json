@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "description": "Self-hosted resolver that turns YummyAnime Alloha player pages into plain HLS streams",
-  "license": "MIT",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

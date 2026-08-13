@@ -49,11 +49,11 @@ Install the bundled file from GitHub Pages. There are two URLs:
 
 Production — a verified release. The URL stays the same; a serious bug is rolled back by promoting an earlier git tag.
 
-`https://andrewcodeman.github.io/lampa_yani/stable/index.js`
+`https://yummyanime.github.io/yummy-lampa-plugin/stable/index.js`
 
 Test — the latest `main` build, including changes that are not a production release yet. The URL stays the same.
 
-`https://andrewcodeman.github.io/lampa_yani/dist/index.js`
+`https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js`
 
 Verified versions are tagged `vX.Y.Z`. Release and rollback:
 
@@ -104,10 +104,6 @@ Direct-stream providers are tried in order:
 With none of them configured, selecting Alloha shows a warning and playback is blocked. An empty address disables the matching adapter. The extension contains no Alloha or Lampac credentials.
 
 The private YummyTV application integration is disabled by default and can be enabled separately in the playback sources settings block.
-
-## License
-
-MIT License. See [LICENSE](../LICENSE).
 
 ## Implemented
 

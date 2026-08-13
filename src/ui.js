@@ -3910,8 +3910,8 @@
         // reference text, not another settings action or external link.
         Lampa.SettingsApi.addParam({
             component: 'yani',
-            param: {name: 'yani_license_notice', type: 'title'},
-            field: {name: t('license_notice')}
+            param: {name: 'yani_repo_notice', type: 'title'},
+            field: {name: t('repo_notice')}
         });
     }
 

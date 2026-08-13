@@ -27,7 +27,7 @@ function pluginYummyAnime() {
     ];
     var current = document.currentScript;
     var base = current && current.src ? current.src.substring(0, current.src.lastIndexOf('/') + 1) :
-        'https://raw.githubusercontent.com/AndrewCodeman/lampa_yani/main/';
+        'https://raw.githubusercontent.com/yummyanime/yummy-lampa-plugin/main/';
 
     function load(i) {
         if (i >= scripts.length) {
@@ -36,7 +36,7 @@ function pluginYummyAnime() {
                     type: 'other',
                     version: LampaYaniConfig.version,
                     name: 'YummyAnime',
-                    author: 'Andrew Codeman',
+                    author: 'YummyAnime',
                     description: 'YummyAnime catalog, ratings, lists and account integration',
                     component: 'yani_home'
                 };

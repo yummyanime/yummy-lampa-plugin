@@ -1,4 +1,4 @@
-# Lampa Yani
+# YummyAnime Lampa Plugin
 
 Extension for Lampa powered by the YummyAnime (Yani) API.
 
@@ -17,8 +17,8 @@ The plugin follows Lampa's standard global plugin initialization pattern.
 
 Продакшн / Production (проверенный релиз, откат без смены ссылки):
 
-`https://andrewcodeman.github.io/lampa_yani/stable/index.js`
+`https://yummyanime.github.io/yummy-lampa-plugin/stable/index.js`
 
 Тестовая / Test (последняя сборка `main`, ссылка не меняется):
 
-`https://andrewcodeman.github.io/lampa_yani/dist/index.js`
+`https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js`

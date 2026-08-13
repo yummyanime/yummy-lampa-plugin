@@ -95,7 +95,7 @@
     messages.ru.open_list = 'Открыть список';
     messages.ru.watch_history = 'История просмотра';
     messages.ru.favorites = 'Любимое';
-    messages.ru.license_notice = 'Расширение распространяется по свободной лицензии MIT · https://github.com/AndrewCodeman/lampa_yani';
+    messages.ru.repo_notice = 'YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.ru.my_reviews = 'Мои отзывы';
     messages.ru.my_reviews_description = 'Отзывы пользователя YummyAnime';
     messages.ru.reviews_empty = 'Отзывов пока нет';
@@ -188,7 +188,7 @@
     messages.en.open_list = 'Open list';
     messages.en.watch_history = 'Watch history';
     messages.en.favorites = 'Favorites';
-    messages.en.license_notice = 'This extension is distributed under the free MIT License · https://github.com/AndrewCodeman/lampa_yani';
+    messages.en.repo_notice = 'YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.en.my_reviews = 'My reviews';
     messages.en.my_reviews_description = 'Your YummyAnime reviews';
     messages.en.reviews_empty = 'There are no reviews yet';
@@ -617,7 +617,7 @@
     messages.uk.open_list = 'Відкрити список';
     messages.uk.watch_history = 'Історія перегляду';
     messages.uk.favorites = 'Улюблене';
-    messages.uk.license_notice = 'Розширення поширюється за вільною ліцензією MIT · https://github.com/AndrewCodeman/lampa_yani';
+    messages.uk.repo_notice = 'YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.uk.my_reviews = 'Мої відгуки';
     messages.uk.my_reviews_description = 'Відгуки користувача YummyAnime';
     messages.uk.reviews_empty = 'Відгуків ще немає';

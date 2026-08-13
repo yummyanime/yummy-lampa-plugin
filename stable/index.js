@@ -30,7 +30,7 @@ function pluginYummyAnime() {
     window.LampaYani.Config = window.LampaYaniConfig = {
         version: '0.41.46',
         apiBase: 'https://api.yani.tv',
-        statusUrl: 'https://andrewcodeman.github.io/lampa_yani/status/status.json',
+        statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
         defaultApplicationToken: defaultApplicationToken,
         applicationToken: function () { return storedApplicationToken() || defaultApplicationToken; },
@@ -148,7 +148,7 @@ function pluginYummyAnime() {
     messages.ru.open_list = 'Открыть список';
     messages.ru.watch_history = 'История просмотра';
     messages.ru.favorites = 'Любимое';
-    messages.ru.license_notice = 'Расширение распространяется по свободной лицензии MIT · https://github.com/AndrewCodeman/lampa_yani';
+    messages.ru.license_notice = 'Расширение распространяется по свободной лицензии MIT · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.ru.my_reviews = 'Мои отзывы';
     messages.ru.my_reviews_description = 'Отзывы пользователя YummyAnime';
     messages.ru.reviews_empty = 'Отзывов пока нет';
@@ -241,7 +241,7 @@ function pluginYummyAnime() {
     messages.en.open_list = 'Open list';
     messages.en.watch_history = 'Watch history';
     messages.en.favorites = 'Favorites';
-    messages.en.license_notice = 'This extension is distributed under the free MIT License · https://github.com/AndrewCodeman/lampa_yani';
+    messages.en.license_notice = 'This extension is distributed under the free MIT License · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.en.my_reviews = 'My reviews';
     messages.en.my_reviews_description = 'Your YummyAnime reviews';
     messages.en.reviews_empty = 'There are no reviews yet';
@@ -670,7 +670,7 @@ function pluginYummyAnime() {
     messages.uk.open_list = 'Відкрити список';
     messages.uk.watch_history = 'Історія перегляду';
     messages.uk.favorites = 'Улюблене';
-    messages.uk.license_notice = 'Розширення поширюється за вільною ліцензією MIT · https://github.com/AndrewCodeman/lampa_yani';
+    messages.uk.license_notice = 'Розширення поширюється за вільною ліцензією MIT · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.uk.my_reviews = 'Мої відгуки';
     messages.uk.my_reviews_description = 'Відгуки користувача YummyAnime';
     messages.uk.reviews_empty = 'Відгуків ще немає';
@@ -14957,7 +14957,7 @@ function pluginYummyAnime() {
             type: 'other',
             version: LampaYaniConfig.version,
             name: 'YummyAnime',
-            author: 'Andrew Codeman',
+            author: 'YummyAnime',
             description: 'YummyAnime catalog, ratings, lists and account integration',
             component: 'yani_home'
         };
