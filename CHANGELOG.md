@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.1 — 2026-08-14
+
+- Remove public application key setting
+- Remove official extension wording
+
 ## 0.42.0 — 2026-08-14
 
 - Add official YummyAnime extension label

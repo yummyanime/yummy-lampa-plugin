@@ -3651,7 +3651,7 @@
             param: {name: 'yani_about', type: 'button'},
             field: {
                 name: t('version_name'),
-                description: t('version_label') + ' ' + LampaYaniConfig.version + ' · ' + t('official_extension') + ' · ' + t('website_description') + ': ' + yummyWebsiteUrl()
+                description: t('version_label') + ' ' + LampaYaniConfig.version + ' · ' + t('extension') + ' · ' + t('website_description') + ': ' + yummyWebsiteUrl()
             },
             onChange: openYummyWebsite
         });
@@ -3835,17 +3835,6 @@
 
         Lampa.SettingsApi.addParam({
             component: 'yani',
-            param: {name: 'yani_public_application_token', type: 'button'},
-            field: {
-                name: t('public_application_token'),
-                description: t('public_application_token_description') + ': ' +
-                    (LampaYaniConfig.customApplicationToken() ? t('public_application_token_custom') : t('public_application_token_default'))
-            },
-            onChange: editPublicApplicationToken
-        });
-
-        Lampa.SettingsApi.addParam({
-            component: 'yani',
             param: {name: 'yani_api_check', type: 'button'},
             field: {name: t('api_check_name'), description: t('api_check_description')},
             onChange: function () {
@@ -3975,21 +3964,6 @@
             var saved = LampaYaniResolver.setBaseUrl(value);
             if (value && !saved) return Lampa.Noty.show(t('resolver_server_invalid'));
             Lampa.Noty.show(saved ? t('resolver_server_saved') : t('resolver_server_disabled'));
-        });
-    }
-
-    function editPublicApplicationToken() {
-        showYummyInput({
-            title: t('public_application_token_prompt'),
-            value: LampaYaniConfig.customApplicationToken(),
-            nosave: true
-        }, function (value) {
-            value = String(value || '').trim();
-            if (!LampaYaniConfig.setApplicationToken(value)) {
-                Lampa.Noty.show(t('public_application_token_invalid'));
-                return;
-            }
-            Lampa.Noty.show(value ? t('public_application_token_saved') : t('public_application_token_restored'));
         });
     }
 

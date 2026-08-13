@@ -42,8 +42,7 @@ A new Lampa extension powered by the official YummyAnime (Yani) API.
 ## Installation
 
 1. Add the URL of `index.js` to the Lampa extensions section.
-2. The extension uses the built-in public application key for YummyAnime for Lampa by default.
-3. If necessary, open `Settings → YummyAnime → Public application key` to set another public key. Leave the field empty to restore the default key. Never enter a private application key there.
+2. The extension uses the built-in public application key for YummyAnime for Lampa.
 
 Install the bundled file from GitHub Pages. There are two URLs:
 
@@ -72,7 +71,7 @@ The extension uses:
 - `GET /anime/genres` — genres.
 - `GET /anime/{id}/videos` — available dubbings, episodes and iframe players.
 
-Search is passed through the `q` parameter. The selected public application key is sent in the `X-Application` header. After login, the user's personal Bearer token is sent separately for authorized requests. The extension does not create YummyAnime applications automatically.
+Search is passed through the `q` parameter. The public application key is sent in the `X-Application` header. After login, the user's personal Bearer token is sent separately for authorized requests. The extension does not create YummyAnime applications automatically.
 
 ## Project structure
 
