@@ -90,13 +90,9 @@
                 ? window.LampaYaniUiUtils.titleValues(item)
                 : [];
             if (titles.indexOf(title) < 0) titles.unshift(title);
-            var image = item.image && typeof item.image === 'object' ? item.image : {};
-            var cover = item.cover && typeof item.cover === 'object' ? item.cover : {};
-            var poster = typeof item.poster === 'string' ? item.poster : typeof item.cover === 'string' ? item.cover : typeof item.image === 'string' ? item.image : item.poster_url ||
-                image.medium || image.large || image.url || image.original || cover.medium || cover.large || cover.url || cover.original || '';
-            if (!poster && item.poster) poster = item.poster.medium || item.poster.big || item.poster.large || item.poster.mega || item.poster.huge || item.poster.fullsize || item.poster.small || item.poster.url || item.poster.original || '';
-            if (typeof poster !== 'string') poster = '';
-            if (poster.indexOf('//') === 0) poster = 'https:' + poster;
+            var poster = window.LampaYaniUiUtils && window.LampaYaniUiUtils.posterUrl
+                ? (window.LampaYaniUiUtils.posterUrl(item.poster) || window.LampaYaniUiUtils.posterUrl(item.cover) || window.LampaYaniUiUtils.posterUrl(item.image) || window.LampaYaniUiUtils.posterUrl(item.poster_url))
+                : '';
             var rating = typeof item.rating === 'object' ? item.rating.average : item.rating;
             var votes = typeof item.rating === 'object' ? item.rating.counters : item.rating_counters;
             var ratings = extractRatings(item.rating);

@@ -92,4 +92,8 @@ assert.deepStrictEqual(JSON.parse(JSON.stringify(utils.mediaTypeInfo({name: 'OVA
 assert.deepStrictEqual(JSON.parse(JSON.stringify(utils.mediaTypeInfo(3))),
     {key: '', full: '', short: ''}, 'numeric type ids without API labels must stay hidden');
 
+assert.strictEqual(utils.posterUrl({medium: 'https://img.example/medium.jpg', huge: 'https://img.example/huge.jpg'}), 'https://img.example/huge.jpg');
+assert.strictEqual(utils.posterUrl('//cdn.example/poster.jpg'), 'https://cdn.example/poster.jpg');
+assert.strictEqual(utils.posterUrl(''), '');
+
 console.log('ui-utils tests passed');

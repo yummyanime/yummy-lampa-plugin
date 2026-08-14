@@ -37,8 +37,8 @@ assert.match(sectionsSource, /function importRemoteIntoLocal/);
 assert.match(ui, /homePlaybackCacheLifetime = 300000/);
 assert.match(ui, /if \(cached\.fresh\) return cached\.ids/, 'fresh exclusions should avoid reloading the complete user library');
 assert.match(ui, /\[2, 3\]\.forEach\(function \(listId\)/, 'completed and dropped lists must be excluded');
-assert.match(model, /typeof item\.poster === 'string' \? item\.poster/, 'locally stored string poster URLs must remain visible');
-assert.match(model, /item\.poster\.huge/, 'large remote history posters must be supported');
+assert.match(model, /window\.LampaYaniUiUtils\.posterUrl\(item\.poster\)/, 'poster URLs must go through the shared picker');
+assert.match(fs.readFileSync('src/ui-utils.js', 'utf8'), /value\.huge/, 'large remote history posters must be supported');
 assert.match(ui, /LampaYaniPlaybackHistory\.create/);
 assert.match(ui, /historyCardRender: bindHistoryCardRender/);
 

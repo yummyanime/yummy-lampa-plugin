@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.2 — 2026-08-14
+
+- Fix catalog poster sharpness
+
 ## 0.42.1 — 2026-08-14
 
 - Remove public application key setting

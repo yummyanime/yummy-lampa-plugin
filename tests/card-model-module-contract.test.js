@@ -85,4 +85,15 @@ assert.strictEqual(card.yani_is_favorite, true);
 assert.strictEqual(card.yani_watched_episodes, 2);
 assert.strictEqual(card.yani_ratings[0].key, 'yummy');
 
+const sized = model.toCard({
+    anime_id: 43,
+    title: 'Sized',
+    poster: {
+        medium: 'https://img.example/medium.jpg',
+        huge: 'https://img.example/huge.jpg'
+    }
+});
+assert.strictEqual(sized.poster, 'https://img.example/huge.jpg');
+assert.strictEqual(sized.img, 'https://img.example/huge.jpg');
+
 console.log('card model module contract checks passed');

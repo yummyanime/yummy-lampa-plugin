@@ -1,4 +1,4 @@
-# Lampa Yani — Documentation
+# Lampa YummyAnime Extension — Documentation
 
 A new Lampa extension powered by the official YummyAnime (Yani) API.
 

@@ -12,9 +12,10 @@
     }
 
     function posterUrl(poster) {
+        if (window.LampaYaniUiUtils && window.LampaYaniUiUtils.posterUrl) return window.LampaYaniUiUtils.posterUrl(poster);
         if (typeof poster === 'string') return poster;
         if (!poster || typeof poster !== 'object') return '';
-        return poster.medium || poster.big || poster.fullsize || poster.small || poster.mega || poster.url || '';
+        return poster.huge || poster.mega || poster.big || poster.large || poster.fullsize || poster.medium || poster.small || poster.url || '';
     }
 
     function previewPosters(collection) {

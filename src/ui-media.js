@@ -88,10 +88,12 @@
                 : payload;
         var images = item && item.images || {};
         return aniList
-            ? item && item.coverImage && (item.coverImage.large || item.coverImage.extraLarge)
-            : images.jpg && (images.jpg.image_url || images.jpg.large_image_url) ||
-                images.webp && (images.webp.image_url || images.webp.large_image_url) ||
-                item && (item.poster || item.image);
+            ? item && item.coverImage && (item.coverImage.extraLarge || item.coverImage.large)
+            : images.jpg && (images.jpg.large_image_url || images.jpg.image_url) ||
+                images.webp && (images.webp.large_image_url || images.webp.image_url) ||
+                (window.LampaYaniUiUtils && window.LampaYaniUiUtils.posterUrl
+                    ? window.LampaYaniUiUtils.posterUrl(item && (item.poster || item.image))
+                    : item && (item.poster || item.image));
     }
 
     function find(card) {

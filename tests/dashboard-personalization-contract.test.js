@@ -9,7 +9,7 @@ const context = {window: {}};
 vm.runInNewContext(source, context);
 const insights = context.window.LampaYaniHomeInsights;
 
-assert.equal(insights.posterOf({poster: {medium: '//cdn.example/poster.jpg'}}), 'https://cdn.example/poster.jpg');
+assert.equal(insights.posterOf({poster: {medium: '//cdn.example/poster.jpg', huge: '//cdn.example/huge.jpg'}}), 'https://cdn.example/huge.jpg');
 assert.equal(insights.posterOf({anime: {poster: {big: 'https://cdn.example/anime.jpg'}}}), 'https://cdn.example/anime.jpg');
 assert.deepEqual({...insights.dashboardPriority({continue_count: 2, notification_count: 8})}, {key: 'continue_watching', label: 'continue_now'});
 assert.deepEqual({...insights.dashboardPriority({notification_count: 3})}, {key: 'notifications', label: 'notifications_new'});

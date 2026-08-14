@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.1',
+        version: '0.42.2',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -2337,6 +2337,20 @@ function pluginYummyAnime() {
         try { return new URL(url).hostname.replace(/^www\./, ''); } catch (error) { return ''; }
     }
 
+    function posterUrl(value) {
+        if (!value) return '';
+        if (typeof value === 'string') {
+            value = value.trim();
+            return value.indexOf('//') === 0 ? 'https:' + value : value;
+        }
+        if (typeof value !== 'object') return '';
+        return posterUrl(
+            value.huge || value.mega || value.big || value.large ||
+            value.fullsize || value.original || value.full ||
+            value.medium || value.small || value.preview || value.url || ''
+        );
+    }
+
     function titleValues(item) {
         var values = [];
         var add = function (value) { if (typeof value === 'string' && value.trim() && values.indexOf(value.trim()) < 0) values.push(value.trim()); };
@@ -2607,6 +2621,7 @@ function pluginYummyAnime() {
         videoData: videoData,
         normalizeVideoUrl: normalizeVideoUrl,
         videoHost: videoHost,
+        posterUrl: posterUrl,
         titleValues: titleValues,
         normalizeMatchTitle: normalizeMatchTitle,
         standardSearchTitles: standardSearchTitles,
@@ -3408,10 +3423,12 @@ function pluginYummyAnime() {
                 : payload;
         var images = item && item.images || {};
         return aniList
-            ? item && item.coverImage && (item.coverImage.large || item.coverImage.extraLarge)
-            : images.jpg && (images.jpg.image_url || images.jpg.large_image_url) ||
-                images.webp && (images.webp.image_url || images.webp.large_image_url) ||
-                item && (item.poster || item.image);
+            ? item && item.coverImage && (item.coverImage.extraLarge || item.coverImage.large)
+            : images.jpg && (images.jpg.large_image_url || images.jpg.image_url) ||
+                images.webp && (images.webp.large_image_url || images.webp.image_url) ||
+                (window.LampaYaniUiUtils && window.LampaYaniUiUtils.posterUrl
+                    ? window.LampaYaniUiUtils.posterUrl(item && (item.poster || item.image))
+                    : item && (item.poster || item.image));
     }
 
     function find(card) {
@@ -4941,13 +4958,9 @@ function pluginYummyAnime() {
                 ? window.LampaYaniUiUtils.titleValues(item)
                 : [];
             if (titles.indexOf(title) < 0) titles.unshift(title);
-            var image = item.image && typeof item.image === 'object' ? item.image : {};
-            var cover = item.cover && typeof item.cover === 'object' ? item.cover : {};
-            var poster = typeof item.poster === 'string' ? item.poster : typeof item.cover === 'string' ? item.cover : typeof item.image === 'string' ? item.image : item.poster_url ||
-                image.medium || image.large || image.url || image.original || cover.medium || cover.large || cover.url || cover.original || '';
-            if (!poster && item.poster) poster = item.poster.medium || item.poster.big || item.poster.large || item.poster.mega || item.poster.huge || item.poster.fullsize || item.poster.small || item.poster.url || item.poster.original || '';
-            if (typeof poster !== 'string') poster = '';
-            if (poster.indexOf('//') === 0) poster = 'https:' + poster;
+            var poster = window.LampaYaniUiUtils && window.LampaYaniUiUtils.posterUrl
+                ? (window.LampaYaniUiUtils.posterUrl(item.poster) || window.LampaYaniUiUtils.posterUrl(item.cover) || window.LampaYaniUiUtils.posterUrl(item.image) || window.LampaYaniUiUtils.posterUrl(item.poster_url))
+                : '';
             var rating = typeof item.rating === 'object' ? item.rating.average : item.rating;
             var votes = typeof item.rating === 'object' ? item.rating.counters : item.rating_counters;
             var ratings = extractRatings(item.rating);
@@ -8885,7 +8898,8 @@ function pluginYummyAnime() {
         item = item || {};
         var poster = item.poster || item.image || item.img || '';
         if (!poster && item.anime) return posterOf(item.anime);
-        if (poster && typeof poster === 'object') poster = poster.medium || poster.big || poster.mega || poster.fullsize || poster.full || poster.small || '';
+        if (window.LampaYaniUiUtils && window.LampaYaniUiUtils.posterUrl) return window.LampaYaniUiUtils.posterUrl(poster);
+        if (poster && typeof poster === 'object') poster = poster.huge || poster.mega || poster.big || poster.large || poster.fullsize || poster.full || poster.medium || poster.small || '';
         poster = String(poster || '');
         return poster.indexOf('//') === 0 ? 'https:' + poster : poster;
     }
@@ -9299,9 +9313,10 @@ function pluginYummyAnime() {
     }
 
     function posterUrl(poster) {
+        if (window.LampaYaniUiUtils && window.LampaYaniUiUtils.posterUrl) return window.LampaYaniUiUtils.posterUrl(poster);
         if (typeof poster === 'string') return poster;
         if (!poster || typeof poster !== 'object') return '';
-        return poster.medium || poster.big || poster.fullsize || poster.small || poster.mega || poster.url || '';
+        return poster.huge || poster.mega || poster.big || poster.large || poster.fullsize || poster.medium || poster.small || poster.url || '';
     }
 
     function previewPosters(collection) {

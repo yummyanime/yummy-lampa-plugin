@@ -23,6 +23,20 @@
         try { return new URL(url).hostname.replace(/^www\./, ''); } catch (error) { return ''; }
     }
 
+    function posterUrl(value) {
+        if (!value) return '';
+        if (typeof value === 'string') {
+            value = value.trim();
+            return value.indexOf('//') === 0 ? 'https:' + value : value;
+        }
+        if (typeof value !== 'object') return '';
+        return posterUrl(
+            value.huge || value.mega || value.big || value.large ||
+            value.fullsize || value.original || value.full ||
+            value.medium || value.small || value.preview || value.url || ''
+        );
+    }
+
     function titleValues(item) {
         var values = [];
         var add = function (value) { if (typeof value === 'string' && value.trim() && values.indexOf(value.trim()) < 0) values.push(value.trim()); };
@@ -293,6 +307,7 @@
         videoData: videoData,
         normalizeVideoUrl: normalizeVideoUrl,
         videoHost: videoHost,
+        posterUrl: posterUrl,
         titleValues: titleValues,
         normalizeMatchTitle: normalizeMatchTitle,
         standardSearchTitles: standardSearchTitles,

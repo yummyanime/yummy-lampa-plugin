@@ -50,7 +50,8 @@
         item = item || {};
         var poster = item.poster || item.image || item.img || '';
         if (!poster && item.anime) return posterOf(item.anime);
-        if (poster && typeof poster === 'object') poster = poster.medium || poster.big || poster.mega || poster.fullsize || poster.full || poster.small || '';
+        if (window.LampaYaniUiUtils && window.LampaYaniUiUtils.posterUrl) return window.LampaYaniUiUtils.posterUrl(poster);
+        if (poster && typeof poster === 'object') poster = poster.huge || poster.mega || poster.big || poster.large || poster.fullsize || poster.full || poster.medium || poster.small || '';
         poster = String(poster || '');
         return poster.indexOf('//') === 0 ? 'https:' + poster : poster;
     }

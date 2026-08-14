@@ -1,8 +1,8 @@
-# YummyAnime Lampa Plugin
+# YummyAnime Lampa Extension
 
-Extension for Lampa powered by the YummyAnime (Yani) API.
+Extension for Lampa powered by the YummyAnime API.
 
-Current version: `0.42.1`
+Current version: `0.42.2`
 
 See the [changelog](CHANGELOG.md) and [documentation](docs/README.en.md).
 
