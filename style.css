@@ -17,6 +17,7 @@
     margin: 0;
     padding-left: .45em;
     padding-right: .45em;
+    row-gap: 1.6em;
 }
 
 .yani-catalog-view .category-full .card,

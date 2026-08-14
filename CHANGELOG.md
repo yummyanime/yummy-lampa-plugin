@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.4 — 2026-08-14
+
+- Fix catalog card row spacing
+
 ## 0.42.3 — 2026-08-14
 
 - Fix catalog card size
