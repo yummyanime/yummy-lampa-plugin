@@ -51,6 +51,7 @@
             // DOM-level handler as a fallback so search results remain clickable.
             var rendered = cardRenderElement(element, card);
             rendered.attr('data-yani-card-id', String(card.yani_id || ''));
+            rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
             // Lampa cards already have a default `hover:enter` handler. Some
             // builds attach it to an inner card element, not the rendered root.
             // Remove it from the full YummyAnime card tree: otherwise one Enter

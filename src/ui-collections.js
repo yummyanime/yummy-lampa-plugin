@@ -82,6 +82,7 @@
             deps.open(card.yani_collection);
         });
         rendered.addClass('yani-collection-card');
+        rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
 
         if (view.length && previews.length > 1 && !view.find('.yani-collection-card__previews').length) {
             var mosaic = $('<div class="yani-collection-card__previews"></div>');

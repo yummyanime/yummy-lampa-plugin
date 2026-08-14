@@ -109,6 +109,7 @@
         if (!view.length && render.hasClass('card__view')) view = render;
         if (!view.length) return;
         render.addClass('yani-user-list-card yani-user-list-card--' + card.yani_list_key);
+        render.closest('.category-full, .items-cards').addClass('yani-card-grid');
         if (card.yani_more) render.addClass('yani-user-list-card--more');
         var badge = view.find('.yani-user-list-card__badge');
         if (!badge.length) badge = $('<span class="yani-user-list-card__badge"></span>').prependTo(view);

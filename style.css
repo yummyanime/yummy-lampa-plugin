@@ -1,7 +1,53 @@
-.yani-catalog {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+.yani-catalog-view .category-full,
+.yani-catalog-view .items-cards,
+.yani-genre-catalog-view .category-full,
+.yani-genre-catalog-view .items-cards,
+.yani-account-list-view .category-full,
+.yani-account-list-view .items-cards,
+.yani-user-lists-view .category-full,
+.yani-user-lists-view .items-cards,
+.category-full.yani-card-grid,
+.items-cards.yani-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12.6em, 1fr));
+    justify-content: center;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding-left: .45em;
+    padding-right: .45em;
+}
+
+.yani-catalog-view .category-full .card,
+.yani-catalog-view .items-cards .card,
+.yani-genre-catalog-view .category-full .card,
+.yani-genre-catalog-view .items-cards .card,
+.yani-account-list-view .category-full .card,
+.yani-account-list-view .items-cards .card,
+.yani-user-lists-view .category-full .card,
+.yani-user-lists-view .items-cards .card,
+.category-full.yani-card-grid .card,
+.items-cards.yani-card-grid .card {
+    float: none;
+    width: auto;
+    max-width: none;
+    box-sizing: border-box;
+}
+
+@media (min-width: 70em) {
+    .yani-catalog-view .category-full,
+    .yani-catalog-view .items-cards,
+    .yani-genre-catalog-view .category-full,
+    .yani-genre-catalog-view .items-cards,
+    .yani-account-list-view .category-full,
+    .yani-account-list-view .items-cards,
+    .yani-user-lists-view .category-full,
+    .yani-user-lists-view .items-cards,
+    .category-full.yani-card-grid,
+    .items-cards.yani-card-grid {
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
 }
 
 .yani-catalog-view {
@@ -252,6 +298,20 @@
     .yani-catalog-top {
         min-width: 7em;
         height: 2.55em;
+    }
+    .yani-catalog-view .category-full,
+    .yani-catalog-view .items-cards,
+    .yani-genre-catalog-view .category-full,
+    .yani-genre-catalog-view .items-cards,
+    .yani-account-list-view .category-full,
+    .yani-account-list-view .items-cards,
+    .yani-user-lists-view .category-full,
+    .yani-user-lists-view .items-cards,
+    .category-full.yani-card-grid,
+    .items-cards.yani-card-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        padding-left: .35em;
+        padding-right: .35em;
     }
 }
 
@@ -2895,6 +2955,16 @@
     .yani-account__grid,
     .yani-account__lists { grid-template-columns: repeat(2, minmax(8em, 1fr)); }
     .yani-section-state__skeleton--cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .yani-catalog-view .category-full,
+    .yani-catalog-view .items-cards,
+    .yani-genre-catalog-view .category-full,
+    .yani-genre-catalog-view .items-cards,
+    .yani-account-list-view .category-full,
+    .yani-account-list-view .items-cards,
+    .yani-user-lists-view .category-full,
+    .yani-user-lists-view .items-cards,
+    .category-full.yani-card-grid,
+    .items-cards.yani-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 /* Short 720p-class viewports: keep the first screen denser, not taller. */

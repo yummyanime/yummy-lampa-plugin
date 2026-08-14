@@ -260,6 +260,7 @@
                 var openHistoryEntry = function () { openVideos(card, true); };
                 var rendered = cardRenderElement(element, card);
                 rendered.addClass('yani-history-card').attr('data-yani-history-id', String(card.yani_id));
+                rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
                 rendered.add(rendered.find('*')).off('hover:enter.yaniOpen click.yaniOpen hover:enter.yaniHistory click.yaniHistory');
                 rendered.on('hover:enter.yaniHistory click.yaniHistory', function (event) {
                     if (event) {

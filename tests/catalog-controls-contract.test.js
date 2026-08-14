@@ -88,6 +88,9 @@ assert.match(css, /\.yani-catalog-command-deck__rail\s*\{[\s\S]{0,250}flex-direc
 assert.doesNotMatch(css, /\.yani-catalog-command-deck\s*\{[\s\S]{0,300}position:\s*absolute/);
 assert.match(css, /\.yani-catalog-command-deck__heading/);
 assert.match(css, /\.yani-catalog-filter__count/);
+assert.match(css, /\.yani-catalog-view \.category-full[\s\S]{0,900}grid-template-columns:\s*repeat\(auto-fit/);
+assert.match(css, /@media \(min-width: 70em\)[\s\S]{0,900}repeat\(7, minmax\(0, 1fr\)\)/);
+assert.match(css, /\.yani-catalog-view \.category-full \.card[\s\S]{0,400}float:\s*none/);
 
 ['ru', 'en', 'uk'].forEach((language) => {
     ['catalog_sort_top', 'catalog_sort_new', 'catalog_sort_rating', 'catalog_sort_votes', 'catalog_sort_views', 'catalog_sort_title', 'catalog_sort_random', 'scroll_to_top', 'catalog_filters', 'catalog_shortcuts_numbers', 'catalog_filter_reset', 'catalog_filter_type', 'catalog_filter_status', 'catalog_filter_year'].forEach((key) => {

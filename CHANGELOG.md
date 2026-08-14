@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.3 — 2026-08-14
+
+- Fix catalog card size
+- Fix title card grid centering
+
 ## 0.42.2 — 2026-08-14
 
 - Fix catalog poster sharpness

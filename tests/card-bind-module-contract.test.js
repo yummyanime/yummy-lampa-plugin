@@ -19,6 +19,7 @@ assert.doesNotMatch(ui, /function bindHistoryCardRender\(/);
 assert.match(source, /options\.openYummyDetail/);
 assert.match(source, /openStandardLampaCard\(card\)/);
 assert.match(source, /showYummyActions\(card, rendered/);
+assert.match(source, /yani-card-grid/);
 
 const calls = {decorate: 0, poster: 0, detail: 0, standard: 0, menu: 0};
 const fakeRendered = {
@@ -30,7 +31,7 @@ const fakeRendered = {
         this.handler = handler;
         return this;
     },
-    closest: function () { return {length: 1}; }
+    closest: function () { return {length: 1, addClass: function () { return this; }}; }
 };
 
 const context = {
