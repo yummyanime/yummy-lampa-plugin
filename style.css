@@ -1365,6 +1365,33 @@
     max-height: 24em;
     object-fit: cover;
     border-radius: 0.8em;
+    cursor: pointer;
+    transition: box-shadow .16s ease, transform .16s ease;
+}
+.yani-detail__poster.focus {
+    box-shadow: 0 0 0 .28em #fff, 0 0 0 .52em #ef6470, 0 1em 2.4em rgba(0,0,0,.4);
+    transform: scale(1.025);
+}
+.yani-poster-viewer-open { overflow: hidden; }
+.yani-poster-viewer {
+    position: fixed;
+    z-index: 10000;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2em;
+    box-sizing: border-box;
+    background: rgba(4, 5, 9, .94);
+    backdrop-filter: blur(1.1em);
+}
+.yani-poster-viewer__image {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: .55em;
+    box-shadow: 0 1.5em 5em rgba(0,0,0,.65);
 }
 
 .yani-detail__info { min-width: 0; max-width: 48em; flex: 1 1 auto; }

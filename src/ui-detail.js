@@ -191,6 +191,8 @@
         var button;
         var destroyed = false;
         var videosAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var posterViewer = null;
+        var posterExpanded = false;
         var detailFocus = LampaYaniNavigation.createScope({
             id: 'detail:' + String(routeId || getYummyId(data) || object.url || 'unknown'),
             root: function () { return html; },
@@ -211,6 +213,36 @@
         }
 
         detailFocus.bind(html);
+
+        function closePosterViewer() {
+            if (!posterExpanded) return false;
+            posterExpanded = false;
+            if (posterViewer) posterViewer.remove();
+            posterViewer = null;
+            $('body').removeClass('yani-poster-viewer-open');
+            html.find('.yani-detail__poster').attr('aria-expanded', 'false');
+            return true;
+        }
+
+        function togglePosterViewer(poster, cardData) {
+            if (closePosterViewer()) return;
+            var source = poster.attr('src') || cardData.img || cardData.poster || '';
+            if (!source) return;
+            posterExpanded = true;
+            poster.attr('aria-expanded', 'true');
+            posterViewer = $('<div class="yani-poster-viewer" role="dialog" aria-modal="true"></div>');
+            posterViewer.append($('<img class="yani-poster-viewer__image" alt="">')
+                .attr('src', source)
+                .attr('alt', cardData.title || 'YummyAnime'));
+            posterViewer.on('click.yaniPosterViewer', function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                closePosterViewer();
+            });
+            $('body').addClass('yani-poster-viewer-open').append(posterViewer);
+        }
 
         function loadDetailVideos() {
             var load = deps.loadVideos || function (id, options) {
@@ -306,8 +338,18 @@
             data = cardData;
             var malId = data.yani_remote_ids && (data.yani_remote_ids.myanimelist_id || data.yani_remote_ids.mal_id);
             if (malId) LampaYaniApi.episodeInfo(malId).catch(function () {});
-            var poster = $('<img class="yani-detail__poster">').attr('src', data.img || data.poster || '');
+            var poster = $('<img class="yani-detail__poster selector" role="button" aria-expanded="false">')
+                .attr('src', data.img || data.poster || '')
+                .attr('alt', data.title || 'YummyAnime');
             LampaYaniMedia.bindPosterFallback(poster, data);
+            poster.on('hover:enter.yaniPoster click.yaniPoster', function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                togglePosterViewer(poster, data);
+            });
+            bindDetailButtonFocus(poster);
             var info = $('<div class="yani-detail__info"></div>');
             // The title is deliberately a selector: it is the first focusable
             // item on the page, so moving up from the actions returns the
@@ -752,11 +794,11 @@
                 link: detailComponent,
                 yaniDetailOwner: detailComponent,
                 toggle: function () { detailFocus.restore(button, true); },
-                left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); },
-                right: function () { Navigator.move('right'); },
-                up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); },
-                down: function () { movePageDown(scroll); },
-                back: goBack
+                left: function () { if (!posterExpanded) { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); } },
+                right: function () { if (!posterExpanded) Navigator.move('right'); },
+                up: function () { if (!posterExpanded) { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); } },
+                down: function () { if (!posterExpanded) movePageDown(scroll); },
+                back: function () { if (!closePosterViewer()) goBack(); }
             };
             Lampa.Controller.add('content', controller);
             Lampa.Controller.toggle('content');
@@ -774,6 +816,7 @@
         comp.render = function (js) { return js ? scroll.render(true) : scroll.render(); };
         comp.destroy = function () {
             destroyed = true;
+            closePosterViewer();
             if (videosAbort) videosAbort.abort();
             detailFocus.destroy();
             scroll.destroy();

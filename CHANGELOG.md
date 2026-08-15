@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.12 — 2026-08-15
+
+- Add focusable fullscreen poster viewing on title cards
+
 ## 0.42.11 — 2026-08-15
 
 - Add lazy batch loading to genre rows
