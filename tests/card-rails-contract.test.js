@@ -17,7 +17,10 @@ assert.match(source, /\(row\.results \|\| \[\]\)\.slice\(0, 10\)/);
 assert.match(source, /yani_more: true/);
 assert.match(source, /yani-card-rails/);
 assert.match(source, /function mapLimit/);
-assert.match(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}display:\s*block/);
+assert.match(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}display:\s*flex/);
+assert.match(css, /\.yani-card-rails \.items-cards \.card[\s\S]{0,350}flex:\s*0 0 12\.75em/);
+assert.match(css, /\.yani-user-lists-view \.items-cards \.card[\s\S]{0,350}width:\s*12\.75em/);
+assert.doesNotMatch(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}width:\s*revert/);
 
 const context = {window: {}};
 vm.runInNewContext(source, context);

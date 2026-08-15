@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.10 — 2026-08-15
+
+- Fix my lists, collection, and genre cards to render as horizontal Lampa rows
+
 ## 0.42.9 — 2026-08-15
 
 - Add collection card rows like my lists
