@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.7 — 2026-08-15
+
+- Fix YummyAnime sidebar item disappearing and not keeping its saved menu place
+
 ## 0.42.6 — 2026-08-15
 
 - Fix trailer playback

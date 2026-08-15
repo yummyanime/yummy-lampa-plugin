@@ -15,6 +15,9 @@ assert.match(source, /listener\.follow\('menu'/);
 assert.match(source, /data-action="' \+ action \+ '"/);
 assert.match(source, /list\.append\(item\)/);
 assert.match(source, /Sidebar item failed/);
+assert.match(source, /insertAfterTitle/);
+assert.match(source, /menu_sort/);
+assert.match(source, /menu_hide/);
 assert.doesNotMatch(ui, /if \(!Lampa\.Menu \|\| !Lampa\.Menu\.addButton\) return/);
 assert.doesNotMatch(ui, /Lampa\.Menu\.addButton\(yummyIcon/);
 
@@ -48,6 +51,15 @@ assert.strictEqual(
     'Shots',
     'exact title match must not treat YummyAnime as Anime'
 );
+assert.strictEqual(
+    Menu.insertAfterTitle(
+        ['Главная', 'Аниме', 'YummyAnime', 'IPTV'],
+        ['Главная', 'Аниме', 'Избранное', 'История', 'YummyAnime'],
+        'YummyAnime'
+    ),
+    'Аниме',
+    'if the next saved neighbor is missing, keep YummyAnime after the previous saved item'
+);
 
 function fakeList(labels) {
     const nodes = labels.map(function (label, index) {
@@ -65,12 +77,21 @@ function fakeList(labels) {
             }
         };
     }
-    return {nodes: nodes, length: 1, children: children, append: function (item) {
-        var node = item && item[0] ? item[0] : item;
-        const index = nodes.indexOf(node);
-        if (index >= 0) nodes.splice(index, 1);
-        nodes.push(node);
-    }};
+    return {
+        nodes: nodes,
+        length: 1,
+        children: children,
+        find: function (selector) {
+            if (selector === '.menu__item') return children();
+            return {each: function () {}};
+        },
+        append: function (item) {
+            var node = item && item[0] ? item[0] : item;
+            const index = nodes.indexOf(node);
+            if (index >= 0) nodes.splice(index, 1);
+            nodes.push(node);
+        }
+    };
 }
 
 function fake$(list) {
@@ -87,7 +108,10 @@ function fake$(list) {
                 return items[0] && items[0].action;
             },
             on: function () { return jq; },
-            parent: function () { return list; },
+            parent: function () {
+                if (!items[0] || list.nodes.indexOf(items[0]) < 0) return {length: 0};
+                return list;
+            },
             find: function () {
                 var label = items[0] ? items[0].label : '';
                 return {
@@ -111,6 +135,14 @@ function fake$(list) {
                     const from = list.nodes.indexOf(item);
                     if (from >= 0) list.nodes.splice(from, 1);
                     list.nodes.splice(list.nodes.indexOf(node), 0, item);
+                });
+                return jq;
+            },
+            insertAfter: function (node) {
+                items.forEach(function (item) {
+                    const from = list.nodes.indexOf(item);
+                    if (from >= 0) list.nodes.splice(from, 1);
+                    list.nodes.splice(list.nodes.indexOf(node) + 1, 0, item);
                 });
                 return jq;
             },
@@ -141,8 +173,13 @@ const list = fakeList(['Главная', 'Расписание', 'Shots', 'IPTV'
 const storage = {
     sort: ['Главная', 'Расписание', 'YummyAnime', 'Shots', 'IPTV'],
     hide: ['Shots'],
+    writes: 0,
     get: function (key) { return key === 'menu_hide' ? storage.hide : storage.sort; },
-    set: function (key, value) { if (key === 'menu_sort') storage.sort = value; }
+    set: function (key, value) {
+        storage.writes += 1;
+        if (key === 'menu_sort') storage.sort = value;
+        if (key === 'menu_hide') storage.hide = value;
+    }
 };
 const sidebar = Menu.create({
     $: fake$(list),
@@ -163,6 +200,11 @@ assert.strictEqual(list.nodes.filter(function (node) { return node.label === 'Yu
 storage.hide = ['YummyAnime'];
 sidebar.restore();
 assert.strictEqual(list.nodes[2].hidden, true);
+
+storage.hide = ['Anime'];
+list.nodes[2].hidden = true;
+sidebar.restore();
+assert.strictEqual(list.nodes[2].hidden, false, 'Lampa :contains(Anime) must not keep YummyAnime hidden');
 
 const empty = fakeList([]);
 empty.length = 0;
@@ -188,5 +230,102 @@ const broken = Menu.create({
     listRoot: function () { return list; }
 });
 assert.strictEqual(broken.add(), false, 'menu DOM errors must not throw out of add()');
+
+const orphanList = fakeList(['Главная', 'Аниме', 'Избранное']);
+const orphanStorage = {
+    sort: ['Главная', 'Аниме', 'YummyAnime', 'Избранное'],
+    hide: [],
+    get: function (key) { return key === 'menu_hide' ? orphanStorage.hide : orphanStorage.sort; },
+    set: function () { throw new Error('must not rewrite a complete menu_sort'); }
+};
+const orphan = Menu.create({
+    $: fake$(orphanList),
+    Storage: orphanStorage,
+    restoreDelay: 0,
+    maxAttempts: 0,
+    setTimeout: function () { return 0; },
+    clearTimeout: function () {},
+    listRoot: function () { return orphanList; }
+});
+assert.strictEqual(orphan.add(), true);
+assert.deepStrictEqual(orphanList.nodes.map(function (node) { return node.label; }), ['Главная', 'Аниме', 'YummyAnime', 'Избранное']);
+
+orphanList.nodes.splice(orphanList.nodes.findIndex(function (node) { return node.label === 'YummyAnime'; }), 1);
+assert.strictEqual(orphan.add(), true, 'a dropped sidebar item must be inserted again');
+assert.strictEqual(orphanList.nodes.filter(function (node) { return node.label === 'YummyAnime'; }).length, 1);
+assert.deepStrictEqual(orphanList.nodes.map(function (node) { return node.label; }), ['Главная', 'Аниме', 'YummyAnime', 'Избранное']);
+
+const afterList = fakeList(['Главная', 'Аниме', 'Избранное', 'История']);
+const afterStorage = {
+    sort: ['Главная', 'Аниме', 'YummyAnime', 'IPTV'],
+    hide: [],
+    get: function (key) { return key === 'menu_hide' ? afterStorage.hide : afterStorage.sort; },
+    set: function () {}
+};
+const afterSidebar = Menu.create({
+    $: fake$(afterList),
+    Storage: afterStorage,
+    restoreDelay: 0,
+    maxAttempts: 0,
+    setTimeout: function () { return 0; },
+    clearTimeout: function () {},
+    listRoot: function () { return afterList; }
+});
+assert.strictEqual(afterSidebar.add(), true);
+assert.deepStrictEqual(
+    afterList.nodes.map(function (node) { return node.label; }),
+    ['Главная', 'Аниме', 'YummyAnime', 'Избранное', 'История'],
+    'must not append YummyAnime last when the next saved neighbor is still missing'
+);
+
+const emptySort = {
+    sort: [],
+    hide: [],
+    writes: 0,
+    get: function (key) { return key === 'menu_hide' ? emptySort.hide : emptySort.sort; },
+    set: function () { emptySort.writes += 1; }
+};
+const emptySortList = fakeList(['Главная', 'Аниме']);
+const emptySortSidebar = Menu.create({
+    $: fake$(emptySortList),
+    Storage: emptySort,
+    restoreDelay: 0,
+    maxAttempts: 0,
+    setTimeout: function () { return 0; },
+    clearTimeout: function () {},
+    listRoot: function () { return emptySortList; }
+});
+assert.strictEqual(emptySortSidebar.add(), true);
+assert.strictEqual(emptySort.writes, 0, 'an empty menu_sort must not be overwritten with only YummyAnime');
+
+const listeners = [];
+const savedList = fakeList(['Главная', 'Аниме', 'Избранное']);
+const savedStorage = {
+    sort: ['Главная', 'YummyAnime', 'Аниме', 'Избранное'],
+    hide: [],
+    listener: {
+        follow: function (name, fn) { listeners.push({name: name, fn: fn}); }
+    },
+    get: function (key) { return key === 'menu_hide' ? savedStorage.hide : savedStorage.sort; },
+    set: function () {}
+};
+const saved = Menu.create({
+    $: fake$(savedList),
+    Storage: savedStorage,
+    restoreDelay: 0,
+    maxAttempts: 0,
+    setTimeout: function () { return 0; },
+    clearTimeout: function () {},
+    listRoot: function () { return savedList; }
+});
+assert.strictEqual(saved.start({follow: function () {}}), true);
+assert.ok(listeners.some(function (entry) { return entry.name === 'change'; }), 'must follow Lampa storage changes after the menu editor saves');
+savedStorage.sort = ['Главная', 'Аниме', 'Избранное', 'YummyAnime'];
+listeners.forEach(function (entry) { entry.fn({name: 'menu_sort'}); });
+assert.deepStrictEqual(
+    savedList.nodes.map(function (node) { return node.label; }),
+    ['Главная', 'Аниме', 'Избранное', 'YummyAnime'],
+    'a saved menu_sort change must move YummyAnime to the new place'
+);
 
 console.log('sidebar menu contract tests passed');

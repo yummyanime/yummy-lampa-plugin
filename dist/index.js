@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.6',
+        version: '0.42.7',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -2684,6 +2684,17 @@ function pluginYummyAnime() {
         return '';
     }
 
+    function insertAfterTitle(sort, presentTitles, title) {
+        var order = asList(sort);
+        var present = asList(presentTitles);
+        var index = order.indexOf(title);
+        if (index === -1) return '';
+        for (var i = index - 1; i >= 0; i--) {
+            if (order[i] !== title && present.indexOf(order[i]) !== -1) return order[i];
+        }
+        return '';
+    }
+
     function itemLabel(node, $) {
         try {
             var text = $(node).find('.menu__text');
@@ -2709,7 +2720,7 @@ function pluginYummyAnime() {
         var added = false;
         var started = false;
         var item = null;
-        var restoreTimer = 0;
+        var restoreTimers = [];
         var attempts = 0;
 
         function jq() {
@@ -2745,6 +2756,16 @@ function pluginYummyAnime() {
             if (typeof deps.listRoot === 'function') return deps.listRoot();
             var $ = jq();
             if (!$ || typeof $ !== 'function') return emptySet();
+            var Menu = deps.Menu || (window.Lampa && Lampa.Menu);
+            if (Menu && typeof Menu.render === 'function') {
+                try {
+                    var rendered = Menu.render();
+                    if (rendered) {
+                        var fromMenu = $(rendered).find('.menu__list').eq(0);
+                        if (fromMenu && fromMenu.length) return fromMenu;
+                    }
+                } catch (error) {}
+            }
             return $('.menu .menu__list').eq(0);
         }
 
@@ -2759,13 +2780,31 @@ function pluginYummyAnime() {
             return found;
         }
 
+        function menuItems(list) {
+            if (list && typeof list.find === 'function') {
+                var found = list.find('.menu__item');
+                if (found && typeof found.each === 'function') return found;
+            }
+            return list.children('.menu__item');
+        }
+
         function presentTitles(list) {
             var names = [];
             var $ = jq();
-            list.children('.menu__item').each(function () {
+            menuItems(list).each(function () {
                 names.push(itemLabel(this, $));
             });
             return names;
+        }
+
+        function attached(target) {
+            if (!target || !target.length) return false;
+            try {
+                var parent = target.parent && target.parent();
+                return !!(parent && parent.length);
+            } catch (error) {
+                return false;
+            }
         }
 
         function restore(target) {
@@ -2773,22 +2812,42 @@ function pluginYummyAnime() {
                 target = target || item;
                 var Storage = storage();
                 if (!target || !target.length || !Storage || !Storage.get) return;
+                if (!attached(target)) return;
                 var list = target.parent();
                 if (!list || !list.length) return;
                 var stored = asList(Storage.get('menu_sort', '[]'));
-                var sort = ensureListed(stored, title);
-                if (stored.indexOf(title) === -1 && Storage.set) Storage.set('menu_sort', sort);
+                var sort = stored.slice();
+                if (stored.indexOf(title) === -1) {
+                    sort = ensureListed(stored, title);
+                    if (stored.length && Storage.set) Storage.set('menu_sort', sort);
+                }
                 var hide = asList(Storage.get('menu_hide', '[]'));
-                var before = insertBeforeTitle(sort, presentTitles(list), title);
+                var names = presentTitles(list);
+                var before = insertBeforeTitle(sort, names, title);
+                var after = before ? '' : insertAfterTitle(sort, names, title);
                 var $ = jq();
                 if (before) {
-                    list.children('.menu__item').each(function () {
+                    menuItems(list).each(function () {
                         if (itemLabel(this, $) === before) {
                             target.insertBefore(this);
                             return false;
                         }
                     });
-                } else {
+                } else if (after) {
+                    var placed = false;
+                    menuItems(list).each(function () {
+                        if (itemLabel(this, $) !== after) return;
+                        if (typeof target.insertAfter === 'function') target.insertAfter(this);
+                        else {
+                            var next = this.nextSibling || (this.next && this.next());
+                            if (next) target.insertBefore(next);
+                            else list.append(target);
+                        }
+                        placed = true;
+                        return false;
+                    });
+                    if (!placed) list.append(target);
+                } else if (sort.indexOf(title) === -1) {
                     list.append(target);
                 }
                 target.toggleClass('hidden', isHidden(hide, title));
@@ -2800,10 +2859,18 @@ function pluginYummyAnime() {
         }
 
         function scheduleRestore(target) {
+            restoreTimers.forEach(function (id) { cancel(id); });
+            restoreTimers = [];
             restore(target);
             if (!restoreDelay) return;
-            if (restoreTimer) cancel(restoreTimer);
-            restoreTimer = wait(function () { restore(target); }, restoreDelay);
+            var pulses = deps.restoreDelays || [550, 900, 1800];
+            pulses.forEach(function (ms) {
+                restoreTimers.push(wait(function () {
+                    var found = existing();
+                    if (found && found.length) restore(found.eq(0));
+                    else add();
+                }, ms));
+            });
         }
 
         function buildItem() {
@@ -2815,10 +2882,6 @@ function pluginYummyAnime() {
 
         function add() {
             try {
-                if (added) {
-                    scheduleRestore(item);
-                    return true;
-                }
                 var found = existing();
                 if (found && found.length) {
                     item = found.eq(0);
@@ -2866,7 +2929,14 @@ function pluginYummyAnime() {
                     if (event && event.type === 'ready') add();
                 });
                 listener.follow('menu', function (event) {
-                    if (event && (event.type === 'start' || event.type === 'end')) add();
+                    if (event && (event.type === 'start' || event.type === 'end' || event.type === 'toggle')) add();
+                });
+            }
+            var Storage = storage();
+            if (Storage && Storage.listener && typeof Storage.listener.follow === 'function') {
+                Storage.listener.follow('change', function (event) {
+                    if (!event || (event.name !== 'menu_sort' && event.name !== 'menu_hide')) return;
+                    add();
                 });
             }
             return added;
@@ -2890,6 +2960,7 @@ function pluginYummyAnime() {
         ensureListed: ensureListed,
         isHidden: isHidden,
         insertBeforeTitle: insertBeforeTitle,
+        insertAfterTitle: insertAfterTitle,
         create: create
     };
 })(window);
