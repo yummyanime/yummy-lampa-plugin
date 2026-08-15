@@ -26,6 +26,7 @@ assert.match(ui, /mode: 'continue'/);
 assert.match(historySource, /duration: Math\.max\(0, Number\(video\.duration \|\| 0\)\)/);
 assert.match(ui, /fetchExcluded: loadContinueWatchingExclusions/);
 assert.match(ui, /function applyPlaybackSnapshot\(remoteEntries, excludedAnimeIds\)/);
+assert.match(ui, /setPreview\(homeButtons\.continue_watching, '', ''\)/, 'empty continue queue must clear the dashboard title');
 assert.match(ui, /LampaYaniApi\.watchHistory\(30, 0, control\)\.then\(LampaYaniHomeSections\.normalizeRemoteHistory\)/);
 assert.match(ui, /readHomePlaybackSnapshot\(playbackUserKey\)/);
 assert.match(ui, /cacheHomePlaybackSnapshot\(playbackUserKey, result\[0\], result\[1\]\)/);
@@ -112,8 +113,9 @@ assert.strictEqual(continuing.length, 2, 'continue watching keeps one unfinished
 assert.strictEqual(continuing[0].anime_id, 88, 'a selected but not started episode remains a continue target');
 assert.strictEqual(continuing[1].video_id, 4208, 'the latest unfinished episode wins for a title');
 assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 1390, duration: 1440}), false, 'nearly completed episodes are hidden');
-assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 1080, duration: 1440}), false, '75 percent is considered watched without an explicit state');
-assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 1079, duration: 1440}), true, 'progress below 75 percent remains resumable');
+assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 1080, duration: 1440}), true, '75 percent remains resumable');
+assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 0, duration: 1440}), true, 'a just-started episode remains resumable');
+assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 1079, duration: 1440}), true, 'progress below 95 percent remains resumable');
 assert.deepStrictEqual(
     Array.from(history.continueWatchingEntries([
         {anime_id: 42, video_id: 4208, number: '8', time: 45, duration: 1440, updated_at: 20},
@@ -121,6 +123,13 @@ assert.deepStrictEqual(
     ], {'42': true})).map((entry) => entry.anime_id),
     [88],
     'completed or dropped titles must be removed after merging local and remote progress'
+);
+assert.strictEqual(
+    history.continueWatchingEntries([
+        {anime_id: 77, video_id: 7701, number: '1', time: 1390, duration: 1440, updated_at: 30}
+    ], {'77': true})[0].anime_id,
+    77,
+    'the last watched title stays in continue watching when filters would empty the list'
 );
 
 console.log('Watch history contract checks passed');

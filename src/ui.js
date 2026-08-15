@@ -1257,6 +1257,9 @@
                     if (resume.duration > 0) resumeMeta += (resumeMeta ? ' · ' : '') + Math.min(99, Math.round(resume.time / resume.duration * 100)) + '%';
                     setPreview(homeButtons.continue_watching, resume.title, resumeMeta);
                     setArtwork(homeButtons.continue_watching, resume.poster);
+                } else {
+                    setPreview(homeButtons.continue_watching, '', '');
+                    setArtwork(homeButtons.continue_watching, '');
                 }
                 if (personal.account_name) setPreview(homeButtons.account, personal.account_name, t('authorized'));
                 if (personal.list_total) {

@@ -105,31 +105,45 @@
         });
     }
 
-    function isContinueEntry(entry) {
-        var position = Math.max(0, Number(entry && entry.time || 0));
-        var duration = Math.max(0, Number(entry && entry.duration || 0));
-        var hasTarget = Boolean(entry && (entry.video_id || entry.number));
-        if (!hasTarget) return false;
-        if (!duration) return position >= 30 || position === 0;
-        if (position < 30) return false;
-        // When the API does not provide an explicit completion state, use a
-        // predictable percentage fallback for both short and regular videos.
-        return position / duration < 0.75;
+    function hasResumeTarget(entry) {
+        return Boolean(entry && (entry.video_id || entry.number) && (entry.anime_id || entry.animeId));
     }
 
-    function continueWatchingEntries(entries, excludedAnimeIds) {
+    function isFinishedEpisode(entry) {
+        var position = Math.max(0, Number(entry && entry.time || 0));
+        var duration = Math.max(0, Number(entry && entry.duration || 0));
+        return duration > 0 && position / duration >= 0.95;
+    }
+
+    function isContinueEntry(entry) {
+        return hasResumeTarget(entry) && !isFinishedEpisode(entry);
+    }
+
+    function latestEntriesByAnime(entries, accept) {
         var latest = {};
-        excludedAnimeIds = excludedAnimeIds || {};
         (entries || []).forEach(function (entry) {
-            if (!isContinueEntry(entry)) return;
-            var key = String(entry.anime_id || '');
-            if (!key || excludedAnimeIds[key]) return;
+            if (accept && !accept(entry)) return;
+            if (!hasResumeTarget(entry)) return;
+            var key = String(entry.anime_id || entry.animeId || '');
+            if (!key) return;
             var current = latest[key];
             if (!current || Number(entry.updated_at || 0) > Number(current.updated_at || 0)) latest[key] = entry;
         });
         return Object.keys(latest).map(function (key) { return latest[key]; }).sort(function (a, b) {
             return Number(b.updated_at || 0) - Number(a.updated_at || 0);
         });
+    }
+
+    function continueWatchingEntries(entries, excludedAnimeIds) {
+        excludedAnimeIds = excludedAnimeIds || {};
+        var continuing = latestEntriesByAnime(entries, isContinueEntry).filter(function (entry) {
+            return !excludedAnimeIds[String(entry.anime_id || entry.animeId || '')];
+        });
+        if (continuing.length) return continuing;
+        // The dashboard advertises the last watched title. Keep that title in
+        // the queue when the 95% / completed-list filters would otherwise
+        // leave Continue Watching empty.
+        return latestEntriesByAnime(entries).slice(0, 1);
     }
 
     function hasClockTimestamp(value) {

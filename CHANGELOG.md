@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.13 — 2026-08-15
+
+- Fix continue watching list emptying while the dashboard still shows the last title
+
 ## 0.42.12 — 2026-08-15
 
 - Add focusable fullscreen poster viewing on title cards
