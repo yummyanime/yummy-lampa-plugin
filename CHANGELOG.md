@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.11 — 2026-08-15
+
+- Add lazy batch loading to genre rows
+
 ## 0.42.10 — 2026-08-15
 
 - Fix my lists, collection, and genre cards to render as horizontal Lampa rows

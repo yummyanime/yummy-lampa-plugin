@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.10',
+        version: '0.42.11',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -5813,16 +5813,70 @@ function pluginYummyAnime() {
         deps = deps || {};
         var component = new Lampa.InteractionMain(object);
         var destroyed = false;
+        var pageSize = Math.max(1, Number(deps.pageSize || 4));
+        var nextPage = 0;
+        var loadingPage = false;
+        var finished = false;
+
+        function prepare(rows) {
+            return (rows || []).filter(Boolean).map(function (row) {
+                return withMore(row, deps);
+            });
+        }
+
+        function loadPage(page) {
+            if (typeof deps.loadPage === 'function') {
+                return Promise.resolve(deps.loadPage(page, pageSize));
+            }
+            if (page === 0) return Promise.resolve(deps.loadRows ? deps.loadRows() : []);
+            return Promise.resolve([]);
+        }
+
+        function requestNext(resolve, reject) {
+            if (destroyed || finished || loadingPage) {
+                if (reject) reject();
+                return;
+            }
+            loadingPage = true;
+            loadPage(nextPage).then(function (rows) {
+                loadingPage = false;
+                if (destroyed) return;
+                rows = (rows || []).filter(Boolean);
+                if (!rows.length) {
+                    finished = true;
+                    if (reject) reject();
+                    return;
+                }
+                nextPage += 1;
+                resolve(prepare(rows));
+            }).catch(function (error) {
+                loadingPage = false;
+                if (reject) reject(error);
+                else if (deps.onError) deps.onError(error);
+            });
+        }
+
+        function installLegacyPagination() {
+            if (typeof component.use === 'function' || !component.scroll) return;
+            component.scroll.onEnd = function () {
+                requestNext(function (rows) {
+                    component.build(rows);
+                    installLegacyPagination();
+                }, function () {});
+            };
+        }
 
         component.create = function () {
             var self = this;
             this.activity.loader(true);
-            Promise.resolve(deps.loadRows ? deps.loadRows() : []).then(function (rows) {
+            loadPage(0).then(function (rows) {
                 if (destroyed) return;
-                self.build((rows || []).filter(Boolean).map(function (row) {
-                    return withMore(row, deps);
-                }));
+                rows = (rows || []).filter(Boolean);
+                nextPage = 1;
+                if (!rows.length) finished = true;
+                self.build(prepare(rows));
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
+                installLegacyPagination();
             }).catch(function (error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Card Rails]', error);
@@ -5833,6 +5887,13 @@ function pluginYummyAnime() {
         component.cardRender = function (first, second, third) {
             decorateCard(first, second, third, deps);
         };
+        component.nextPageReuest = function (requestObject, resolve, reject) {
+            requestNext(resolve, reject);
+        };
+        component.nextPageRequest = component.nextPageReuest;
+        if (typeof component.use === 'function') {
+            component.use({onNext: requestNext});
+        }
         if (window.LampaYaniNavigation && LampaYaniNavigation.attachComponent) {
             LampaYaniNavigation.attachComponent(component, {
                 id: deps.id || ('card-rails:' + String(object && object.url || 'yani/rails')),
@@ -12904,7 +12965,8 @@ function pluginYummyAnime() {
             },
             openCard: function (card) { openYummyDetail(card, false); },
             onError: function () { Lampa.Noty.show(t('genres_load_error')); },
-            loadRows: loadGenreRows
+            pageSize: 4,
+            loadPage: createGenreRowLoader()
         });
     }
 
@@ -14475,33 +14537,44 @@ function pluginYummyAnime() {
         });
     }
 
-    function loadGenreRows() {
-        return LampaYaniApi.genres().then(function (payload) {
-            var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
-                return genreTitle(genre) && genreValue(genre) !== null;
-            });
-            if (!genres.length) {
-                Lampa.Noty.show(t('genres_empty'));
-                return [];
+    function createGenreRowLoader() {
+        var genresRequest = null;
+
+        function loadGenreRows(page, pageSize) {
+            if (!genresRequest) {
+                genresRequest = LampaYaniApi.genres().then(function (payload) {
+                    var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
+                        return genreTitle(genre) && genreValue(genre) !== null;
+                    });
+                    if (!genres.length) Lampa.Noty.show(t('genres_empty'));
+                    return genres;
+                });
             }
-            return LampaYaniCardRails.mapLimit(genres, 4, function (genre) {
-                var id = genreValue(genre);
-                return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}).then(function (payload) {
-                    var items = LampaYaniApi.normalize(payload).slice(0, 10);
-                    if (!items.length) return null;
-                    return {
-                        title: genreTitle(genre),
-                        results: items.map(toCard),
-                        onMore: function () { openGenreCatalog(genre); },
-                        visual: {
-                            from: '#ff6878',
-                            to: '#825ed8',
-                            icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
-                        }
-                    };
-                }).catch(function () { return null; });
-            }).then(function (rows) { return rows.filter(Boolean); });
-        });
+            return genresRequest.then(function (genres) {
+                var offset = Math.max(0, Number(page || 0)) * pageSize;
+                var batch = genres.slice(offset, offset + pageSize);
+                if (!batch.length) return [];
+                return LampaYaniCardRails.mapLimit(batch, pageSize, function (genre) {
+                    var id = genreValue(genre);
+                    return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}).then(function (payload) {
+                        var items = LampaYaniApi.normalize(payload).slice(0, 10);
+                        if (!items.length) return null;
+                        return {
+                            title: genreTitle(genre),
+                            results: items.map(toCard),
+                            onMore: function () { openGenreCatalog(genre); },
+                            visual: {
+                                from: '#ff6878',
+                                to: '#825ed8',
+                                icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
+                            }
+                        };
+                    }).catch(function () { return null; });
+                }).then(function (rows) { return rows.filter(Boolean); });
+            });
+        }
+
+        return loadGenreRows;
     }
 
     function genreTitle(genre) {

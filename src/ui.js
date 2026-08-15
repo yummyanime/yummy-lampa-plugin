@@ -1702,7 +1702,8 @@
             },
             openCard: function (card) { openYummyDetail(card, false); },
             onError: function () { Lampa.Noty.show(t('genres_load_error')); },
-            loadRows: loadGenreRows
+            pageSize: 4,
+            loadPage: createGenreRowLoader()
         });
     }
 
@@ -3273,33 +3274,44 @@
         });
     }
 
-    function loadGenreRows() {
-        return LampaYaniApi.genres().then(function (payload) {
-            var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
-                return genreTitle(genre) && genreValue(genre) !== null;
-            });
-            if (!genres.length) {
-                Lampa.Noty.show(t('genres_empty'));
-                return [];
+    function createGenreRowLoader() {
+        var genresRequest = null;
+
+        function loadGenreRows(page, pageSize) {
+            if (!genresRequest) {
+                genresRequest = LampaYaniApi.genres().then(function (payload) {
+                    var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
+                        return genreTitle(genre) && genreValue(genre) !== null;
+                    });
+                    if (!genres.length) Lampa.Noty.show(t('genres_empty'));
+                    return genres;
+                });
             }
-            return LampaYaniCardRails.mapLimit(genres, 4, function (genre) {
-                var id = genreValue(genre);
-                return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}).then(function (payload) {
-                    var items = LampaYaniApi.normalize(payload).slice(0, 10);
-                    if (!items.length) return null;
-                    return {
-                        title: genreTitle(genre),
-                        results: items.map(toCard),
-                        onMore: function () { openGenreCatalog(genre); },
-                        visual: {
-                            from: '#ff6878',
-                            to: '#825ed8',
-                            icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
-                        }
-                    };
-                }).catch(function () { return null; });
-            }).then(function (rows) { return rows.filter(Boolean); });
-        });
+            return genresRequest.then(function (genres) {
+                var offset = Math.max(0, Number(page || 0)) * pageSize;
+                var batch = genres.slice(offset, offset + pageSize);
+                if (!batch.length) return [];
+                return LampaYaniCardRails.mapLimit(batch, pageSize, function (genre) {
+                    var id = genreValue(genre);
+                    return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}).then(function (payload) {
+                        var items = LampaYaniApi.normalize(payload).slice(0, 10);
+                        if (!items.length) return null;
+                        return {
+                            title: genreTitle(genre),
+                            results: items.map(toCard),
+                            onMore: function () { openGenreCatalog(genre); },
+                            visual: {
+                                from: '#ff6878',
+                                to: '#825ed8',
+                                icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
+                            }
+                        };
+                    }).catch(function () { return null; });
+                }).then(function (rows) { return rows.filter(Boolean); });
+            });
+        }
+
+        return loadGenreRows;
     }
 
     function genreTitle(genre) {

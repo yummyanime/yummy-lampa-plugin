@@ -106,16 +106,70 @@
         deps = deps || {};
         var component = new Lampa.InteractionMain(object);
         var destroyed = false;
+        var pageSize = Math.max(1, Number(deps.pageSize || 4));
+        var nextPage = 0;
+        var loadingPage = false;
+        var finished = false;
+
+        function prepare(rows) {
+            return (rows || []).filter(Boolean).map(function (row) {
+                return withMore(row, deps);
+            });
+        }
+
+        function loadPage(page) {
+            if (typeof deps.loadPage === 'function') {
+                return Promise.resolve(deps.loadPage(page, pageSize));
+            }
+            if (page === 0) return Promise.resolve(deps.loadRows ? deps.loadRows() : []);
+            return Promise.resolve([]);
+        }
+
+        function requestNext(resolve, reject) {
+            if (destroyed || finished || loadingPage) {
+                if (reject) reject();
+                return;
+            }
+            loadingPage = true;
+            loadPage(nextPage).then(function (rows) {
+                loadingPage = false;
+                if (destroyed) return;
+                rows = (rows || []).filter(Boolean);
+                if (!rows.length) {
+                    finished = true;
+                    if (reject) reject();
+                    return;
+                }
+                nextPage += 1;
+                resolve(prepare(rows));
+            }).catch(function (error) {
+                loadingPage = false;
+                if (reject) reject(error);
+                else if (deps.onError) deps.onError(error);
+            });
+        }
+
+        function installLegacyPagination() {
+            if (typeof component.use === 'function' || !component.scroll) return;
+            component.scroll.onEnd = function () {
+                requestNext(function (rows) {
+                    component.build(rows);
+                    installLegacyPagination();
+                }, function () {});
+            };
+        }
 
         component.create = function () {
             var self = this;
             this.activity.loader(true);
-            Promise.resolve(deps.loadRows ? deps.loadRows() : []).then(function (rows) {
+            loadPage(0).then(function (rows) {
                 if (destroyed) return;
-                self.build((rows || []).filter(Boolean).map(function (row) {
-                    return withMore(row, deps);
-                }));
+                rows = (rows || []).filter(Boolean);
+                nextPage = 1;
+                if (!rows.length) finished = true;
+                self.build(prepare(rows));
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
+                installLegacyPagination();
             }).catch(function (error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Card Rails]', error);
@@ -126,6 +180,13 @@
         component.cardRender = function (first, second, third) {
             decorateCard(first, second, third, deps);
         };
+        component.nextPageReuest = function (requestObject, resolve, reject) {
+            requestNext(resolve, reject);
+        };
+        component.nextPageRequest = component.nextPageReuest;
+        if (typeof component.use === 'function') {
+            component.use({onNext: requestNext});
+        }
         if (window.LampaYaniNavigation && LampaYaniNavigation.attachComponent) {
             LampaYaniNavigation.attachComponent(component, {
                 id: deps.id || ('card-rails:' + String(object && object.url || 'yani/rails')),
