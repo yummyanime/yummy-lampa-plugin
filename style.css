@@ -53,15 +53,6 @@
     row-gap: 0;
 }
 
-.yani-card-rails .items-cards .card,
-.yani-card-rails .items-cards.yani-card-grid .card,
-.yani-user-lists-view .items-cards .card,
-.yani-user-lists-view .items-cards.yani-card-grid .card {
-    float: left;
-    width: revert;
-    max-width: revert;
-}
-
 @media (min-width: 70em) {
     .yani-catalog-view .category-full,
     .yani-catalog-view .items-cards,

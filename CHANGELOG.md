@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.42.9 — 2026-08-15
+
+- Add collection card rows like my lists
+- Add genre card rows like my lists
+
+## 0.42.8 — 2026-08-15
+
+- Fix my lists rails to use Lampa card size
+- Fix collections to show collection cards again
+- Fix genres to open the picker again
+
 ## 0.42.7 — 2026-08-15
 
 - Fix YummyAnime sidebar item disappearing and not keeping its saved menu place

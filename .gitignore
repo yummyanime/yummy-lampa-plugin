@@ -13,3 +13,5 @@ dist/smoke.js
 src/ui-detail-sections.js
 
 .history/
+
+.tmp-video-frames/
