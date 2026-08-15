@@ -4,8 +4,8 @@
 .yani-genre-catalog-view .items-cards,
 .yani-account-list-view .category-full,
 .yani-account-list-view .items-cards,
-.yani-user-lists-view .category-full,
-.yani-user-lists-view .items-cards,
+.yani-collection-view .category-full,
+.yani-collection-view .items-cards,
 .category-full.yani-card-grid,
 .items-cards.yani-card-grid {
     display: grid;
@@ -26,14 +26,40 @@
 .yani-genre-catalog-view .items-cards .card,
 .yani-account-list-view .category-full .card,
 .yani-account-list-view .items-cards .card,
-.yani-user-lists-view .category-full .card,
-.yani-user-lists-view .items-cards .card,
+.yani-collection-view .category-full .card,
+.yani-collection-view .items-cards .card,
 .category-full.yani-card-grid .card,
 .items-cards.yani-card-grid .card {
     float: none;
     width: auto;
     max-width: none;
     box-sizing: border-box;
+}
+
+.yani-card-rails .category-full,
+.yani-card-rails .items-cards,
+.yani-card-rails .items-cards.yani-card-grid,
+.yani-user-lists-view .category-full,
+.yani-user-lists-view .items-cards,
+.yani-user-lists-view .items-cards.yani-card-grid {
+    display: block;
+    grid-template-columns: none;
+    justify-content: unset;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding-left: 0;
+    padding-right: 0;
+    row-gap: 0;
+}
+
+.yani-card-rails .items-cards .card,
+.yani-card-rails .items-cards.yani-card-grid .card,
+.yani-user-lists-view .items-cards .card,
+.yani-user-lists-view .items-cards.yani-card-grid .card {
+    float: left;
+    width: revert;
+    max-width: revert;
 }
 
 @media (min-width: 70em) {
@@ -43,8 +69,8 @@
     .yani-genre-catalog-view .items-cards,
     .yani-account-list-view .category-full,
     .yani-account-list-view .items-cards,
-    .yani-user-lists-view .category-full,
-    .yani-user-lists-view .items-cards,
+    .yani-collection-view .category-full,
+    .yani-collection-view .items-cards,
     .category-full.yani-card-grid,
     .items-cards.yani-card-grid {
         grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -306,8 +332,8 @@
     .yani-genre-catalog-view .items-cards,
     .yani-account-list-view .category-full,
     .yani-account-list-view .items-cards,
-    .yani-user-lists-view .category-full,
-    .yani-user-lists-view .items-cards,
+    .yani-collection-view .category-full,
+    .yani-collection-view .items-cards,
     .category-full.yani-card-grid,
     .items-cards.yani-card-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2962,8 +2988,8 @@
     .yani-genre-catalog-view .items-cards,
     .yani-account-list-view .category-full,
     .yani-account-list-view .items-cards,
-    .yani-user-lists-view .category-full,
-    .yani-user-lists-view .items-cards,
+    .yani-collection-view .category-full,
+    .yani-collection-view .items-cards,
     .category-full.yani-card-grid,
     .items-cards.yani-card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

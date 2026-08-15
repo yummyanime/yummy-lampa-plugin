@@ -20,6 +20,7 @@ assert.match(source, /options\.openYummyDetail/);
 assert.match(source, /openStandardLampaCard\(card\)/);
 assert.match(source, /showYummyActions\(card, rendered/);
 assert.match(source, /yani-card-grid/);
+assert.match(source, /yani-card-rails/);
 
 const calls = {decorate: 0, poster: 0, detail: 0, standard: 0, menu: 0};
 const fakeRendered = {

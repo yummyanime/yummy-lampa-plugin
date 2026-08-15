@@ -10,7 +10,7 @@ const sources = ui + '\n' + trailers + '\n' + detail + '\n' + menu;
 assert.match(ui, /function transientNavigationSnapshot\(\)[\s\S]{0,500}LampaYaniNavigation\.captureSnapshot\(\)[\s\S]{0,200}currentControllerName\(\) \|\| 'content'/);
 assert.match(ui, /function restoreTransientInteraction\(snapshot\)[\s\S]{0,500}LampaYaniNavigation\.restoreSnapshot\(snapshot\)/);
 assert.match(ui, /function showYummySelect\(params, snapshot\)[\s\S]{0,700}params\.onBack = function \(\)[\s\S]{0,300}restoreTransientInteraction\(snapshot\)/);
-assert.match(ui, /function openGenres\(\)[\s\S]{0,150}transientNavigationSnapshot\(\)[\s\S]{0,1200}showYummySelect\([\s\S]{0,800}, navigation\)/);
+assert.match(ui, /function openGenres\(\)[\s\S]{0,250}component: 'yani_genres'/);
 assert.match(ui, /function showYummyInput\(params, callback\)[\s\S]{0,1500}restoreTransientInteraction\(navigation\)/);
 
 const directSelectCalls = ui.match(/Lampa\.Select\.show\(/g) || [];
@@ -19,7 +19,6 @@ assert.strictEqual(directSelectCalls.length, 1, 'temporary lists must go through
 [
     'showYummyActions',
     'openUserReviews',
-    'openGenres',
     'loadDetailCollections',
     'legacyOpenTrailers',
     'renderCommentList'

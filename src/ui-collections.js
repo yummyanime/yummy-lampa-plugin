@@ -82,7 +82,9 @@
             deps.open(card.yani_collection);
         });
         rendered.addClass('yani-collection-card');
-        rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
+        if (!rendered.closest('.yani-card-rails').length) {
+            rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
+        }
 
         if (view.length && previews.length > 1 && !view.find('.yani-collection-card__previews').length) {
             var mosaic = $('<div class="yani-collection-card__previews"></div>');
@@ -99,6 +101,72 @@
             if (card.yani_collection_likes) labels.push('♥ ' + card.yani_collection_likes);
             if (labels.length) view.append($('<div class="yani-collection-card__meta"></div>').text(labels.join(' · ')));
         }
+    }
+
+    function uniqueCollections(items, seen) {
+        return (items || []).filter(function (collection) {
+            var id = collection && collection.id;
+            var key = id === undefined || id === null ? String(collection && collection.title || '') : String(id);
+            if (!key || seen[key]) return false;
+            seen[key] = true;
+            return true;
+        });
+    }
+
+    function hub(object, deps) {
+        function loadCollections() {
+            var seen = {};
+            function fromPayload(payload) {
+                var response = responseValue(payload) || {};
+                var items = Array.isArray(response.collections) ? response.collections : collectionItems(payload);
+                return uniqueCollections(items, seen);
+            }
+            return deps.feed().then(function (payload) {
+                var items = fromPayload(payload);
+                if (items.length) return items;
+                return deps.load(20, 0).then(fromPayload);
+            }).catch(function () {
+                return deps.load(20, 0).then(fromPayload);
+            });
+        }
+
+        return window.LampaYaniCardRails.create(object, {
+            id: 'collections:' + String(object && object.url || 'yani/collections'),
+            viewClass: 'yani-collections-hub',
+            t: deps.t,
+            openCard: deps.openCard,
+            decorate: deps.decorate,
+            onError: function () { if (deps.error) deps.error(deps.t('collections_load_error')); },
+            loadRows: function () {
+                return loadCollections().then(function (collections) {
+                    return window.LampaYaniCardRails.mapLimit((collections || []).slice(0, 20), 3, function (collection) {
+                        var existing = Array.isArray(collection.animes) ? collection.animes : [];
+                        var load = existing.length
+                            ? Promise.resolve(collection)
+                            : deps.detail(collection.id, 11, 0).then(function (payload) {
+                                return Object.assign({}, collection, responseValue(payload) || {});
+                            }).catch(function () { return collection; });
+                        return load.then(function (full) {
+                            var animes = Array.isArray(full.animes) ? full.animes : existing;
+                            var cards = animes.slice(0, 10).map(deps.toCard).filter(Boolean);
+                            if (!cards.length) return null;
+                            var total = Number(full.animes_count || full.count || full.total || collection.animes_count || animes.length) || cards.length;
+                            return {
+                                title: collection.title || collection.name || deps.t('collection'),
+                                total: total,
+                                results: cards,
+                                onMore: function () { deps.open(collection); },
+                                visual: {
+                                    from: '#a68af0',
+                                    to: '#6653b4',
+                                    icon: '<path d="M4 6.5 12 3l8 3.5-8 3.5-8-3.5Z"/><path d="m4 11 8 3.5 8-3.5M4 15.5 12 19l8-3.5"/>'
+                                }
+                            };
+                        });
+                    }).then(function (rows) { return rows.filter(Boolean); });
+                });
+            }
+        });
     }
 
     function catalog(object, deps) {
@@ -222,6 +290,7 @@
                 var cards = detailCards(collection);
                 if (anime.length < limit) object.page = maxPages;
                 self.build({results: cards, total_pages: maxPages, title: collection.title || deps.t('collection')});
+                if (self.render) self.render().addClass('yani-collection-view');
                 if (!cards.length) deps.error(deps.t('collection_empty'));
             }).catch(function (error) {
                 console.error('[YummyAnime Collection]', error);
@@ -250,6 +319,7 @@
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Collections = window.LampaYaniCollections = {
         catalog: catalog,
+        hub: hub,
         detail: detail,
         normalize: collectionItems,
         card: collectionCard

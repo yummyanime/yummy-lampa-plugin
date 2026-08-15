@@ -290,6 +290,7 @@
             Lampa.Component.add('yani_new_releases', NewReleases);
             Lampa.Component.add('yani_collections', Collections);
             Lampa.Component.add('yani_collection', CollectionDetail);
+            Lampa.Component.add('yani_genres', Genres);
             Lampa.Component.add('yani_schedule', Schedule);
             Lampa.Component.add('yani_history', History);
 
@@ -1673,12 +1674,34 @@
     }
 
     function Collections(object) {
-        return LampaYaniCollections.catalog(object, {
+        return LampaYaniCollections.hub(object, {
             t: t,
             feed: LampaYaniApi.feed,
             load: LampaYaniApi.collectionCatalog,
+            detail: LampaYaniApi.collectionDetail,
+            toCard: toCard,
+            decorate: function (element, card) {
+                cardRenderers.decorate(element, card);
+                LampaYaniMedia.attachPosterFallback(element, card);
+            },
             open: openCollection,
+            openCard: function (card) { openYummyDetail(card, false); },
             error: function (message) { Lampa.Noty.show(message); }
+        });
+    }
+
+    function Genres(object) {
+        return LampaYaniCardRails.create(object, {
+            id: 'genres:' + String(object && object.url || 'yani/genres'),
+            viewClass: 'yani-genres-hub',
+            t: t,
+            decorate: function (element, card) {
+                cardRenderers.decorate(element, card);
+                LampaYaniMedia.attachPosterFallback(element, card);
+            },
+            openCard: function (card) { openYummyDetail(card, false); },
+            onError: function () { Lampa.Noty.show(t('genres_load_error')); },
+            loadRows: loadGenreRows
         });
     }
 
@@ -3239,27 +3262,40 @@
     }
 
     function openGenres() {
-        var navigation = transientNavigationSnapshot();
-        LampaYaniApi.genres().then(function (payload) {
-            var genres = LampaYaniApi.normalizeGenres(payload);
+        Lampa.Activity.push({
+            url: 'yani/genres',
+            title: 'YummyAnime ' + t('genres'),
+            component: 'yani_genres'
+        });
+    }
+
+    function loadGenreRows() {
+        return LampaYaniApi.genres().then(function (payload) {
+            var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
+                return genreTitle(genre) && genreValue(genre) !== null;
+            });
             if (!genres.length) {
                 Lampa.Noty.show(t('genres_empty'));
-                return;
+                return [];
             }
-            showYummySelect({
-                title: t('genres_title'),
-                items: genres.map(function (genre) {
+            return LampaYaniCardRails.mapLimit(genres, 4, function (genre) {
+                var id = genreValue(genre);
+                return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}).then(function (payload) {
+                    var items = LampaYaniApi.normalize(payload).slice(0, 10);
+                    if (!items.length) return null;
                     return {
-                        title: genre.title || genre.name,
-                        value: genre.value || genre.id || genre.href || genre.alias,
-                        genre: genre
+                        title: genreTitle(genre),
+                        results: items.map(toCard),
+                        onMore: function () { openGenreCatalog(genre); },
+                        visual: {
+                            from: '#ff6878',
+                            to: '#825ed8',
+                            icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
+                        }
                     };
-                }).filter(function (genre) { return genre.title && genre.value; }),
-                onSelect: function (item) {
-                    openGenreCatalog(item.genre || {title: item.title, value: item.value});
-                }
-            }, navigation);
-        }).catch(function () { Lampa.Noty.show(t('genres_load_error')); });
+                }).catch(function () { return null; });
+            }).then(function (rows) { return rows.filter(Boolean); });
+        });
     }
 
     function genreTitle(genre) {

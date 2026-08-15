@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.42.5 — 2026-08-15
+
+- Fix my lists card rows
+- Add collection card rows
+- Add genre card rows
+
 ## 0.42.4 — 2026-08-14
 
 - Fix catalog card row spacing

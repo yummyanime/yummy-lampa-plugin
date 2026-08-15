@@ -40,6 +40,8 @@ assert.match(lists, /yani_more: true/);
 assert.match(lists, /function listVisual\(key\)/);
 assert.match(lists, /function decorateListCard\(first, second, third\)/);
 assert.match(lists, /yani-user-list-card--/);
+assert.match(lists, /yani-card-rails/);
+assert.doesNotMatch(lists, /decorateListCard[\s\S]{0,800}yani-card-grid/);
 assert.match(lists, /yani-user-list-card__progress/);
 assert.match(lists, /component\.cardRender = decorateListCard/);
 assert.match(lists, /function shortcutMeta\(row\)[\s\S]{0,700}watching: 1[\s\S]{0,400}history: 0/);
