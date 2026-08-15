@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.14',
+        version: '0.42.15',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -9842,19 +9842,90 @@ function pluginYummyAnime() {
     }
 
     function hub(object, deps) {
-        function loadCollections() {
-            var seen = {};
-            function fromPayload(payload) {
-                var response = responseValue(payload) || {};
-                var items = Array.isArray(response.collections) ? response.collections : collectionItems(payload);
-                return uniqueCollections(items, seen);
-            }
-            return deps.feed().then(function (payload) {
+        var collectionsRequest = null;
+        var collections = [];
+        var seen = {};
+        var catalogOffset = 0;
+        var catalogDone = false;
+        var pageSize = 4;
+
+        function fromPayload(payload) {
+            var response = responseValue(payload) || {};
+            var items = Array.isArray(response.collections) ? response.collections : collectionItems(payload);
+            return uniqueCollections(items, seen);
+        }
+
+        function rememberCatalogPage(payload) {
+            var raw = collectionItems(payload);
+            catalogOffset += raw.length;
+            catalogDone = raw.length < 20;
+            collections = collections.concat(fromPayload(payload));
+            return collections;
+        }
+
+        function loadCollectionList() {
+            if (collectionsRequest) return collectionsRequest;
+            collectionsRequest = deps.feed().then(function (payload) {
                 var items = fromPayload(payload);
-                if (items.length) return items;
-                return deps.load(20, 0).then(fromPayload);
+                if (items.length) {
+                    collections = items;
+                    return collections;
+                }
+                return deps.load(20, 0).then(rememberCatalogPage);
             }).catch(function () {
-                return deps.load(20, 0).then(fromPayload);
+                return deps.load(20, 0).then(rememberCatalogPage);
+            });
+            return collectionsRequest;
+        }
+
+        function ensureCollections(needed) {
+            return loadCollectionList().then(function () {
+                if (collections.length >= needed || catalogDone) return collections;
+                return deps.load(20, catalogOffset).then(function (payload) {
+                    rememberCatalogPage(payload);
+                    return ensureCollections(needed);
+                }).catch(function () {
+                    catalogDone = true;
+                    return collections;
+                });
+            });
+        }
+
+        function rowFor(collection) {
+            var existing = Array.isArray(collection.animes) ? collection.animes : [];
+            var load = existing.length
+                ? Promise.resolve(collection)
+                : deps.detail(collection.id, 11, 0).then(function (payload) {
+                    return Object.assign({}, collection, responseValue(payload) || {});
+                }).catch(function () { return collection; });
+            return load.then(function (full) {
+                var animes = Array.isArray(full.animes) ? full.animes : existing;
+                var cards = animes.slice(0, 10).map(deps.toCard).filter(Boolean);
+                if (!cards.length) return null;
+                var total = Number(full.animes_count || full.count || full.total || collection.animes_count || animes.length) || cards.length;
+                return {
+                    title: collection.title || collection.name || deps.t('collection'),
+                    total: total,
+                    results: cards,
+                    onMore: function () { deps.open(collection); },
+                    visual: {
+                        from: '#a68af0',
+                        to: '#6653b4',
+                        icon: '<path d="M4 6.5 12 3l8 3.5-8 3.5-8-3.5Z"/><path d="m4 11 8 3.5 8-3.5M4 15.5 12 19l8-3.5"/>'
+                    }
+                };
+            });
+        }
+
+        function loadPage(page, size) {
+            size = Math.max(1, Number(size || pageSize));
+            var offset = Math.max(0, Number(page || 0)) * size;
+            return ensureCollections(offset + size).then(function (list) {
+                var batch = list.slice(offset, offset + size);
+                if (!batch.length) return [];
+                return window.LampaYaniCardRails.mapLimit(batch, size, rowFor).then(function (rows) {
+                    return rows.filter(Boolean);
+                });
             });
         }
 
@@ -9865,35 +9936,8 @@ function pluginYummyAnime() {
             openCard: deps.openCard,
             decorate: deps.decorate,
             onError: function () { if (deps.error) deps.error(deps.t('collections_load_error')); },
-            loadRows: function () {
-                return loadCollections().then(function (collections) {
-                    return window.LampaYaniCardRails.mapLimit((collections || []).slice(0, 20), 3, function (collection) {
-                        var existing = Array.isArray(collection.animes) ? collection.animes : [];
-                        var load = existing.length
-                            ? Promise.resolve(collection)
-                            : deps.detail(collection.id, 11, 0).then(function (payload) {
-                                return Object.assign({}, collection, responseValue(payload) || {});
-                            }).catch(function () { return collection; });
-                        return load.then(function (full) {
-                            var animes = Array.isArray(full.animes) ? full.animes : existing;
-                            var cards = animes.slice(0, 10).map(deps.toCard).filter(Boolean);
-                            if (!cards.length) return null;
-                            var total = Number(full.animes_count || full.count || full.total || collection.animes_count || animes.length) || cards.length;
-                            return {
-                                title: collection.title || collection.name || deps.t('collection'),
-                                total: total,
-                                results: cards,
-                                onMore: function () { deps.open(collection); },
-                                visual: {
-                                    from: '#a68af0',
-                                    to: '#6653b4',
-                                    icon: '<path d="M4 6.5 12 3l8 3.5-8 3.5-8-3.5Z"/><path d="m4 11 8 3.5 8-3.5M4 15.5 12 19l8-3.5"/>'
-                                }
-                            };
-                        });
-                    }).then(function (rows) { return rows.filter(Boolean); });
-                });
-            }
+            pageSize: pageSize,
+            loadPage: loadPage
         });
     }
 

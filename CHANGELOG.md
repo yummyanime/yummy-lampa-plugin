@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.15 — 2026-08-15
+
+- Add lazy batch loading to collection rows
+
 ## 0.42.14 — 2026-08-15
 
 - Fix focused catalog year overlapping the poster 
