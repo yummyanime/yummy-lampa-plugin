@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.14 — 2026-08-15
+
+- Fix focused catalog year overlapping the poster 
+- Add account-list icons on posters from catalog data
+
 ## 0.42.13 — 2026-08-15
 
 - Fix continue watching list emptying while the dashboard still shows the last title

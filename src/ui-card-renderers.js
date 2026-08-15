@@ -339,17 +339,47 @@
             return hide;
         }
 
+        function listBadgeKey(card) {
+            var keys = {0: 'watching', 1: 'planned', 2: 'completed', 3: 'dropped', 5: 'postponed'};
+            if (card && card.yani_list_id !== null && card.yani_list_id !== undefined && card.yani_list_id !== '') {
+                return keys[Number(card.yani_list_id)] || '';
+            }
+            return card && card.yani_is_favorite ? 'favorites' : '';
+        }
+
+        function listBadgeIcon(key) {
+            var icons = {
+                watching: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12s3.2-6 9-6 9 6 9 6-3.2 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.7"/></svg>',
+                planned: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 18h13a3 3 0 0 0 .4-6A6.5 6.5 0 0 0 6 10.5 3.8 3.8 0 0 0 5 18Z"/></svg>',
+                completed: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 21V4m1 1h10l-2.3 3L17 11H7"/></svg>',
+                dropped: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 16 16M10.6 6.3A9.8 9.8 0 0 1 12 6c5.8 0 9 6 9 6a15 15 0 0 1-2.1 3M7.2 7.3C4.5 9.2 3 12 3 12s3.2 6 9 6c1.1 0 2.1-.2 3-.6"/></svg>',
+                postponed: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10M7 21h10M8 4c0 4 1.2 5.5 4 8-2.8 2.5-4 4-4 8M16 4c0 4-1.2 5.5-4 8 2.8 2.5 4 4 4 8"/></svg>',
+                favorites: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 8.8c0 5-8.5 10.2-8.5 10.2S3.5 13.8 3.5 8.8A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 8.5 1.6Z"/></svg>'
+            };
+            return icons[key] || icons.watching;
+        }
+
         function addCardListBadge(element, card) {
             if (!card || (card.yani_list_id === null && !card.yani_is_favorite)) return;
             var render = cardRenderElement(element, card);
             var view = $('.card__view', render).first();
             if (!view.length) return;
+            var key = listBadgeKey(card);
+            if (!key && !card.yani_is_favorite) return;
+            var labels = {0: t('watching'), 1: t('planned'), 2: t('completed'), 3: t('dropped'), 5: t('postponed')};
+            var label = labels[card.yani_list_id] || (card.yani_is_favorite ? t('favorite') : '');
+            if (card.yani_is_favorite && labels[card.yani_list_id]) label += ' · ' + t('favorite');
             var badge = $('.yani-card-list', view);
             if (!badge.length) badge = $('<span class="yani-card-list"></span>').appendTo(view);
-            var labels = {0: t('watching'), 1: t('planned'), 2: t('completed'), 3: t('dropped'), 5: t('postponed')};
-            var label = labels[card.yani_list_id] || '';
-            if (card.yani_is_favorite) label = label ? label + ' · ♥' : '♥';
-            badge.text(label);
+            badge.empty()
+                .removeClass('yani-card-list--watching yani-card-list--planned yani-card-list--completed yani-card-list--dropped yani-card-list--postponed yani-card-list--favorites')
+                .addClass('yani-card-list--' + (key || 'favorites'))
+                .attr('title', label)
+                .attr('aria-label', label);
+            badge.append($('<span class="yani-card-list__icon"></span>').html(listBadgeIcon(key || 'favorites')));
+            if (card.yani_is_favorite && key && key !== 'favorites') {
+                badge.append($('<span class="yani-card-list__icon yani-card-list__icon--fav"></span>').html(listBadgeIcon('favorites')));
+            }
         }
 
         function cardPlaybackState(card) {
@@ -460,6 +490,8 @@
             cardFreshness: cardFreshness,
             addCardUpdateBadge: addCardUpdateBadge,
             addCardRecommendationBadge: addCardRecommendationBadge,
+            listBadgeKey: listBadgeKey,
+            listBadgeIcon: listBadgeIcon,
             addCardListBadge: addCardListBadge,
             cardPlaybackState: cardPlaybackState,
             addCardPlaybackProgress: addCardPlaybackProgress,

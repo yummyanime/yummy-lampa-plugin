@@ -17,7 +17,7 @@
     margin: 0;
     padding-left: .45em;
     padding-right: .45em;
-    row-gap: 1.6em;
+    row-gap: 2.8em;
 }
 
 .yani-catalog-view .category-full .card,
@@ -34,6 +34,31 @@
     width: auto;
     max-width: none;
     box-sizing: border-box;
+    padding-bottom: .2em;
+}
+
+.yani-catalog-view .card .card__title,
+.yani-genre-catalog-view .card .card__title,
+.yani-account-list-view .card .card__title,
+.yani-collection-view .card .card__title,
+.category-full.yani-card-grid .card .card__title,
+.items-cards.yani-card-grid .card .card__title {
+    margin-top: .85em;
+}
+
+.yani-catalog-view .card .card__age,
+.yani-genre-catalog-view .card .card__age,
+.yani-account-list-view .card .card__age,
+.yani-collection-view .card .card__age,
+.category-full.yani-card-grid .card .card__age,
+.items-cards.yani-card-grid .card .card__age,
+.yani-catalog-view .card .yani-card-meta,
+.yani-genre-catalog-view .card .yani-card-meta,
+.yani-account-list-view .card .yani-card-meta,
+.yani-collection-view .card .yani-card-meta,
+.category-full.yani-card-grid .card .yani-card-meta,
+.items-cards.yani-card-grid .card .yani-card-meta {
+    margin-top: .28em;
 }
 
 .yani-card-rails .category-full,
@@ -1916,7 +1941,16 @@
 .yani-card--fresh .card__view { box-shadow: inset 0 0 0 .08em rgba(244,112,133,.58); }
 .yani-card--fresh.focus .card__view { box-shadow: inset 0 0 0 .08em rgba(244,112,133,.7), 0 0 0 .12em #fff; }
 .yani-card-recommendation { position: absolute; top: .35em; left: .35em; z-index: 2; max-width: calc(100% - .7em); padding: .22em .42em; border-radius: .3em; background: rgba(81, 61, 143, .94); color: #fff; font-size: .58em; font-weight: 700; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.yani-card-list { position: absolute; left: 0.35em; bottom: 0.42em; z-index: 6; max-width: 46%; padding: 0.25em 0.45em; border-radius: 0.3em; background: #5f43a8; color: #fff; font-size: 0.68em; font-weight: 700; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yani-card-list { position: absolute; left: 0.35em; bottom: 0.42em; z-index: 6; display: inline-flex; align-items: center; gap: .12em; max-width: none; padding: 0.22em; border: .06em solid rgba(255,255,255,.18); border-radius: 0.38em; background: rgba(21,20,29,.86); color: #fff; font-size: 0.68em; font-weight: 700; line-height: 1; box-shadow: 0 .18em .5em rgba(0,0,0,.28); }
+.yani-card-list__icon { display: block; width: 1.05em; height: 1.05em; }
+.yani-card-list__icon svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.yani-card-list--watching { color: #ffd0d6; background: linear-gradient(135deg, rgba(217,67,91,.96), rgba(108,62,145,.94)); }
+.yani-card-list--planned { color: #d7f3ff; background: linear-gradient(135deg, rgba(53,126,186,.96), rgba(62,86,176,.94)); }
+.yani-card-list--completed { color: #d9ffe9; background: linear-gradient(135deg, rgba(50,141,117,.96), rgba(56,122,88,.94)); }
+.yani-card-list--dropped { color: #e4e8f0; background: linear-gradient(135deg, rgba(85,95,120,.96), rgba(62,70,90,.94)); }
+.yani-card-list--postponed { color: #fff1d4; background: linear-gradient(135deg, rgba(189,117,70,.96), rgba(150,88,48,.94)); }
+.yani-card-list--favorites { color: #ffe0ee; background: linear-gradient(135deg, rgba(181,63,118,.96), rgba(140,48,96,.94)); }
+.card.focus .yani-card-list { border-color: rgba(255,255,255,.62); }
 .yani-card-history { position: absolute; top: 0.35em; right: 0.35em; z-index: 6; max-width: calc(100% - 0.7em); padding: 0.25em 0.45em; border-radius: 0.3em; background: rgba(239, 100, 112, 0.94); color: #fff; font-size: 0.68em; font-weight: 700; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .yani-card-history-progress { position: absolute; right: 0; bottom: 0; left: 0; z-index: 7; height: 0.24em; overflow: hidden; background: rgba(255, 255, 255, 0.25); }
 .yani-card-history-progress span { display: block; height: 100%; background: #ef6470; }
@@ -1937,7 +1971,6 @@
 .yani-card-view--has-footer.yani-card-view--has-progress .yani-card-ratings { bottom: 1.95em; }
 .yani-card-view--has-progress .yani-card-list,
 .yani-card-view--has-progress .yani-card-playback { bottom: .48em; }
-.yani-card-view--has-ratings.yani-card-view--has-footer .yani-card-list { max-width: 42%; }
 .yani-card-view--has-ratings.yani-card-view--has-footer .yani-card-playback { max-width: 48%; }
 
 /* Priority hide rules: secondary poster data disappears before list/progress. */

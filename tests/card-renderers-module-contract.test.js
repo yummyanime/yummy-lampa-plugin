@@ -75,5 +75,9 @@ assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_pr
 assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_progress: 0.42}).percent, 42);
 assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_progress: 0.42}).progress, 0.42);
 assert.strictEqual(renderers.cardPlaybackState({}), null);
+assert.strictEqual(renderers.listBadgeKey({yani_list_id: 0}), 'watching');
+assert.strictEqual(renderers.listBadgeKey({yani_list_id: 2}), 'completed');
+assert.strictEqual(renderers.listBadgeKey({yani_is_favorite: true}), 'favorites');
+assert.match(renderers.listBadgeIcon('watching'), /<svg /);
 
 console.log('card renderers module contract checks passed');

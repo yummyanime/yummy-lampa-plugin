@@ -16,6 +16,9 @@ assert.match(css, /\.yani-card-view--has-top-end \.yani-card-media/);
 assert.match(css, /\.yani-card-view--hide-ratings \.yani-card-ratings/);
 assert.match(css, /\.yani-card-view--hide-update \.yani-card-update/);
 assert.match(css, /\.yani-card-list[^}]*z-index: 6/);
+assert.match(css, /\.yani-card-list__icon/);
+assert.match(source, /function listBadgeKey\(card\)/);
+assert.match(source, /yani-card-list__icon/);
 assert.match(css, /\.yani-card-playback[^}]*z-index: 6/);
 assert.match(css, /\.yani-card-update[^}]*z-index: 5/);
 
