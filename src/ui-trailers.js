@@ -2,7 +2,43 @@
     'use strict';
 
     function isYouTubeTrailer(url) {
-        return /(^|\/\/)(?:www\.)?(?:youtube\.com|youtube-nocookie\.com|youtu\.be)\//i.test(String(url || ''));
+        return Boolean(youtubeVideoId(url));
+    }
+
+    function youtubeVideoId(url) {
+        url = String(url || '').trim();
+        if (/^[\w-]{11}$/.test(url)) return url;
+        try {
+            var parsed = new URL(url.indexOf('//') === 0 ? 'https:' + url : url);
+            var host = parsed.hostname.replace(/^www\./, '').replace(/^m\./, '');
+            if (host === 'youtu.be') return parsed.pathname.replace(/^\/+/, '').split('/')[0] || '';
+            if (host === 'youtube.com' || host === 'youtube-nocookie.com') {
+                if (parsed.searchParams.get('v')) return parsed.searchParams.get('v');
+                var path = parsed.pathname.match(/\/(?:embed|shorts|v)\/([^/?#]+)/i);
+                if (path) return path[1];
+            }
+        } catch (error) {
+            var fallback = String(url || '').match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*[&?])?v=|embed\/|shorts\/|v\/))([^&#?/]+)/i);
+            return fallback ? fallback[1] : '';
+        }
+        return '';
+    }
+
+    function youtubeWatchUrl(url) {
+        var id = youtubeVideoId(url);
+        return id ? 'https://www.youtube.com/watch?v=' + encodeURIComponent(id) : '';
+    }
+
+    function youtubeEmbedUrl(url) {
+        var id = youtubeVideoId(url);
+        return id ? 'https://www.youtube.com/embed/' + encodeURIComponent(id) + '?autoplay=1&rel=0' : '';
+    }
+
+    function normalizeTrailerItems(payload) {
+        var value = payload && payload.response !== undefined ? payload.response : payload;
+        if (Array.isArray(value)) return value;
+        if (!value || typeof value !== 'object') return [];
+        return value.trailers || value.items || value.data || value.results || value.videos || [];
     }
 
     function youtubeLogoDataUri() {
@@ -23,11 +59,31 @@
         var goBack = options.goBack;
         var showYummySelect = options.showSelect;
         var openExternalVideo = options.openExternalVideo;
+        var openEmbedded = options.openEmbedded;
         var api = options.api || window.LampaYaniApi;
         var utils = options.utils || window.LampaYaniUiUtils;
 
         function trailerUrl(trailer) {
-            return utils.normalizeVideoUrl(trailer && (trailer.iframe_url || trailer.url || trailer.video_url || trailer.link || trailer.src));
+            if (!trailer) return '';
+            if (typeof trailer === 'string') return resolveTrailerUrl(trailer);
+            var raw = trailer.iframe_url || trailer.url || trailer.video_url || trailer.link ||
+                trailer.src || trailer.embed || trailer.embed_url || trailer.trailer_url ||
+                trailer.player_url || trailer.watch_url || trailer.href || trailer.youtube_url || '';
+            if (raw && typeof raw === 'object') raw = raw.url || raw.src || raw.iframe || raw.iframe_url || '';
+            var id = trailer.youtube_id || trailer.youtubeId || trailer.yt_id || trailer.youtube_video_id ||
+                (typeof trailer.video_id === 'string' ? trailer.video_id : '');
+            return resolveTrailerUrl(raw || id);
+        }
+
+        function resolveTrailerUrl(value) {
+            value = utils.normalizeVideoUrl(value);
+            if (!value) return '';
+            return youtubeWatchUrl(value) || value;
+        }
+
+        function trailerTitle(trailer, index) {
+            return trailer && (trailer.number || trailer.title || trailer.name || trailer.dubbing || trailer.player) ||
+                (t('trailers') + ' ' + (index + 1));
         }
 
         function trailerHostLabel(url) {
@@ -36,11 +92,52 @@
             return host.replace(/^m\./, '').replace(/^youtu\.be$/, 'youtube.com');
         }
 
+        function playLampaPlayer(url, title) {
+            var player = (typeof Lampa !== 'undefined' && Lampa.Player) || (window.Lampa && window.Lampa.Player);
+            if (!player || typeof player.play !== 'function') return false;
+            try {
+                if (player.runas) player.runas('lampa');
+                player.play({
+                    title: title || t('trailers'),
+                    url: url
+                });
+                return true;
+            } catch (error) {
+                console.warn('[YummyAnime] Lampa player failed to start a trailer', error);
+                return false;
+            }
+        }
+
+        function playEmbedded(url, title) {
+            if (typeof openEmbedded !== 'function') return false;
+            try {
+                return !!openEmbedded(url, title);
+            } catch (error) {
+                console.warn('[YummyAnime] Embedded trailer failed to start', error);
+                return false;
+            }
+        }
+
         function openTrailer(url, title) {
-            url = utils.normalizeVideoUrl(url);
+            url = resolveTrailerUrl(url);
             if (!url) return;
-            if (openExternalVideo(url, title, {youtubeIntent: true})) return;
-            Lampa.Noty.show(url);
+            var youtube = isYouTubeTrailer(url);
+            var embed = youtube ? youtubeEmbedUrl(url) : url;
+            if (youtube && playLampaPlayer(url, title)) return;
+            if (playEmbedded(embed, title)) return;
+            if (openExternalVideo && openExternalVideo(url, title, {youtubeIntent: youtube})) return;
+            Lampa.Noty.show(t('no_trailers'));
+        }
+
+        function mapTrailerItems(payload) {
+            return normalizeTrailerItems(payload).map(function (trailer, index) {
+                var url = trailerUrl(trailer);
+                return {
+                    title: trailerTitle(trailer, index),
+                    url: url,
+                    icon: isYouTubeTrailer(url) ? youtubeLogoDataUri() : null
+                };
+            }).filter(function (item) { return item.url; });
         }
 
         function legacyOpenTrailers(card) {
@@ -48,17 +145,9 @@
             if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
             api.trailers(card.yani_id).then(function (payload) {
                 if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
-                var items = payload && payload.response ? payload.response : payload;
-                items = Array.isArray(items) ? items.map(function (trailer, index) {
-                    var url = trailerUrl(trailer);
-                    return {
-                        title: trailer.title || trailer.name || ('Trailer ' + (index + 1)),
-                        url: url,
-                        icon: isYouTubeTrailer(url) ? youtubeLogoDataUri() : null
-                    };
-                }).filter(function (item) { return item.url; }) : [];
+                var items = mapTrailerItems(payload);
                 if (!items.length) {
-                    Lampa.Noty.show(t('no_videos'));
+                    Lampa.Noty.show(t('no_trailers'));
                     return;
                 }
                 if (items.length === 1) {
@@ -103,8 +192,7 @@
                 var self = this;
                 this.activity.loader(true);
                 api.trailers(card.yani_id).then(function (payload) {
-                    var items = payload && payload.response ? payload.response : payload;
-                    items = Array.isArray(items) ? items.filter(function (trailer) { return trailerUrl(trailer); }) : [];
+                    var items = normalizeTrailerItems(payload).filter(function (trailer) { return trailerUrl(trailer); });
                     render(items);
                     self.activity.loader(false);
                     self.activity.toggle();
@@ -119,14 +207,14 @@
 
             function render(items) {
                 if (!items.length) {
-                    html.append($('<div class="yani-trailers__empty selector"></div>').text(t('no_videos')));
+                    html.append($('<div class="yani-trailers__empty selector"></div>').text(t('no_trailers')));
                     scroll.append(html);
                     return;
                 }
                 var list = $('<div class="yani-trailers__list"></div>');
                 items.forEach(function (trailer, index) {
                     var url = trailerUrl(trailer);
-                    var title = trailer.title || trailer.name || ('Trailer ' + (index + 1));
+                    var title = trailerTitle(trailer, index);
                     var row = $('<div class="yani-trailers__item selector"></div>');
                     row.append($('<div class="yani-trailers__icon"></div>').html(isYouTubeTrailer(url) ? youtubeLogoSvg() : externalVideoIcon()));
                     row.append($('<div class="yani-trailers__body"></div>').append($('<div class="yani-trailers__title"></div>').text(title)).append($('<div class="yani-trailers__host"></div>').text(trailerHostLabel(url))));
@@ -173,6 +261,10 @@
     window.LampaYaniTrailers = {
         create: create,
         isYouTubeTrailer: isYouTubeTrailer,
+        youtubeVideoId: youtubeVideoId,
+        youtubeWatchUrl: youtubeWatchUrl,
+        youtubeEmbedUrl: youtubeEmbedUrl,
+        normalizeTrailerItems: normalizeTrailerItems,
         youtubeLogoDataUri: youtubeLogoDataUri,
         youtubeLogoSvg: youtubeLogoSvg,
         externalVideoIcon: externalVideoIcon

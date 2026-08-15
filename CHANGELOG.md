@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.6 — 2026-08-15
+
+- Fix trailer playback
+
 ## 0.42.5 — 2026-08-15
 
 - Fix my lists card rows

@@ -247,6 +247,7 @@
         goBack: goBack,
         showSelect: showYummySelect,
         openExternalVideo: openExternalVideo,
+        openEmbedded: openEmbeddedTrailer,
         api: LampaYaniApi,
         utils: LampaYaniUiUtils
     });
@@ -3258,7 +3259,10 @@
     }
 
     function IframePlayer(object) {
-        return LampaYaniPlayer.create(object, {sourceUrl: videoSourceUrl, goBack: goBack});
+        return LampaYaniPlayer.create(object, {
+            sourceUrl: function (item) { return videoSourceUrl(item) || item && item.iframe_url || ''; },
+            goBack: goBack
+        });
     }
 
     function openGenres() {
@@ -3377,6 +3381,23 @@
             component: 'yani_collection',
             collectionId: collection.id
         });
+    }
+
+    function openEmbeddedTrailer(url, title) {
+        url = LampaYaniUiUtils.normalizeVideoUrl(url);
+        if (!url) return false;
+        try {
+            Lampa.Activity.push({
+                url: 'yani/player',
+                title: title || t('trailers'),
+                component: 'yani_player',
+                iframe_url: url
+            });
+            return true;
+        } catch (error) {
+            console.warn('[YummyAnime] Embedded trailer failed to open', error);
+            return false;
+        }
     }
 
     function openExternalVideo(url, title, options) {
@@ -3643,7 +3664,7 @@
                 if (match) return match[1];
             }
         } catch (error) {
-            var fallback = url.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?.*?[?&]v=|embed\/|shorts\/|v\/))([^&#?/]+)/i);
+            var fallback = url.match(/(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*[&?])?v=|embed\/|shorts\/|v\/))([^&#?/]+)/i);
             return fallback ? fallback[1] : '';
         }
         return '';
