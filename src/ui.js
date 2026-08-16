@@ -232,6 +232,9 @@
                     Lampa.Controller.collectionSet(collection);
                 }
                 if (element && Lampa.Controller && Lampa.Controller.collectionFocus) {
+                    // Select leaves Navigator on hidden selectbox items; re-register
+                    // the page target so D-pad focus is visible without an extra key.
+                    if (window.Navigator && Navigator.add) Navigator.add(element);
                     Lampa.Controller.collectionFocus(element, collection && collection.length ? collection : undefined);
                 }
             } catch (error) {
@@ -244,12 +247,41 @@
         if (!Lampa.Select || !Lampa.Select.show) return false;
         snapshot = snapshot || transientNavigationSnapshot();
         params = Object.assign({}, params || {});
+        // Playback chains disable this and restore themselves after the last window.
+        var restoreOnClose = params.yaniRestore !== false;
+        delete params.yaniRestore;
         var originalBack = params.onBack;
+        var originalSelect = params.onSelect;
+        var restored = false;
+
+        function restoreAfterClose() {
+            if (!restoreOnClose || restored) return;
+            restored = true;
+            restoreTransientInteraction(snapshot);
+        }
+
         params.onBack = function () {
             // A nested Select may deliberately rebuild its parent list.
             // Only the root window should restore the underlying Activity.
-            if (originalBack) return originalBack();
-            restoreTransientInteraction(snapshot);
+            if (originalBack) {
+                restored = true;
+                return originalBack();
+            }
+            restoreAfterClose();
+        };
+        // Lampa Select.hide() after a choice does not call onBack, so Controller
+        // would stay on 'select' until the next remote key. Restore when the box
+        // actually closes and is not immediately replaced by another Select.
+        params.onSelect = function (item) {
+            var result = originalSelect ? originalSelect.apply(this, arguments) : undefined;
+            if (!params.nohide) {
+                setTimeout(function () {
+                    if (restored) return;
+                    if (Lampa.Select && typeof Lampa.Select.opened === 'function' && Lampa.Select.opened()) return;
+                    restoreAfterClose();
+                }, 0);
+            }
+            return result;
         };
         Lampa.Select.show(params);
         return true;

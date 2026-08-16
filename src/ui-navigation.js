@@ -158,7 +158,11 @@
         var controller = snapshot.controller && snapshot.controller !== 'select' && snapshot.controller !== 'input' ? snapshot.controller : 'content';
         if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
         if (collection && collection.length && Lampa.Controller && Lampa.Controller.collectionSet) Lampa.Controller.collectionSet(collection);
-        if (element && Lampa.Controller && Lampa.Controller.collectionFocus) Lampa.Controller.collectionFocus(element, collection && collection.length ? collection : undefined, true);
+        if (element && Lampa.Controller && Lampa.Controller.collectionFocus) {
+            // After Select, Navigator can still point at hidden selectbox nodes.
+            if (window.Navigator && Navigator.add) Navigator.add(element);
+            Lampa.Controller.collectionFocus(element, collection && collection.length ? collection : undefined, true);
+        }
         return element;
     }
 

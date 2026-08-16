@@ -195,6 +195,8 @@
                 if (originalBack) originalBack();
                 restorePlaybackInteraction();
             };
+            // Chained voice/episode/player windows own return focus themselves.
+            params.yaniRestore = false;
             showYummySelect(params);
             return true;
         }
