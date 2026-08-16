@@ -109,7 +109,7 @@
             headers: headers,
             body: options.body,
             signal: options.signal
-        }, method === 'GET').then(function (response) {
+        }, method === 'GET' && options.retry !== false, options.timeout).then(function (response) {
             if (!response.ok) throw new Error('YummyAnime API: ' + response.status);
             return response.json();
         }).then(function (payload) {
@@ -224,22 +224,32 @@
                 auth: true,
                 cacheTtl: 5 * 60 * 1000,
                 staleFallback: true,
-                signal: control.signal
+                signal: control.signal,
+                timeout: control.timeout,
+                retry: control.retry
             });
         },
-        collectionCatalog: function (limit, offset) {
+        collectionCatalog: function (limit, offset, control) {
+            control = control || {};
             return request('/collection?limit=' + encodeURIComponent(limit || 20) + '&offset=' + encodeURIComponent(offset || 0), {
                 auth: true,
                 cacheTtl: 10 * 60 * 1000,
-                staleFallback: true
+                staleFallback: true,
+                signal: control.signal,
+                timeout: control.timeout,
+                retry: control.retry
             });
         },
-        collectionDetail: function (id, limit, offset) {
+        collectionDetail: function (id, limit, offset, control) {
+            control = control || {};
             var query = '?limit=' + encodeURIComponent(limit || 30) + '&offset=' + encodeURIComponent(offset || 0);
             return request('/collection/' + encodeURIComponent(id) + query, {
                 auth: true,
                 cacheTtl: 10 * 60 * 1000,
-                staleFallback: true
+                staleFallback: true,
+                signal: control.signal,
+                timeout: control.timeout,
+                retry: control.retry
             });
         },
         episodeInfo: function (malId) {

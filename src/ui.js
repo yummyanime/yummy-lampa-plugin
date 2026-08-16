@@ -424,8 +424,14 @@
 
         comp.create = function () {
             var self = this;
+            var activityView = this.activity.render && this.activity.render(true);
+            if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            LampaYaniApi.catalog(baseParams)
+            LampaYaniApi.catalog(baseParams, object.genre_context ? {
+                timeout: 8000,
+                retry: false,
+                staleFallback: true
+            } : {})
                 .then(function (payload) {
                     var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
                     var results = mapUniqueCards(raw, seen);
@@ -438,7 +444,17 @@
                 .catch(function (error) {
                     console.error('[YummyAnime]', error);
                     self.activity.loader(false);
-                    Lampa.Noty.show(t('catalog_load_error'));
+                    if (object.genre_context) {
+                        var states = LampaYaniSectionState.forActivity(self.activity, {t: t});
+                        states.offline({
+                            title: t('catalog_load_error'),
+                            onRetry: function () { self.create(); }
+                        });
+                        self.activity.toggle();
+                        states.focus();
+                    } else {
+                        Lampa.Noty.show(t('catalog_load_error'));
+                    }
                 });
         };
         comp.nextPageReuest = function (requestObject, resolve, reject) {
@@ -450,7 +466,11 @@
             }
             requestedOffsets[params.offset] = true;
 
-            LampaYaniApi.catalog(params).then(function (payload) {
+            LampaYaniApi.catalog(params, object.genre_context ? {
+                timeout: 8000,
+                retry: false,
+                staleFallback: true
+            } : {}).then(function (payload) {
                 var raw = annotateGenreTop(LampaYaniApi.normalize(payload), params.offset);
                 var results = mapUniqueCards(raw, seen);
                 if (raw.length < limit) requestObject.page = maxPages;

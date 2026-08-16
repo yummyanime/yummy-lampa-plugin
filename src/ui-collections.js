@@ -306,37 +306,32 @@
 
         comp.create = function () {
             var self = this;
+            var activityView = this.activity.render && this.activity.render(true);
+            if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            deps.feed().then(function (payload) {
-                var response = responseValue(payload) || {};
-                var items = Array.isArray(response.collections) ? response.collections : [];
-                if (items.length) return buildInitial(self, items);
+            var control = {timeout: 8000, retry: false};
+            Promise.all([
+                deps.feed(control).catch(function (error) { return {__error: error}; }),
+                deps.load(limit, 0, control).catch(function (error) { return {__error: error}; })
+            ]).then(function (payloads) {
+                var feedResponse = responseValue(payloads[0]) || {};
+                var feedItems = Array.isArray(feedResponse.collections) ? feedResponse.collections : [];
+                var catalogItems = payloads[1] && payloads[1].__error ? [] : collectionItems(payloads[1]);
+                var items = feedItems.length ? feedItems : catalogItems;
+                if (!items.length) throw payloads[1].__error || payloads[0].__error || new Error('Collections are empty');
                 requestedOffsets[0] = true;
-                return deps.load(limit, 0).then(function (fallback) {
-                    var raw = collectionItems(fallback);
-                    nextCatalogOffset = raw.length;
-                    catalogDone = raw.length < limit;
-                    buildInitial(self, raw);
-                });
+                nextCatalogOffset = catalogItems.length;
+                catalogDone = catalogItems.length > 0 && catalogItems.length < limit;
+                buildInitial(self, items);
             }).catch(function (error) {
-                requestedOffsets[0] = true;
-                deps.load(limit, 0).then(function (fallback) {
-                    var raw = collectionItems(fallback);
-                    nextCatalogOffset = raw.length;
-                    catalogDone = raw.length < limit;
-                    buildInitial(self, raw);
-                }).catch(function (fallbackError) {
-                    console.error('[YummyAnime Collections]', fallbackError || error);
-                    var states = LampaYaniSectionState.forActivity(self.activity, {
-                        t: deps.t
-                    });
-                    states.offline({
-                        title: deps.t('collections_load_error'),
-                        onRetry: function () { self.create(); }
-                    });
-                    self.activity.toggle();
-                    states.focus();
+                console.error('[YummyAnime Collections]', error);
+                var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
+                states.offline({
+                    title: deps.t('collections_load_error'),
+                    onRetry: function () { self.create(); }
                 });
+                self.activity.toggle();
+                states.focus();
             });
         };
 
@@ -354,7 +349,7 @@
                     return;
                 }
                 requestedOffsets[offset] = true;
-                deps.load(limit, offset).then(function (payload) {
+                deps.load(limit, offset, {timeout: 8000, retry: false}).then(function (payload) {
                     var raw = collectionItems(payload);
                     nextCatalogOffset = offset + raw.length;
                     catalogDone = raw.length < limit;
@@ -394,8 +389,10 @@
 
         comp.create = function () {
             var self = this;
+            var activityView = this.activity.render && this.activity.render(true);
+            if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            deps.detail(object.collectionId, limit, 0).then(function (payload) {
+            deps.detail(object.collectionId, limit, 0, {timeout: 8000, retry: false}).then(function (payload) {
                 var collection = responseValue(payload) || {};
                 var anime = Array.isArray(collection.animes) ? collection.animes : [];
                 var cards = detailCards(collection);
@@ -405,13 +402,18 @@
                 if (!cards.length) deps.error(deps.t('collection_empty'));
             }).catch(function (error) {
                 console.error('[YummyAnime Collection]', error);
-                self.activity.loader(false);
-                deps.error(deps.t('collection_load_error'));
+                var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
+                states.offline({
+                    title: deps.t('collection_load_error'),
+                    onRetry: function () { self.create(); }
+                });
+                self.activity.toggle();
+                states.focus();
             });
         };
         comp.nextPageReuest = function (requestObject, resolve, reject) {
             var offset = Math.max(0, (Number(requestObject.page || 2) - 1) * limit);
-            deps.detail(object.collectionId, limit, offset).then(function (payload) {
+            deps.detail(object.collectionId, limit, offset, {timeout: 8000, retry: false}).then(function (payload) {
                 var collection = responseValue(payload) || {};
                 var anime = Array.isArray(collection.animes) ? collection.animes : [];
                 if (anime.length < limit) requestObject.page = maxPages;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.40 — 2026-08-16
+
+- Fix genre and collection pages getting stuck when the YummyAnime API is unavailable
+- Add readable collection titles directly to catalog tiles
+
 ## 0.42.39 — 2026-08-16
 
 - Refactor Genres and Collections into focused tile catalogs

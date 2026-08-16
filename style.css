@@ -2768,6 +2768,41 @@ body > .yani-skip-prompt {
     content: '';
     pointer-events: none;
 }
+.yani-collections-tile-catalog .card {
+    position: relative;
+}
+.yani-collections-tile-catalog .card > .card__title {
+    position: absolute;
+    z-index: 4;
+    right: .72em;
+    bottom: .68em;
+    left: .72em;
+    display: -webkit-box !important;
+    overflow: hidden;
+    max-height: 2.45em;
+    margin: 0 !important;
+    padding: .38em .52em;
+    border: .06em solid rgba(255,255,255,.16);
+    border-radius: .5em;
+    background: rgba(10,9,17,.72);
+    box-shadow: 0 .25em .65em rgba(0,0,0,.25);
+    color: #fff;
+    font-size: .76em;
+    font-weight: 700;
+    line-height: 1.18;
+    text-shadow: 0 .08em .2em rgba(0,0,0,.8);
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    pointer-events: none;
+}
+.yani-collections-tile-catalog .yani-collection-tile-card__copy {
+    display: none;
+}
+.yani-collections-tile-catalog .card.focus > .card__title {
+    border-color: rgba(255,255,255,.42);
+    background: rgba(24,17,36,.9);
+}
 .yani-genres-tile-catalog .card__view { padding-bottom: 45.45% !important; }
 
 @media (min-width: 100em) {
