@@ -1767,7 +1767,12 @@
             },
             openCard: function (card) { openYummyDetail(card, false); },
             onError: function () { Lampa.Noty.show(t('genres_load_error')); },
-            pageSize: 4,
+            pageSize: 8,
+            header: function (component, api) {
+                return loadGenreList().then(function (genres) {
+                    if (api && api.prepend) api.prepend(renderGenreTiles(genres));
+                });
+            },
             loadPage: createGenreRowLoader()
         });
     }
@@ -3487,26 +3492,68 @@
         });
     }
 
-    function createGenreRowLoader() {
-        var genresRequest = null;
+    var genreHubRows = null;
+    var genreHubRowsAt = 0;
+    var genreHubRequest = null;
+    var genreList = null;
+    var genreListAt = 0;
+    var genreListRequest = null;
+    var GENRE_HUB_TTL = 15 * 60 * 1000;
+    var GENRE_HUB_CONCURRENCY = 8;
 
-        function loadGenreRows(page, pageSize) {
-            if (!genresRequest) {
-                genresRequest = LampaYaniApi.genres().then(function (payload) {
-                    var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
-                        return genreTitle(genre) && genreValue(genre) !== null;
-                    });
-                    if (!genres.length) Lampa.Noty.show(t('genres_empty'));
-                    return genres;
-                });
-            }
-            return genresRequest.then(function (genres) {
-                var offset = Math.max(0, Number(page || 0)) * pageSize;
-                var batch = genres.slice(offset, offset + pageSize);
-                if (!batch.length) return [];
-                return LampaYaniCardRails.mapLimit(batch, pageSize, function (genre) {
+    function loadGenreList() {
+        if (genreList && Date.now() - genreListAt < GENRE_HUB_TTL) return Promise.resolve(genreList);
+        if (genreListRequest) return genreListRequest;
+        genreListRequest = LampaYaniApi.genres().then(function (payload) {
+            var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
+                return genreTitle(genre) && genreValue(genre) !== null;
+            });
+            if (!genres.length) Lampa.Noty.show(t('genres_empty'));
+            genreList = genres;
+            genreListAt = Date.now();
+            genreListRequest = null;
+            return genres;
+        }).catch(function (error) {
+            genreListRequest = null;
+            throw error;
+        });
+        return genreListRequest;
+    }
+
+    function renderGenreTiles(genres) {
+        var wrap = $('<div class="yani-genre-tiles"></div>');
+        wrap.append($('<div class="yani-genre-tiles__title"></div>').text(t('genre_tiles')));
+        var grid = $('<div class="yani-genre-tiles__grid"></div>');
+        (genres || []).forEach(function (genre) {
+            var title = genreTitle(genre);
+            var tile = $('<div class="yani-genre-tile selector"></div>');
+            tile.append($('<span class="yani-genre-tile__mark" aria-hidden="true"></span>').text(title.charAt(0)));
+            tile.append($('<span class="yani-genre-tile__name"></span>').text(title));
+            tile.on('hover:enter click.yaniGenreTile', function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+                openGenreCatalog(genre);
+            });
+            grid.append(tile);
+        });
+        wrap.append(grid);
+        return wrap;
+    }
+
+    function createGenreRowLoader() {
+        function loadGenreRows(page) {
+            if (Number(page || 0) > 0) return Promise.resolve([]);
+            if (genreHubRows && Date.now() - genreHubRowsAt < GENRE_HUB_TTL) return Promise.resolve(genreHubRows);
+            if (genreHubRequest) return genreHubRequest;
+            genreHubRequest = loadGenreList().then(function (genres) {
+                return LampaYaniCardRails.mapLimit(genres, GENRE_HUB_CONCURRENCY, function (genre) {
                     var id = genreValue(genre);
-                    return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}).then(function (payload) {
+                    return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}, {
+                        cacheTtl: GENRE_HUB_TTL,
+                        staleFallback: true
+                    }).then(function (payload) {
                         var items = LampaYaniApi.normalize(payload).slice(0, 10);
                         if (!items.length) return null;
                         return {
@@ -3520,8 +3567,17 @@
                             }
                         };
                     }).catch(function () { return null; });
-                }).then(function (rows) { return rows.filter(Boolean); });
+                });
+            }).then(function (rows) {
+                genreHubRows = (rows || []).filter(Boolean);
+                genreHubRowsAt = Date.now();
+                genreHubRequest = null;
+                return genreHubRows;
+            }).catch(function (error) {
+                genreHubRequest = null;
+                throw error;
             });
+            return genreHubRequest;
         }
 
         return loadGenreRows;

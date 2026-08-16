@@ -153,6 +153,20 @@
             return step();
         }
 
+        function prependHeader(self, node) {
+            if (!node) return;
+            var element = node.jquery ? node[0] : node;
+            if (!element) return;
+            var body = self.scroll && self.scroll.body ? self.scroll.body(true) : null;
+            if (!body && self.scroll && self.scroll.render) {
+                var root = self.scroll.render(true);
+                body = root && root.querySelector ? root.querySelector('.scroll__body') : root;
+            }
+            if (!body) return;
+            if (body.insertBefore) body.insertBefore(element, body.firstChild || null);
+            else if (body.prepend) body.prepend(element);
+        }
+
         function mountInteraction(self) {
             if (self.activity && self.activity.loader) self.activity.loader(true);
             if (self.scroll && typeof self.scroll.minus === 'function') self.scroll.minus();
@@ -170,16 +184,38 @@
 
         component.create = function () {
             var self = this;
+            var opened = false;
             mountInteraction(self);
-            loadAllRows().then(function (rows) {
+
+            function reveal() {
+                if (destroyed || opened) return;
+                opened = true;
+                if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
+                if (self.activity && self.activity.loader) self.activity.loader(false);
+                if (self.activity && self.activity.toggle) self.activity.toggle();
+            }
+
+            var start = typeof deps.header === 'function'
+                ? Promise.resolve(deps.header(self, {prepend: function (node) { prependHeader(self, node); }})).then(reveal)
+                : Promise.resolve();
+
+            start.then(function () {
+                if (destroyed) return;
+                return loadAllRows();
+            }).then(function (rows) {
                 if (destroyed) return;
                 rows = (rows || []).filter(Boolean);
+                if (opened && typeof self.emit === 'function') {
+                    self.emit('build', prepare(rows));
+                    if (self.activity && self.activity.loader) self.activity.loader(false);
+                    return;
+                }
                 self.build(prepare(rows));
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
             }).catch(function (error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Card Rails]', error);
-                self.build([]);
+                if (!opened) self.build([]);
                 if (deps.onError) deps.onError(error);
             });
         };

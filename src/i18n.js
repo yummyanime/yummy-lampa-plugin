@@ -396,6 +396,7 @@
     messages.ru.list_sort_title = 'По названию А–Я';
     messages.ru.genre_catalog = 'Выбранный жанр';
     messages.ru.genre_catalog_fallback = 'Аниме жанра «{genre}»: новые релизы, популярные и завершённые тайтлы.';
+    messages.ru.genre_tiles = 'Все жанры';
     messages.ru.scroll_to_top = 'Наверх';
     messages.ru.catalog_filters = 'Фильтры';
     messages.ru.catalog_shortcuts_numbers = 'Сортировка';
@@ -448,6 +449,7 @@
     messages.en.list_sort_title = 'By title A–Z';
     messages.en.genre_catalog = 'Selected genre';
     messages.en.genre_catalog_fallback = '{genre} anime: new releases, popular and completed titles.';
+    messages.en.genre_tiles = 'All genres';
     messages.en.scroll_to_top = 'Back to top';
     messages.en.catalog_filters = 'Filters';
     messages.en.catalog_shortcuts_numbers = 'Sort';
@@ -733,6 +735,7 @@
     messages.uk.list_sort_title = 'За назвою А–Я';
     messages.uk.genre_catalog = 'Вибраний жанр';
     messages.uk.genre_catalog_fallback = 'Аніме жанру «{genre}»: нові релізи, популярні та завершені тайтли.';
+    messages.uk.genre_tiles = 'Усі жанри';
     messages.uk.scroll_to_top = 'Нагору';
     messages.uk.catalog_filters = 'Фільтри';
     messages.uk.catalog_shortcuts_numbers = 'Сортування';

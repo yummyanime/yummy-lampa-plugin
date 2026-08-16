@@ -183,8 +183,8 @@
             params.limit = params.limit || 20;
             return request('/anime?' + new URLSearchParams(params), {auth: true});
         },
-        catalog: function (params) {
-            return request('/anime?' + new URLSearchParams(params || {limit: 20}), {auth: true});
+        catalog: function (params, options) {
+            return request('/anime?' + new URLSearchParams(params || {limit: 20}), Object.assign({auth: true}, options || {}));
         },
         normalize: function (payload) {
             var response = payload && payload.response ? payload.response : payload;
@@ -197,7 +197,10 @@
             return response && response.genres || [];
         },
         genres: function () {
-            return request('/anime/genres');
+            return request('/anime/genres', {
+                cacheTtl: 24 * 60 * 60 * 1000,
+                staleFallback: true
+            });
         },
         genre: function (id, control) {
             control = control || {};

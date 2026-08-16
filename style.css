@@ -2609,11 +2609,52 @@ body > .yani-skip-prompt {
 .yani-genre-catalog-header__title { display: block; margin-top: .06em; font-size: 1.35em; line-height: 1.08; }
 .yani-genre-catalog-header__description { max-width: 62em; margin: .32em 0 0; color: rgba(255, 255, 255, .68); font-size: .78em; line-height: 1.38; white-space: normal; }
 
+.yani-genre-tiles { margin: .15em 1em 1.1em; }
+.yani-genre-tiles__title { margin: 0 0 .55em; color: rgba(255,255,255,.72); font-size: .72em; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.yani-genre-tiles__grid { display: flex; flex-wrap: wrap; gap: .42em; }
+.yani-genre-tile {
+    display: flex;
+    align-items: center;
+    min-width: 8.4em;
+    max-width: 14em;
+    flex: 1 1 8.4em;
+    padding: .42em .55em;
+    border: .08em solid rgba(255,255,255,.14);
+    border-radius: .55em;
+    background: linear-gradient(145deg, rgba(36,26,44,.92), rgba(31,43,59,.88));
+    box-sizing: border-box;
+}
+.yani-genre-tile__mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.55em;
+    width: 1.55em;
+    height: 1.55em;
+    margin-right: .45em;
+    border-radius: .38em;
+    background: linear-gradient(145deg, #ff6878, #825ed8);
+    color: #fff;
+    font-size: .78em;
+    font-weight: 800;
+}
+.yani-genre-tile__name { min-width: 0; overflow: hidden; color: #fff; font-size: .78em; font-weight: 650; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.yani-genre-tile.focus,
+.yani-genre-tile:hover {
+    border-color: #fff;
+    background: #fff;
+    box-shadow: 0 0 0 .14em rgba(255,255,255,.22);
+    transform: translateY(-.08em);
+}
+.yani-genre-tile.focus .yani-genre-tile__name,
+.yani-genre-tile:hover .yani-genre-tile__name { color: #17151c; }
+
 @media (max-width: 700px) {
     .yani-account-list-sort-panel { margin: .1em .6em .65em; }
     .yani-account-list-sort-trigger__label { display: none; }
     .yani-account-list-sort-rail { grid-template-columns: repeat(5, minmax(8.4em, 1fr)); }
     .yani-genre-catalog-header { margin: .1em .6em .65em; }
+    .yani-genre-tiles { margin: .1em .6em .85em; }
     .yani-genre-catalog-header__description { white-space: normal; }
 }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.42.32 — 2026-08-16
+
+- Add genre shortcut tiles above the Genres hub rows
+
+## 0.42.31 — 2026-08-16
+
+- Add faster parallel genre hub loading and a 15-minute row cache
+
 ## 0.42.30 — 2026-08-16
 
 - Fix Genres and Collections hubs by loading all rail rows before render
