@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.43.4 — 2026-08-17
+
+- Fix AniSkip suggest-skip buttons being visible but unreachable with a TV remote
+
 ## 0.43.3 — 2026-08-17
 
 - Fix title detail opening with focus on Watch instead of the title name

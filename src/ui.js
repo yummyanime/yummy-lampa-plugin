@@ -3309,7 +3309,7 @@
         });
     }
 
-    var skipPromptState = {root: null, panel: null, segment: null, video: null};
+    var skipPromptState = {root: null, panel: null, segment: null, video: null, focused: false};
 
     function skipPromptLabel(segment) {
         if (segment && segment.type === 'ed') return t('aniskip_skip_ending');
@@ -3319,6 +3319,69 @@
 
     function skipPromptHost() {
         return document.querySelector('.player') || document.querySelector('.player-video') || document.body;
+    }
+
+    function skipPromptIsActive() {
+        return Boolean(skipPromptState.root &&
+            skipPromptState.segment &&
+            skipPromptState.root.classList.contains('yani-skip-prompt--visible'));
+    }
+
+    function returnSkipFocusToPlayer() {
+        skipPromptState.focused = false;
+        if (skipPromptState.root) $(skipPromptState.root).removeClass('focus');
+        if (Lampa.Controller && Lampa.Controller.enabled && Lampa.Controller.enabled().name === 'yani_player_skip') {
+            Lampa.Controller.toggle('player');
+        }
+        setTimeout(ensurePlayerSkipUpHook, 0);
+    }
+
+    function ensurePlayerSkipUpHook() {
+        if (!Lampa.Controller || !Lampa.Controller.enabled) return;
+        var enabled = Lampa.Controller.enabled();
+        if (!enabled || enabled.name !== 'player' || !enabled.controller || enabled.controller._yani_skip_up) return;
+        var originalUp = enabled.controller.up;
+        enabled.controller._yani_skip_up = true;
+        enabled.controller.up = function () {
+            if (skipPromptIsActive()) {
+                focusSkipPrompt();
+                return;
+            }
+            if (originalUp) return originalUp.apply(this, arguments);
+        };
+    }
+
+    function focusSkipPrompt() {
+        if (!skipPromptIsActive() || !Lampa.Controller || !Lampa.Controller.add) return;
+        var button = skipPromptState.root;
+        Lampa.Controller.add('yani_player_skip', {
+            toggle: function () {
+                if (!skipPromptIsActive()) return;
+                var host = $(button);
+                if (Lampa.Controller.collectionSet) Lampa.Controller.collectionSet(host);
+                if (window.Navigator && Navigator.add) Navigator.add(button);
+                if (Lampa.Controller.collectionFocus) Lampa.Controller.collectionFocus(button, host);
+                $(button).addClass('focus');
+                skipPromptState.focused = true;
+            },
+            up: returnSkipFocusToPlayer,
+            down: returnSkipFocusToPlayer,
+            left: returnSkipFocusToPlayer,
+            right: returnSkipFocusToPlayer,
+            gone: function () {
+                skipPromptState.focused = false;
+                if (skipPromptState.root) $(skipPromptState.root).removeClass('focus');
+            },
+            back: function () {
+                if (Lampa.Player && Lampa.Player.close) Lampa.Player.close();
+                else returnSkipFocusToPlayer();
+            }
+        });
+        var enabled = Lampa.Controller.enabled ? Lampa.Controller.enabled() : null;
+        var name = enabled && enabled.name;
+        if (name === 'player' || name === 'yani_player_skip' || name === 'player_skip') {
+            Lampa.Controller.toggle('yani_player_skip');
+        }
     }
 
     function bindSkipAction(element) {
@@ -3337,6 +3400,7 @@
         if (skipPromptState.root && document.body.contains(skipPromptState.root)) return skipPromptState.root;
         var button = document.createElement('div');
         button.className = 'yani-skip-prompt selector';
+        button.setAttribute('role', 'button');
         skipPromptState.root = bindSkipAction(button);
         return skipPromptState.root;
     }
@@ -3350,11 +3414,16 @@
         if (!button || !document.body.contains(button)) {
             button = document.createElement('div');
             button.className = 'player-panel__button selector yani-skip-panel';
+            button.setAttribute('role', 'button');
             skipPromptState.panel = bindSkipAction(button);
         }
         if (skipPromptState.panel.parentNode !== right) right.appendChild(skipPromptState.panel);
         skipPromptState.panel.textContent = skipPromptLabel(segment);
         skipPromptState.panel.style.display = '';
+        var enabled = Lampa.Controller && Lampa.Controller.enabled ? Lampa.Controller.enabled() : null;
+        if (enabled && enabled.name === 'player_panel' && Lampa.Controller.collectionAppend) {
+            Lampa.Controller.collectionAppend(skipPromptState.panel);
+        }
     }
 
     function hideSkipPanelButton() {
@@ -3370,6 +3439,10 @@
         skipPromptState.segment = segment;
         skipPromptState.video = video;
         syncSkipPanelButton(segment);
+        ensurePlayerSkipUpHook();
+        // Match Lampa's native player-skip: take remote focus while the
+        // prompt is active so Enter can confirm without a mouse.
+        if (!skipPromptState.focused) focusSkipPrompt();
     }
 
     function hideSkipPrompt() {
@@ -3377,6 +3450,7 @@
         skipPromptState.segment = null;
         skipPromptState.video = null;
         hideSkipPanelButton();
+        if (skipPromptState.focused) returnSkipFocusToPlayer();
     }
 
     function destroySkipPrompt() {
@@ -3385,6 +3459,7 @@
         skipPromptState.root = null;
         if (skipPromptState.panel && skipPromptState.panel.parentNode) skipPromptState.panel.parentNode.removeChild(skipPromptState.panel);
         skipPromptState.panel = null;
+        skipPromptState.focused = false;
     }
 
     function applySkip(video, segment, state) {

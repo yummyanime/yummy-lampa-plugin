@@ -15,8 +15,10 @@ assert.match(ui, /ed: mode === 'ed' \|\| mode === 'op_ed' \|\| mode === 'suggest
 assert.match(ui, /skipPrompt: skipMode === 'suggest'/);
 assert.match(ui, /function showSkipPrompt/);
 assert.match(ui, /function confirmSkipPrompt/);
-assert.match(ui, /yani-skip-prompt/);
-assert.match(ui, /if \(state\.skipPrompt\) \{\s*if \(activePrompt\) showSkipPrompt/);
+assert.match(ui, /yani_player_skip/);
+assert.match(ui, /function focusSkipPrompt/);
+assert.match(ui, /ensurePlayerSkipUpHook/);
+assert.match(ui, /if \(!skipPromptState\.focused\) focusSkipPrompt\(\)/);
 assert.match(ui, /Math\.abs\(\(state\.skipLength \|\| 0\) - rounded\) > 15/);
 assert.match(css, /\.yani-skip-prompt--visible/);
 
