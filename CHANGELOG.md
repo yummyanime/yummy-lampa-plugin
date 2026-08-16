@@ -2,7 +2,7 @@
 
 ## 0.43.3 — 2026-08-17
 
-- Open the title detail page with focus on the title name instead of Watch
+- Fix title detail opening with focus on Watch instead of the title name
 
 ## 0.43.2 — 2026-08-17
 

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.43.1',
+        version: '0.43.3',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -4066,7 +4066,11 @@ function pluginYummyAnime() {
         var controller = snapshot.controller && snapshot.controller !== 'select' && snapshot.controller !== 'input' ? snapshot.controller : 'content';
         if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
         if (collection && collection.length && Lampa.Controller && Lampa.Controller.collectionSet) Lampa.Controller.collectionSet(collection);
-        if (element && Lampa.Controller && Lampa.Controller.collectionFocus) Lampa.Controller.collectionFocus(element, collection && collection.length ? collection : undefined, true);
+        if (element && Lampa.Controller && Lampa.Controller.collectionFocus) {
+            // After Select, Navigator can still point at hidden selectbox nodes.
+            if (window.Navigator && Navigator.add) Navigator.add(element);
+            Lampa.Controller.collectionFocus(element, collection && collection.length ? collection : undefined, true);
+        }
         return element;
     }
 
@@ -6864,6 +6868,8 @@ function pluginYummyAnime() {
                 if (originalBack) originalBack();
                 restorePlaybackInteraction();
             };
+            // Chained voice/episode/player windows own return focus themselves.
+            params.yaniRestore = false;
             showYummySelect(params);
             return true;
         }
@@ -11363,6 +11369,7 @@ function pluginYummyAnime() {
         var scroll = new Lampa.Scroll({mask: true, over: true, step: 250});
         scroll.minus();
         var button;
+        var titleFocus;
         var destroyed = false;
         var videosAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var posterViewer = null;
@@ -11373,7 +11380,12 @@ function pluginYummyAnime() {
             collection: function () { return scroll.render(); },
             scroll: scroll,
             selector: '.selector',
-            fallback: function () { return button && (button[0] || button) || html.find('.selector').first()[0] || null; }
+            fallback: function () {
+                return (titleFocus && (titleFocus[0] || titleFocus)) ||
+                    (button && (button[0] || button)) ||
+                    html.find('.yani-detail__title.selector, .selector').first()[0] ||
+                    null;
+            }
         });
 
         function appendDetailNavigation(container) {
@@ -11525,12 +11537,12 @@ function pluginYummyAnime() {
             });
             bindDetailButtonFocus(poster);
             var info = $('<div class="yani-detail__info"></div>');
-            // The title is deliberately a selector: it is the first focusable
-            // item on the page, so moving up from the actions returns the
-            // viewport to the beginning of the detail card.
-            var title = $('<div class="yani-detail__title selector"></div>').text(data.title || 'YummyAnime');
-            bindDetailButtonFocus(title);
-            info.append(title);
+            // The title is deliberately a selector and the default landing
+            // focus, so the page opens on the name and Up from actions returns
+            // the viewport to the beginning of the detail card.
+            titleFocus = $('<div class="yani-detail__title selector"></div>').text(data.title || 'YummyAnime');
+            bindDetailButtonFocus(titleFocus);
+            info.append(titleFocus);
             var alternativeTitles = (data.yani_titles || []).filter(function (title) { return title && title !== data.title; });
             if (alternativeTitles.length) info.append($('<div class="yani-detail__alternative-titles"></div>').text(alternativeTitles.join(' · ')));
             var detailType = mediaTypeLabels(data.yani_type);
@@ -11971,7 +11983,8 @@ function pluginYummyAnime() {
             var controller = {
                 link: detailComponent,
                 yaniDetailOwner: detailComponent,
-                toggle: function () { detailFocus.restore(button, true); },
+                // Prefer the last focused control; only fall back to the title.
+                toggle: function () { detailFocus.restore(null, true); },
                 left: function () { if (!posterExpanded) { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); } },
                 right: function () { if (!posterExpanded) Navigator.move('right'); },
                 up: function () { if (!posterExpanded) { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); } },
@@ -11982,7 +11995,10 @@ function pluginYummyAnime() {
             Lampa.Controller.toggle('content');
             setTimeout(function () {
                 var remembered = detailFocus.target();
-                var first = remembered ? $(remembered) : html.find('.yani-detail__button.selector, .yani-detail__order-item.selector, .yani-detail__comment.selector').first();
+                var first = remembered ? $(remembered) : (titleFocus && titleFocus.length ? titleFocus : html.find('.yani-detail__title.selector').first());
+                if (!first || !first.length) {
+                    first = html.find('.yani-detail__button.selector, .yani-detail__order-item.selector, .yani-detail__comment.selector').first();
+                }
                 if (first.length) {
                     scroll.update(first, true);
                     detailFocus.remember(first[0]);
@@ -12242,6 +12258,9 @@ function pluginYummyAnime() {
                     Lampa.Controller.collectionSet(collection);
                 }
                 if (element && Lampa.Controller && Lampa.Controller.collectionFocus) {
+                    // Select leaves Navigator on hidden selectbox items; re-register
+                    // the page target so D-pad focus is visible without an extra key.
+                    if (window.Navigator && Navigator.add) Navigator.add(element);
                     Lampa.Controller.collectionFocus(element, collection && collection.length ? collection : undefined);
                 }
             } catch (error) {
@@ -12254,12 +12273,41 @@ function pluginYummyAnime() {
         if (!Lampa.Select || !Lampa.Select.show) return false;
         snapshot = snapshot || transientNavigationSnapshot();
         params = Object.assign({}, params || {});
+        // Playback chains disable this and restore themselves after the last window.
+        var restoreOnClose = params.yaniRestore !== false;
+        delete params.yaniRestore;
         var originalBack = params.onBack;
+        var originalSelect = params.onSelect;
+        var restored = false;
+
+        function restoreAfterClose() {
+            if (!restoreOnClose || restored) return;
+            restored = true;
+            restoreTransientInteraction(snapshot);
+        }
+
         params.onBack = function () {
             // A nested Select may deliberately rebuild its parent list.
             // Only the root window should restore the underlying Activity.
-            if (originalBack) return originalBack();
-            restoreTransientInteraction(snapshot);
+            if (originalBack) {
+                restored = true;
+                return originalBack();
+            }
+            restoreAfterClose();
+        };
+        // Lampa Select.hide() after a choice does not call onBack, so Controller
+        // would stay on 'select' until the next remote key. Restore when the box
+        // actually closes and is not immediately replaced by another Select.
+        params.onSelect = function (item) {
+            var result = originalSelect ? originalSelect.apply(this, arguments) : undefined;
+            if (!params.nohide) {
+                setTimeout(function () {
+                    if (restored) return;
+                    if (Lampa.Select && typeof Lampa.Select.opened === 'function' && Lampa.Select.opened()) return;
+                    restoreAfterClose();
+                }, 0);
+            }
+            return result;
         };
         Lampa.Select.show(params);
         return true;
