@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.26 — 2026-08-16
+
+- Fix Genres and Collections hub rows not loading after the first four
+
 ## 0.42.25 — 2026-08-16
 
 - Add internal Lampa player to the preferred player setting

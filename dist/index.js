@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.25',
+        version: '0.42.26',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -6082,42 +6082,78 @@ function pluginYummyAnime() {
         }
 
         function requestNext(resolve, reject) {
-            if (destroyed || finished || loadingPage) {
+            if (destroyed || finished) {
                 if (reject) reject();
                 return;
             }
+            // A second end-of-scroll tick while a page is in flight must not
+            // reject: Lampa treats reject as "no more rows" and never asks again.
+            if (loadingPage) return;
             loadingPage = true;
-            loadPage(nextPage).then(function (rows) {
-                loadingPage = false;
-                if (destroyed) return;
-                rows = (rows || []).filter(Boolean);
-                if (!rows.length) {
-                    finished = true;
-                    if (reject) reject();
-                    return;
-                }
-                nextPage += 1;
-                resolve(prepare(rows));
-            }).catch(function (error) {
+
+            function attempt(page, hops) {
+                return loadPage(page).then(function (rows) {
+                    if (destroyed) return;
+                    rows = (rows || []).filter(Boolean);
+                    if (rows.length) {
+                        loadingPage = false;
+                        nextPage = page + 1;
+                        resolve(prepare(rows));
+                        return;
+                    }
+                    if (hops >= 8) {
+                        loadingPage = false;
+                        finished = true;
+                        if (reject) reject();
+                        return;
+                    }
+                    return attempt(page + 1, hops + 1);
+                });
+            }
+
+            attempt(nextPage, 0).catch(function (error) {
                 loadingPage = false;
                 if (reject) reject(error);
                 else if (deps.onError) deps.onError(error);
             });
         }
 
-        function installLegacyPagination() {
-            if (typeof component.use === 'function' || !component.scroll) return;
+        function appendRows(rows) {
+            if (destroyed || !rows || !rows.length) return;
+            // Later pages must not go through InteractionMain.build(): that
+            // toggles the activity and steals focus from the row the user is on.
+            if (typeof component.emit === 'function') component.emit('build', rows);
+            else component.build(rows);
+            bindScrollEnd();
+        }
+
+        function bindScrollEnd() {
+            if (!component.scroll) return;
             component.scroll.onEnd = function () {
-                requestNext(function (rows) {
-                    component.build(rows);
-                    installLegacyPagination();
-                }, function () {});
+                requestNext(appendRows, function () {});
             };
+        }
+
+        function mountInteraction(self) {
+            if (self.activity && self.activity.loader) self.activity.loader(true);
+            if (self.scroll && typeof self.scroll.minus === 'function') self.scroll.minus();
+            var host = self.html;
+            var scrollNode = self.scroll && self.scroll.render ? self.scroll.render(true) : null;
+            if (host && scrollNode) {
+                if (host.jquery) {
+                    if (!host.find('.scroll').length) host.append(scrollNode);
+                } else if (typeof host.append === 'function' && (!host.contains || !host.contains(scrollNode))) {
+                    host.append(scrollNode);
+                }
+            }
+            // Modern InteractionMain wires wheel / onAnimateEnd here. Skipping
+            // this leaves onNext able to fetch rows that never get appended.
+            if (typeof self.emit === 'function') self.emit('create');
         }
 
         component.create = function () {
             var self = this;
-            this.activity.loader(true);
+            mountInteraction(self);
             loadPage(0).then(function (rows) {
                 if (destroyed) return;
                 rows = (rows || []).filter(Boolean);
@@ -6125,7 +6161,11 @@ function pluginYummyAnime() {
                 if (!rows.length) finished = true;
                 self.build(prepare(rows));
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
-                installLegacyPagination();
+                bindScrollEnd();
+                // The first end-of-scroll event is easy to miss on TV (4 rows
+                // and a 1s InteractionMain guard). Prefetch the next batch so
+                // the fifth row is already on the way when the user reaches it.
+                if (!finished) requestNext(appendRows, function () {});
             }).catch(function (error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Card Rails]', error);

@@ -21,9 +21,12 @@ assert.match(source, /yani_more: true/);
 assert.match(source, /yani-card-rails/);
 assert.match(source, /function mapLimit/);
 assert.match(source, /function requestNext\(resolve, reject\)/);
+assert.match(source, /function bindScrollEnd/);
+assert.match(source, /function mountInteraction/);
+assert.match(source, /if \(loadingPage\) return/);
 assert.match(source, /component\.nextPageReuest/);
 assert.match(source, /component\.use\(\{onNext: requestNext\}\)/);
-assert.match(source, /component\.scroll\.onEnd/);
+assert.match(source, /component\.scroll\.onEnd = function/);
 assert.match(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}display:\s*flex/);
 assert.match(css, /\.yani-card-rails \.items-cards \.card[\s\S]{0,350}flex:\s*0 0 12\.75em/);
 assert.match(css, /\.yani-user-lists-view \.items-cards \.card[\s\S]{0,350}width:\s*12\.75em/);
@@ -47,7 +50,11 @@ const builds = [];
 context.Lampa = {
     InteractionMain: function () {
         this.activity = {loader: function () {}};
-        this.scroll = {};
+        this.html = {append: function () {}, contains: function () { return false; }};
+        this.scroll = {minus: function () {}, render: function () { return {nodeType: 1}; }};
+        this.emit = function (name, data) {
+            if (name === 'build' && data) builds.push(data);
+        };
         this.build = function (rows) { builds.push(rows); };
         this.render = function () { return {addClass: function () {}}; };
     }
@@ -67,13 +74,16 @@ const component = rails.create({}, {
     component.create();
     await Promise.resolve();
     await Promise.resolve();
-    assert.deepStrictEqual(loadedPages, [[0, 2]]);
-    assert.equal(builds.length, 1);
-    await new Promise(function (resolve, reject) {
-        component.nextPageReuest({}, resolve, reject);
-    });
-    assert.deepStrictEqual(loadedPages, [[0, 2], [1, 2]]);
+    await Promise.resolve();
+    assert.deepStrictEqual(loadedPages.slice(0, 1), [[0, 2]]);
+    assert.ok(loadedPages.some(function (item) { return item[0] === 1; }), 'the next rail batch must be prefetched after the first four rows');
+    assert.ok(builds.length >= 1);
+    assert.equal(typeof component.scroll.onEnd, 'function');
     assert.equal(builds[0][0].title, 'Page 0');
+    component.scroll.onEnd();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.ok(loadedPages.some(function (item) { return item[0] === 2; }), 'reaching the last visible row must request the following batch');
     console.log('card rails contract checks passed');
 }()).catch(function (error) {
     console.error(error);
