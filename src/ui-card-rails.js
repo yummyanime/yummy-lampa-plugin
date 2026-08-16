@@ -198,6 +198,7 @@
             else component.build(rows);
             bindScrollEnd();
             bindRowTriggers();
+            bindDomBoundary();
             // If the user is already sitting on the 8th/12th/... row, do not
             // wait for another end-of-scroll event that Lampa will not fire.
             loadIfBoundary(Number(component.active || 0));
@@ -216,6 +217,21 @@
                 if (destroyed || finished || loadingPage) return;
                 loadIfBoundary(Number(component.active || 0));
             }, 300);
+        }
+
+        function bindDomBoundary() {
+            if (!component.render || typeof $ !== 'function') return;
+            var root = component.render();
+            if (!root || !root.length || !root.on) return;
+            root.off('.yaniRailBoundary');
+            root.on('hover:focus.yaniRailBoundary focusin.yaniRailBoundary', '.items-line .selector', function (event) {
+                var rows = root.find('.items-line');
+                var row = $(event.currentTarget).closest('.items-line');
+                var index = rows.index(row);
+                if (index < 0) return;
+                component.active = index;
+                loadIfBoundary(index);
+            });
         }
 
         function bindRowTriggers() {
@@ -274,6 +290,7 @@
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
                 bindScrollEnd();
                 bindRowTriggers();
+                bindDomBoundary();
                 startBoundaryWatcher();
                 // The first end-of-scroll event is easy to miss on TV (4 rows
                 // and a 1s InteractionMain guard). Prefetch the next batch so
@@ -325,6 +342,10 @@
             destroyed = true;
             if (boundaryTimer) clearInterval(boundaryTimer);
             boundaryTimer = 0;
+            if (component.render && typeof $ === 'function') {
+                var root = component.render();
+                if (root && root.off) root.off('.yaniRailBoundary');
+            }
             if (originalDestroy) originalDestroy.apply(this, arguments);
         };
         return component;

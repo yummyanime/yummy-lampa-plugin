@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.29 — 2026-08-16
+
+- Fix rail pagination using the focused DOM row instead of stale Lampa state
+
 ## 0.42.28 — 2026-08-16
 
 - Fix repeated four-row loading without relying on Lampa scroll events
