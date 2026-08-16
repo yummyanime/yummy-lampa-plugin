@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.43.0',
+        version: '0.43.1',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -2427,6 +2427,23 @@ function pluginYummyAnime() {
 
     function normalizeMatchTitle(value) { return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').trim(); }
 
+    function isAndroidPlatform() {
+        // Lampa stores the detected runtime in Platform. Android APK / Android TV
+        // builds report 'android'; Tizen, WebOS, Orsay, browsers do not.
+        var lampa = window.Lampa;
+        if (lampa && lampa.Platform) {
+            if (typeof lampa.Platform.is === 'function' && lampa.Platform.is('android')) return true;
+            if (typeof lampa.Platform.get === 'function' && lampa.Platform.get() === 'android') return true;
+        }
+        // Bridge objects remain a reliable fallback when Platform storage is empty.
+        if (window.AndroidJS || window.Android) return true;
+        if (lampa && lampa.Android && (
+            typeof lampa.Android.openPlayer === 'function' ||
+            typeof lampa.Android.openBrowser === 'function'
+        )) return true;
+        return false;
+    }
+
     function titleScriptRank(title) {
         if (/[A-Za-z]/.test(title) && !/[А-Яа-яЁё]/.test(title)) return 0;
         if (/[\u3040-\u30ff\u3400-\u9fff]/.test(title)) return 1;
@@ -2906,6 +2923,7 @@ function pluginYummyAnime() {
         posterSources: posterSources,
         titleValues: titleValues,
         normalizeMatchTitle: normalizeMatchTitle,
+        isAndroidPlatform: isAndroidPlatform,
         stripSeasonSuffix: stripSeasonSuffix,
         parseSeasonHint: parseSeasonHint,
         cardSeasonHint: cardSeasonHint,
@@ -6682,6 +6700,7 @@ function pluginYummyAnime() {
             return String(video && (video.number || video.index) || '?');
         };
         var playbackTargetPreference = deps.playbackTargetPreference || function () { return 'ask'; };
+        var androidExternalPlayerAvailable = deps.androidExternalPlayerAvailable || function () { return false; };
         var openExternalPlayer = deps.openExternalPlayer || function () { return false; };
         var playInternalPlayer = deps.playInternalPlayer || function () { return false; };
         var yummyTvEnabled = deps.yummyTvEnabled || function () { return false; };
@@ -7045,6 +7064,8 @@ function pluginYummyAnime() {
             // An automatic episode change must never interrupt viewing with a
             // dialog: playback simply continues where it already was.
             var target = options && options.autoAdvance ? 'internal' : playbackTargetPreference();
+            var canExternal = androidExternalPlayerAvailable();
+            if (target === 'external' && !canExternal) target = 'internal';
             if (target === 'external') return openExternalPlayer(current, playlist, card);
             if (target === 'internal') {
                 if (playInternalPlayer(current, playlist)) return true;
@@ -7053,12 +7074,22 @@ function pluginYummyAnime() {
                 return true;
             }
             if (!Lampa.Select || !Lampa.Select.show) return false;
+            // Android-only: external players are APK intents. Tizen / WebOS / browsers
+            // should not be offered an option that cannot work on those platforms.
+            var items = [];
+            if (canExternal) {
+                items.push({title: t('watch_external_player'), subtitle: t('watch_external_player_description'), action: 'external'});
+            }
+            items.push({title: t('watch_internal_lampa'), subtitle: t('watch_internal_lampa_description'), action: 'internal'});
+            if (items.length === 1) {
+                if (playInternalPlayer(current, playlist)) return true;
+                Lampa.Noty.show(t('internal_player_unavailable'));
+                restorePlaybackInteraction();
+                return true;
+            }
             showPlaybackSelect({
                 title: t('choose_playback'),
-                items: [
-                    {title: t('watch_external_player'), subtitle: t('watch_external_player_description'), action: 'external'},
-                    {title: t('watch_internal_lampa'), subtitle: t('watch_internal_lampa_description'), action: 'internal'}
-                ],
+                items: items,
                 onSelect: function (item) {
                     if (item && item.action === 'internal') {
                         if (playInternalPlayer(current, playlist)) return;
@@ -12087,6 +12118,7 @@ function pluginYummyAnime() {
         enrichVoiceOptionQuality: function (item, target) { return enrichVoiceOptionQuality(item, target); },
         episodeOptionTitle: function (card, video) { return episodeOptionTitle(card, video); },
         playbackTargetPreference: function () { return playbackTargetPreference(); },
+        androidExternalPlayerAvailable: function () { return isAndroidPlatform(); },
         openExternalPlayer: function (current, playlist, card) { return openExternalPlayer(current, playlist, card); },
         playInternalPlayer: function (current, playlist) { return playInternalPlayer(current, playlist); },
         yummyTvEnabled: function () { return yummyTvEnabled(); },
@@ -15102,13 +15134,21 @@ function pluginYummyAnime() {
         }
     }
 
+    function isAndroidPlatform() {
+        return window.LampaYaniUiUtils && typeof LampaYaniUiUtils.isAndroidPlatform === 'function'
+            ? LampaYaniUiUtils.isAndroidPlatform()
+            : false;
+    }
+
     function playbackTargetPreference() {
         if (Lampa.Storage && Lampa.Storage.get && Lampa.Storage.get('yani_player_preference', 'last') === 'lampa') return 'internal';
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_playback_target', 'ask') : 'ask';
+        if (value === 'external' && !isAndroidPlatform()) return 'internal';
         return value === 'internal' || value === 'external' ? value : 'ask';
     }
 
     function openExternalPlayer(current, playlist, card) {
+        if (!isAndroidPlatform()) return false;
         return openExternalVideo(current.url, current.title, {
             playlist: externalPlayablePlaylist(playlist),
             time: current.time,
@@ -16112,12 +16152,17 @@ function pluginYummyAnime() {
             field: {name: t('player_preference'), description: t('player_preference_description')}
         });
 
+        var playbackTargetValues = {
+            ask: t('playback_target_ask'),
+            internal: t('playback_target_internal')
+        };
+        if (isAndroidPlatform()) playbackTargetValues.external = t('playback_target_external');
         Lampa.SettingsApi.addParam({
             component: 'yani',
             param: {
                 name: 'yani_playback_target',
                 type: 'select',
-                values: {ask: t('playback_target_ask'), external: t('playback_target_external'), internal: t('playback_target_internal')},
+                values: playbackTargetValues,
                 default: 'ask'
             },
             field: {name: t('playback_target'), description: t('playback_target_description')}

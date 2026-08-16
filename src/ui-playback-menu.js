@@ -31,6 +31,7 @@
             return String(video && (video.number || video.index) || '?');
         };
         var playbackTargetPreference = deps.playbackTargetPreference || function () { return 'ask'; };
+        var androidExternalPlayerAvailable = deps.androidExternalPlayerAvailable || function () { return false; };
         var openExternalPlayer = deps.openExternalPlayer || function () { return false; };
         var playInternalPlayer = deps.playInternalPlayer || function () { return false; };
         var yummyTvEnabled = deps.yummyTvEnabled || function () { return false; };
@@ -394,6 +395,8 @@
             // An automatic episode change must never interrupt viewing with a
             // dialog: playback simply continues where it already was.
             var target = options && options.autoAdvance ? 'internal' : playbackTargetPreference();
+            var canExternal = androidExternalPlayerAvailable();
+            if (target === 'external' && !canExternal) target = 'internal';
             if (target === 'external') return openExternalPlayer(current, playlist, card);
             if (target === 'internal') {
                 if (playInternalPlayer(current, playlist)) return true;
@@ -402,12 +405,22 @@
                 return true;
             }
             if (!Lampa.Select || !Lampa.Select.show) return false;
+            // Android-only: external players are APK intents. Tizen / WebOS / browsers
+            // should not be offered an option that cannot work on those platforms.
+            var items = [];
+            if (canExternal) {
+                items.push({title: t('watch_external_player'), subtitle: t('watch_external_player_description'), action: 'external'});
+            }
+            items.push({title: t('watch_internal_lampa'), subtitle: t('watch_internal_lampa_description'), action: 'internal'});
+            if (items.length === 1) {
+                if (playInternalPlayer(current, playlist)) return true;
+                Lampa.Noty.show(t('internal_player_unavailable'));
+                restorePlaybackInteraction();
+                return true;
+            }
             showPlaybackSelect({
                 title: t('choose_playback'),
-                items: [
-                    {title: t('watch_external_player'), subtitle: t('watch_external_player_description'), action: 'external'},
-                    {title: t('watch_internal_lampa'), subtitle: t('watch_internal_lampa_description'), action: 'internal'}
-                ],
+                items: items,
                 onSelect: function (item) {
                     if (item && item.action === 'internal') {
                         if (playInternalPlayer(current, playlist)) return;

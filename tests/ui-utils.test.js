@@ -10,6 +10,10 @@ assert.deepStrictEqual(Array.from(utils.titleValues({title: 'Покемон', al
 assert.deepStrictEqual(Array.from(utils.titleValues({title: 'Наруто', other_titles: ['NARUTO', 'ナルト']})), ['Наруто', 'NARUTO', 'ナルト']);
 assert.deepStrictEqual(Array.from(utils.titleValues({title: 'Наруто', other_titles: {en: 'NARUTO', ja: 'ナルト'}})), ['Наруто', 'NARUTO', 'ナルト']);
 assert.strictEqual(utils.normalizeMatchTitle('Ёжик: 2026'), 'ежик 2026');
+assert.strictEqual(utils.isAndroidPlatform(), false);
+const androidContext = {window: {Lampa: {Platform: {is: function (name) { return name === 'android'; }, get: function () { return 'android'; }}}}};
+vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), androidContext);
+assert.strictEqual(androidContext.window.LampaYaniUiUtils.isAndroidPlatform(), true);
 assert.deepStrictEqual(Array.from(utils.standardSearchTitles({title: 'Anime (2026)', yani_titles: ['Anime']})), ['Anime', 'Anime (2026)']);
 assert.deepStrictEqual(Array.from(utils.standardSearchTitles({
     title: 'Белого мага, изгнанного из команды героев',

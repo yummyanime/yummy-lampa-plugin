@@ -80,6 +80,23 @@
 
     function normalizeMatchTitle(value) { return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').trim(); }
 
+    function isAndroidPlatform() {
+        // Lampa stores the detected runtime in Platform. Android APK / Android TV
+        // builds report 'android'; Tizen, WebOS, Orsay, browsers do not.
+        var lampa = window.Lampa;
+        if (lampa && lampa.Platform) {
+            if (typeof lampa.Platform.is === 'function' && lampa.Platform.is('android')) return true;
+            if (typeof lampa.Platform.get === 'function' && lampa.Platform.get() === 'android') return true;
+        }
+        // Bridge objects remain a reliable fallback when Platform storage is empty.
+        if (window.AndroidJS || window.Android) return true;
+        if (lampa && lampa.Android && (
+            typeof lampa.Android.openPlayer === 'function' ||
+            typeof lampa.Android.openBrowser === 'function'
+        )) return true;
+        return false;
+    }
+
     function titleScriptRank(title) {
         if (/[A-Za-z]/.test(title) && !/[А-Яа-яЁё]/.test(title)) return 0;
         if (/[\u3040-\u30ff\u3400-\u9fff]/.test(title)) return 1;
@@ -559,6 +576,7 @@
         posterSources: posterSources,
         titleValues: titleValues,
         normalizeMatchTitle: normalizeMatchTitle,
+        isAndroidPlatform: isAndroidPlatform,
         stripSeasonSuffix: stripSeasonSuffix,
         parseSeasonHint: parseSeasonHint,
         cardSeasonHint: cardSeasonHint,

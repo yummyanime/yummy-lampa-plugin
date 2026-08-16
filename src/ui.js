@@ -108,6 +108,7 @@
         enrichVoiceOptionQuality: function (item, target) { return enrichVoiceOptionQuality(item, target); },
         episodeOptionTitle: function (card, video) { return episodeOptionTitle(card, video); },
         playbackTargetPreference: function () { return playbackTargetPreference(); },
+        androidExternalPlayerAvailable: function () { return isAndroidPlatform(); },
         openExternalPlayer: function (current, playlist, card) { return openExternalPlayer(current, playlist, card); },
         playInternalPlayer: function (current, playlist) { return playInternalPlayer(current, playlist); },
         yummyTvEnabled: function () { return yummyTvEnabled(); },
@@ -3123,13 +3124,21 @@
         }
     }
 
+    function isAndroidPlatform() {
+        return window.LampaYaniUiUtils && typeof LampaYaniUiUtils.isAndroidPlatform === 'function'
+            ? LampaYaniUiUtils.isAndroidPlatform()
+            : false;
+    }
+
     function playbackTargetPreference() {
         if (Lampa.Storage && Lampa.Storage.get && Lampa.Storage.get('yani_player_preference', 'last') === 'lampa') return 'internal';
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_playback_target', 'ask') : 'ask';
+        if (value === 'external' && !isAndroidPlatform()) return 'internal';
         return value === 'internal' || value === 'external' ? value : 'ask';
     }
 
     function openExternalPlayer(current, playlist, card) {
+        if (!isAndroidPlatform()) return false;
         return openExternalVideo(current.url, current.title, {
             playlist: externalPlayablePlaylist(playlist),
             time: current.time,
@@ -4133,12 +4142,17 @@
             field: {name: t('player_preference'), description: t('player_preference_description')}
         });
 
+        var playbackTargetValues = {
+            ask: t('playback_target_ask'),
+            internal: t('playback_target_internal')
+        };
+        if (isAndroidPlatform()) playbackTargetValues.external = t('playback_target_external');
         Lampa.SettingsApi.addParam({
             component: 'yani',
             param: {
                 name: 'yani_playback_target',
                 type: 'select',
-                values: {ask: t('playback_target_ask'), external: t('playback_target_external'), internal: t('playback_target_internal')},
+                values: playbackTargetValues,
                 default: 'ask'
             },
             field: {name: t('playback_target'), description: t('playback_target_description')}

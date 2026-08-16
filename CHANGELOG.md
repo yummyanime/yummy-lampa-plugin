@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.43.1 — 2026-08-17
+
+- Fix external Android player options being offered on Tizen, WebOS, and other non-Android platforms
+
 ## 0.43.0 — 2026-08-16
 
 - Fix genre and collection Enter navigation on legacy Lampa Card onEnter

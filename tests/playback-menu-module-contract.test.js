@@ -19,7 +19,13 @@ assert.doesNotMatch(ui, /function chooseEpisode\(/);
 assert.match(source, /function showPlaybackSelect\(params\)/);
 assert.match(source, /function openVideos\(card, resume\)/);
 assert.match(source, /function chooseEpisode\(card, group\)/);
-assert.match(source, /yani_stream_url/);
+assert.match(source, /androidExternalPlayerAvailable/);
+assert.match(source, /Tizen \/ WebOS/);
+assert.match(ui, /androidExternalPlayerAvailable: function \(\) \{ return isAndroidPlatform\(\); \}/);
+assert.match(ui, /function isAndroidPlatform\(\)/);
+assert.match(ui, /if \(value === 'external' && !isAndroidPlatform\(\)\) return 'internal'/);
+assert.match(ui, /if \(isAndroidPlatform\(\)\) playbackTargetValues\.external/);
+assert.match(fs.readFileSync('src/ui-utils.js', 'utf8'), /function isAndroidPlatform\(\)/);
 
 const context = {
     window: {
