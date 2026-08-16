@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.47',
+        version: '0.42.48',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -2477,6 +2477,62 @@ function pluginYummyAnime() {
         return Math.min(left.length, right.length) >= 6;
     }
 
+    function titleTokens(value) {
+        return normalizeMatchTitle(value).split(/\s+/).filter(function (token) {
+            return token.length >= 2;
+        });
+    }
+
+    function titleTokenJaccard(left, right) {
+        var a = titleTokens(left);
+        var b = titleTokens(right);
+        if (!a.length || !b.length) return 0;
+        var shared = {};
+        var union = {};
+        a.forEach(function (token) { union[token] = true; });
+        b.forEach(function (token) { union[token] = true; });
+        a.forEach(function (token) {
+            if (b.indexOf(token) >= 0) shared[token] = true;
+        });
+        return Object.keys(shared).length / Object.keys(union).length;
+    }
+
+    function titleEditSimilarity(left, right) {
+        left = normalizeMatchTitle(left);
+        right = normalizeMatchTitle(right);
+        if (!left || !right) return 0;
+        if (left === right) return 1;
+        var rows = left.length + 1;
+        var cols = right.length + 1;
+        var matrix = new Array(rows);
+        var row;
+        var col;
+        for (row = 0; row < rows; row++) {
+            matrix[row] = new Array(cols);
+            matrix[row][0] = row;
+        }
+        for (col = 0; col < cols; col++) matrix[0][col] = col;
+        for (row = 1; row < rows; row++) {
+            for (col = 1; col < cols; col++) {
+                var cost = left.charAt(row - 1) === right.charAt(col - 1) ? 0 : 1;
+                matrix[row][col] = Math.min(
+                    matrix[row - 1][col] + 1,
+                    matrix[row][col - 1] + 1,
+                    matrix[row - 1][col - 1] + cost
+                );
+            }
+        }
+        return 1 - (matrix[left.length][right.length] / Math.max(left.length, right.length));
+    }
+
+    function titlesCloselyRelated(left, right) {
+        if (!left || !right) return false;
+        if (left === right) return true;
+        if (titlesOverlap(left, right) && titleTokenJaccard(left, right) >= 0.6) return true;
+        if (titleTokenJaccard(left, right) >= 0.75) return true;
+        return titleEditSimilarity(left, right) >= 0.88;
+    }
+
     var romanSeasonValues = {i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10};
 
     function parseSeasonHint(title) {
@@ -2564,12 +2620,14 @@ function pluginYummyAnime() {
         var candidateCores = titleMatchCores(titles);
         var exact = titles.some(function (title) { return expected.indexOf(title) >= 0; }) ||
             candidateCores.some(function (title) { return expectedCores.indexOf(title) >= 0; });
-        var contained = !exact && (
+        // Near-miss localizations like "Класс убийц" vs "Клуб убийц" share a
+        // year and one word, but must not open the live-action title in Lampa.
+        var related = !exact && (
             titles.some(function (title) {
-                return expected.some(function (value) { return titlesOverlap(title, value); });
+                return expected.some(function (value) { return titlesCloselyRelated(title, value); });
             }) ||
             candidateCores.some(function (title) {
-                return expectedCores.some(function (value) { return titlesOverlap(title, value); });
+                return expectedCores.some(function (value) { return titlesCloselyRelated(title, value); });
             })
         );
         var candidateYear = String(candidate && (candidate.release_date || candidate.first_air_date) || '').slice(0, 4);
@@ -2579,7 +2637,27 @@ function pluginYummyAnime() {
             if (delta === 0) yearScore = 30;
             else if (delta === 1) yearScore = 20;
         }
-        return (exact ? 100 : contained ? 75 : 0) + yearScore;
+        return (exact ? 100 : related ? 75 : 0) + yearScore;
+    }
+
+    function isAnimeTmdbCard(card) {
+        var ids = card && (card.genre_ids || card.genres_ids || card.genre_id);
+        if (Array.isArray(ids) && ids.some(function (id) { return Number(id) === 16; })) return true;
+
+        var source = card && (card.genres || card.genre || card.category || card.categories);
+        var values = Array.isArray(source) ? source : source ? [source] : [];
+        var names = values.map(function (genre) {
+            if (typeof genre === 'string') return genre;
+            return genre && (genre.name || genre.title || genre.label) || '';
+        }).join(' ').toLowerCase();
+        if (/(?:animation|animated|anime|аниме|мультфильм|мультипликац)/.test(names)) return true;
+
+        var language = String(card && (card.original_language || card.language) || '').toLowerCase();
+        var countries = card && (card.origin_country || card.production_countries) || [];
+        var japaneseOrigin = Array.isArray(countries) && countries.some(function (country) {
+            return String(typeof country === 'string' ? country : country && (country.iso_3166_1 || country.code) || '').toUpperCase() === 'JP';
+        });
+        return language === 'ja' || japaneseOrigin;
     }
 
     function yummyTvDetailsUrl(animeId) {
@@ -2834,6 +2912,9 @@ function pluginYummyAnime() {
         isSafeTmdbSeasonMatch: isSafeTmdbSeasonMatch,
         standardSearchTitles: standardSearchTitles,
         scoreTitleMatch: scoreTitleMatch,
+        titleTokenJaccard: titleTokenJaccard,
+        titleEditSimilarity: titleEditSimilarity,
+        isAnimeTmdbCard: isAnimeTmdbCard,
         yummyTvDetailsUrl: yummyTvDetailsUrl,
         internalPlayerItem: internalPlayerItem,
         detailRouteId: detailRouteId,
@@ -7157,7 +7238,7 @@ function pluginYummyAnime() {
             Lampa.Activity.push = guardedPush;
         }
 
-        var standardNativeCacheStorageKey = 'yani_standard_native_matches_v2';
+            var standardNativeCacheStorageKey = 'yani_standard_native_matches_v3';
         var standardNativeCacheLimit = 60;
         var standardNativePositiveTtl = 30 * 24 * 60 * 60 * 1000;
         var standardNativeCache = null;
@@ -7419,6 +7500,9 @@ function pluginYummyAnime() {
                 entry.score = LampaYaniUiUtils.scoreTitleMatch(expectedTitles, expectedYear, entry.card || {});
             });
             items.sort(function (a, b) { return b.score - a.score; });
+
+            var animeMatches = [];
+            var exactMatches = [];
             for (var index = 0; index < items.length; index++) {
                 var entry = items[index];
                 if (!entry || entry.score < 70 || !isValidNativeId(entry.card && entry.card.id)) continue;
@@ -7433,9 +7517,20 @@ function pluginYummyAnime() {
                     continue;
                 }
                 entry.card.source = entry.card.source || 'tmdb';
-                return entry;
+                if (LampaYaniUiUtils.isAnimeTmdbCard(entry.card)) animeMatches.push(entry);
+                else if (entry.score >= 100) exactMatches.push(entry);
+                else {
+                    console.warn('[YummyAnime] Skipping non-anime TMDB near-match', {
+                        yaniId: getYummyId(yaniCard),
+                        yaniTitle: yaniCard && yaniCard.title,
+                        tmdbTitle: entry.card.name || entry.card.title || '',
+                        score: entry.score
+                    });
+                }
             }
-            return null;
+            // Prefer animation/Japanese titles. Exact non-anime matches remain a
+            // last resort for rare one-to-one localizations without genre metadata.
+            return animeMatches[0] || exactMatches[0] || null;
         }
 
         var nativeMatchCache = {};
@@ -7503,7 +7598,7 @@ function pluginYummyAnime() {
 
         function isNativeAnimeCard(movie) {
             var ids = movie && (movie.genre_ids || movie.genres_ids || movie.genre_id);
-            if (Array.isArray(ids) && ids.some(function (id) { return Number(id) === 16; })) return true; // TMDB: Animation
+            if (Array.isArray(ids) && ids.some(function (id) { return Number(id) === 16; })) return true;
 
             var source = movie && (movie.genres || movie.genre || movie.category || movie.categories);
             var values = Array.isArray(source) ? source : source ? [source] : [];

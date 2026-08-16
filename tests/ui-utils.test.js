@@ -54,6 +54,28 @@ assert.ok(utils.scoreTitleMatch(
     '2025',
     {name: 'Blue Period', first_air_date: '2021-10-02'}
 ) < 70, 'a shared short word must not match an unrelated TMDB title');
+assert.ok(utils.scoreTitleMatch(
+    ['Класс убийц', 'Assassination Classroom'],
+    '2015',
+    {title: 'Клуб убийц', release_date: '2015-01-01', original_language: 'ru'}
+) < 70, 'near-miss Russian titles with the same year must not open live-action');
+assert.ok(utils.scoreTitleMatch(
+    ['Класс убийц', 'Assassination Classroom'],
+    '2015',
+    {name: 'Assassination Classroom', first_air_date: '2015-01-09', original_language: 'ja', genre_ids: [16, 35]}
+) >= 100, 'Assassination Classroom must still match its TMDB anime series');
+assert.strictEqual(utils.isAnimeTmdbCard({
+    title: 'Клуб убийц',
+    original_language: 'ru',
+    genre_ids: [53, 80]
+}), false);
+assert.strictEqual(utils.isAnimeTmdbCard({
+    name: 'Assassination Classroom',
+    original_language: 'ja',
+    genre_ids: [16, 35]
+}), true);
+assert.ok(utils.titleTokenJaccard('класс убийц', 'клуб убийц') < 0.6);
+assert.ok(utils.titleEditSimilarity('класс убийц', 'клуб убийц') < 0.88);
 assert.strictEqual(utils.yummyTvDetailsUrl(10551), 'yummytv://details/10551');
 assert.strictEqual(utils.yummyTvDetailsUrl('23365'), 'yummytv://details/23365');
 assert.strictEqual(utils.yummyTvDetailsUrl(''), '');

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.48 — 2026-08-16
+
+- Fix opening YummyAnime titles in Lampa when a similar live-action TMDB title shares the year
+- Fix native TMDB matching to prefer animation and reject near-miss localized titles
+
 ## 0.42.47 — 2026-08-16
 
 - Fix genre and collection Enter by replacing Lampa Card `onEnter` instead of adding a second DOM handler

@@ -123,7 +123,7 @@
             Lampa.Activity.push = guardedPush;
         }
 
-        var standardNativeCacheStorageKey = 'yani_standard_native_matches_v2';
+            var standardNativeCacheStorageKey = 'yani_standard_native_matches_v3';
         var standardNativeCacheLimit = 60;
         var standardNativePositiveTtl = 30 * 24 * 60 * 60 * 1000;
         var standardNativeCache = null;
@@ -385,6 +385,9 @@
                 entry.score = LampaYaniUiUtils.scoreTitleMatch(expectedTitles, expectedYear, entry.card || {});
             });
             items.sort(function (a, b) { return b.score - a.score; });
+
+            var animeMatches = [];
+            var exactMatches = [];
             for (var index = 0; index < items.length; index++) {
                 var entry = items[index];
                 if (!entry || entry.score < 70 || !isValidNativeId(entry.card && entry.card.id)) continue;
@@ -399,9 +402,20 @@
                     continue;
                 }
                 entry.card.source = entry.card.source || 'tmdb';
-                return entry;
+                if (LampaYaniUiUtils.isAnimeTmdbCard(entry.card)) animeMatches.push(entry);
+                else if (entry.score >= 100) exactMatches.push(entry);
+                else {
+                    console.warn('[YummyAnime] Skipping non-anime TMDB near-match', {
+                        yaniId: getYummyId(yaniCard),
+                        yaniTitle: yaniCard && yaniCard.title,
+                        tmdbTitle: entry.card.name || entry.card.title || '',
+                        score: entry.score
+                    });
+                }
             }
-            return null;
+            // Prefer animation/Japanese titles. Exact non-anime matches remain a
+            // last resort for rare one-to-one localizations without genre metadata.
+            return animeMatches[0] || exactMatches[0] || null;
         }
 
         var nativeMatchCache = {};
@@ -469,7 +483,7 @@
 
         function isNativeAnimeCard(movie) {
             var ids = movie && (movie.genre_ids || movie.genres_ids || movie.genre_id);
-            if (Array.isArray(ids) && ids.some(function (id) { return Number(id) === 16; })) return true; // TMDB: Animation
+            if (Array.isArray(ids) && ids.some(function (id) { return Number(id) === 16; })) return true;
 
             var source = movie && (movie.genres || movie.genre || movie.category || movie.categories);
             var values = Array.isArray(source) ? source : source ? [source] : [];
