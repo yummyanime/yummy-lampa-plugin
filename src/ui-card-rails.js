@@ -247,10 +247,12 @@
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
                 prependHeader(self, result[0]);
                 markTilesLines(self, preparedRows);
+                if (self.activity && self.activity.loader) self.activity.loader(false);
             }).catch(function (error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Card Rails]', error);
                 self.build([]);
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (deps.onError) deps.onError(error);
             });
         };

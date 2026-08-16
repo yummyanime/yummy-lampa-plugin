@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.44',
+        version: '0.42.45',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -6222,10 +6222,12 @@ function pluginYummyAnime() {
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
                 prependHeader(self, result[0]);
                 markTilesLines(self, preparedRows);
+                if (self.activity && self.activity.loader) self.activity.loader(false);
             }).catch(function (error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Card Rails]', error);
                 self.build([]);
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (deps.onError) deps.onError(error);
             });
         };
@@ -10157,14 +10159,6 @@ function pluginYummyAnime() {
         var rendered = element;
         var view = $('.card__view', rendered).first();
 
-        rendered.add(rendered.find('*')).off('hover:enter click');
-        rendered.on('hover:enter.yaniCollection click.yaniCollection', function (event) {
-            if (event) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-            deps.open(card.yani_collection);
-        });
         rendered.addClass('yani-collection-card yani-collection-catalog-tile');
         if (!rendered.closest('.yani-card-rails').length) {
             rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
@@ -10381,7 +10375,13 @@ function pluginYummyAnime() {
                 var key = id === undefined || id === null ? String(collection && collection.title || '') : String(id);
                 if (!key || seen[key]) return null;
                 seen[key] = true;
-                return collectionCard(collection);
+                var card = collectionCard(collection);
+                card.params = {
+                    on: {
+                        'hover:enter': function () { deps.open(collection); }
+                    }
+                };
+                return card;
             }).filter(Boolean);
         }
 
@@ -13631,14 +13631,6 @@ function pluginYummyAnime() {
         if (node) node.card_data = card;
         render = render.jquery ? render : $(render);
         render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
-        render.add(render.find('*')).off('hover:enter click');
-        render.on('hover:enter.yaniGenreTile click.yaniGenreTile', function (event) {
-            if (event) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-            openGenreCatalog(card.yani_genre);
-        });
     }
 
     function bindGenreTiles(self, cards) {
@@ -15475,7 +15467,12 @@ function pluginYummyAnime() {
                 poster: poster,
                 img: poster,
                 yani_genre_tile: true,
-                yani_genre: genre
+                yani_genre: genre,
+                params: {
+                    on: {
+                        'hover:enter': function () { openGenreCatalog(genre); }
+                    }
+                }
             };
         });
         return {

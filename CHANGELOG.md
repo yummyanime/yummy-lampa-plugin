@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.45 — 2026-08-16
+
+- Fix duplicate genre and collection activity entries by using one Lampa-native enter handler per tile
+- Fix the tile hub loader after rebuilding a screen evicted from Lampa's activity history
+
 ## 0.42.44 — 2026-08-16
 
 - Fix tile hub return navigation by removing duplicate enter handlers and ignoring late responses after a screen closes

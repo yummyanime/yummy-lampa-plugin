@@ -73,14 +73,6 @@
         var rendered = element;
         var view = $('.card__view', rendered).first();
 
-        rendered.add(rendered.find('*')).off('hover:enter click');
-        rendered.on('hover:enter.yaniCollection click.yaniCollection', function (event) {
-            if (event) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-            deps.open(card.yani_collection);
-        });
         rendered.addClass('yani-collection-card yani-collection-catalog-tile');
         if (!rendered.closest('.yani-card-rails').length) {
             rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
@@ -297,7 +289,13 @@
                 var key = id === undefined || id === null ? String(collection && collection.title || '') : String(id);
                 if (!key || seen[key]) return null;
                 seen[key] = true;
-                return collectionCard(collection);
+                var card = collectionCard(collection);
+                card.params = {
+                    on: {
+                        'hover:enter': function () { deps.open(collection); }
+                    }
+                };
+                return card;
             }).filter(Boolean);
         }
 
