@@ -1780,6 +1780,14 @@
         if (node) node.card_data = card;
         render = render.jquery ? render : $(render);
         render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
+        render.off('.yaniGenreTile');
+        render.on('hover:enter.yaniGenreTile', function (event) {
+            if (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+            openGenreCatalog(card.yani_genre);
+        });
     }
 
     function bindGenreTiles(self, cards) {
@@ -3616,12 +3624,7 @@
                 poster: poster,
                 img: poster,
                 yani_genre_tile: true,
-                yani_genre: genre,
-                params: {
-                    on: {
-                        'hover:enter': function () { openGenreCatalog(genre); }
-                    }
-                }
+                yani_genre: genre
             };
         });
         return {

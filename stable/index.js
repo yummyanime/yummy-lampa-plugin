@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.45',
+        version: '0.42.46',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -10159,6 +10159,14 @@ function pluginYummyAnime() {
         var rendered = element;
         var view = $('.card__view', rendered).first();
 
+        rendered.off('.yaniCollection');
+        rendered.on('hover:enter.yaniCollection', function (event) {
+            if (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+            deps.open(card.yani_collection);
+        });
         rendered.addClass('yani-collection-card yani-collection-catalog-tile');
         if (!rendered.closest('.yani-card-rails').length) {
             rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
@@ -10375,13 +10383,7 @@ function pluginYummyAnime() {
                 var key = id === undefined || id === null ? String(collection && collection.title || '') : String(id);
                 if (!key || seen[key]) return null;
                 seen[key] = true;
-                var card = collectionCard(collection);
-                card.params = {
-                    on: {
-                        'hover:enter': function () { deps.open(collection); }
-                    }
-                };
-                return card;
+                return collectionCard(collection);
             }).filter(Boolean);
         }
 
@@ -13631,6 +13633,14 @@ function pluginYummyAnime() {
         if (node) node.card_data = card;
         render = render.jquery ? render : $(render);
         render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
+        render.off('.yaniGenreTile');
+        render.on('hover:enter.yaniGenreTile', function (event) {
+            if (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+            openGenreCatalog(card.yani_genre);
+        });
     }
 
     function bindGenreTiles(self, cards) {
@@ -15467,12 +15477,7 @@ function pluginYummyAnime() {
                 poster: poster,
                 img: poster,
                 yani_genre_tile: true,
-                yani_genre: genre,
-                params: {
-                    on: {
-                        'hover:enter': function () { openGenreCatalog(genre); }
-                    }
-                }
+                yani_genre: genre
             };
         });
         return {

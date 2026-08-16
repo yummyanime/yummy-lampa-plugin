@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.46 — 2026-08-16
+
+- Fix genre and collection opening on Lampa builds that mutate card `params`
+- Fix duplicate navigation without relying on a native click event
+
 ## 0.42.45 — 2026-08-16
 
 - Fix duplicate genre and collection activity entries by using one Lampa-native enter handler per tile
