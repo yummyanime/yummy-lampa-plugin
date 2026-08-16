@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.43.3 — 2026-08-17
+
+- Open the title detail page with focus on the title name instead of Watch
+
 ## 0.43.2 — 2026-08-17
 
 - Fix TV focus not returning to the title page after closing rating or comment-reply Select windows
