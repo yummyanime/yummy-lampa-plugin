@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.46',
+        version: '0.42.47',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -7129,18 +7129,24 @@ function pluginYummyAnime() {
                 // A native Lampa detail page cannot open an anime without a TMDB
                 // id.  Redirect only our marked cards, leaving all normal Lampa
                 // activity navigation untouched.
-                if (isNativeDetail && missingId && isYummyCard) {
-                    var yaniId = getYummyId(card);
-                    if (yaniId) {
-                        console.warn('[YummyAnime] Blocked native TMDB detail with undefined id', yaniId);
-                        return originalPush.call(this, {
-                            url: 'yani/detail/' + encodeURIComponent(yaniId),
-                            title: card.title || card.name || 'YummyAnime',
-                            component: 'yani_detail',
-                            id: yaniId,
-                            yani_id: yaniId,
-                            card: card
-                        });
+                if (isNativeDetail && missingId) {
+                    if (card && (card.yani_genre_tile || card.yani_genre || card.yani_collection_tile || card.yani_collection_id || card.yani_collection)) {
+                        console.warn('[YummyAnime] Blocked native TMDB detail for genre/collection tile');
+                        return;
+                    }
+                    if (isYummyCard) {
+                        var yaniId = getYummyId(card);
+                        if (yaniId) {
+                            console.warn('[YummyAnime] Blocked native TMDB detail with undefined id', yaniId);
+                            return originalPush.call(this, {
+                                url: 'yani/detail/' + encodeURIComponent(yaniId),
+                                title: card.title || card.name || 'YummyAnime',
+                                component: 'yani_detail',
+                                id: yaniId,
+                                yani_id: yaniId,
+                                card: card
+                            });
+                        }
                     }
                 }
                 return originalPush.apply(this, arguments);
@@ -10152,21 +10158,40 @@ function pluginYummyAnime() {
     }
 
     function bindCollectionCard(first, second, third, deps) {
-        var resolved = renderElement(first, second, third);
-        var element = resolved.element;
-        var card = resolved.card;
-        if (!element.length || !card) return;
-        var rendered = element;
-        var view = $('.card__view', rendered).first();
-
-        rendered.off('.yaniCollection');
-        rendered.on('hover:enter.yaniCollection', function (event) {
-            if (event) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-            deps.open(card.yani_collection);
+        var cardApi;
+        var card;
+        var values = [first, second, third];
+        values.forEach(function (value) {
+            if (!value) return;
+            if (!cardApi && typeof value.onEnter !== 'undefined' && typeof value.render === 'function') cardApi = value;
+            if (!card && value.yani_collection) card = value;
+            var candidate = value.card || value.object || value.data;
+            if (!card && candidate && candidate.yani_collection) card = candidate;
         });
+        if (!cardApi && third && typeof third.render === 'function') cardApi = third;
+        if (!card && second && second.yani_collection) card = second;
+        if (!card) {
+            var resolved = renderElement(first, second, third);
+            card = resolved.card;
+            if (!cardApi && resolved.element && resolved.element.length) {
+                // Node-only fallback still decorates, but cannot replace legacy onEnter.
+            }
+        }
+        if (!card || !card.yani_collection) return;
+
+        // Legacy InteractionCategory assigns cardApi.onEnter = push(full) before
+        // cardRender. Replace it so Enter opens the collection once.
+        if (cardApi) {
+            cardApi.onEnter = function () { deps.open(card.yani_collection); };
+        }
+
+        var rendered = cardApi && typeof cardApi.render === 'function'
+            ? $(cardApi.render(true))
+            : renderElement(first, second, third).element;
+        if (!rendered || !rendered.length) return;
+        var view = $('.card__view', rendered).first();
+        if (rendered[0]) rendered[0].card_data = card;
+
         rendered.addClass('yani-collection-card yani-collection-catalog-tile');
         if (!rendered.closest('.yani-card-rails').length) {
             rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
@@ -10392,7 +10417,9 @@ function pluginYummyAnime() {
             if (!root) return;
             $(root).find('.card').each(function (index) {
                 var card = this.card_data && this.card_data.yani_collection ? this.card_data : cards[index];
-                if (card) bindCollectionCard(this, card, null, deps);
+                if (!card) return;
+                this.card_data = card;
+                $(this).addClass('yani-collection-card yani-collection-catalog-tile');
             });
         }
 
@@ -10402,7 +10429,6 @@ function pluginYummyAnime() {
             if (self.activity && self.activity.loader) self.activity.loader(false);
             if (self.render) self.render().addClass('yani-tile-catalog yani-collections-tile-catalog');
             bindVisibleCollectionTiles(self, catalogCards);
-            setTimeout(function () { bindVisibleCollectionTiles(self, catalogCards); }, 0);
         }
 
         comp.create = function () {
@@ -13627,27 +13653,33 @@ function pluginYummyAnime() {
         });
     }
 
-    function bindGenreTile(render, card) {
-        if (!render || !card || !card.yani_genre) return;
-        var node = render.jquery ? render[0] : render;
+    function bindGenreTile(cardApi, card) {
+        if (!card || !card.yani_genre) return;
+        // Legacy InteractionCategory sets cardApi.onEnter to push component:'full'
+        // before cardRender runs. That native listener fires before any jQuery
+        // handler, so the only reliable fix is to replace onEnter itself.
+        if (cardApi) {
+            cardApi.onEnter = function () { openGenreCatalog(card.yani_genre); };
+        }
+        var render = cardApi && typeof cardApi.render === 'function'
+            ? $(cardApi.render(true))
+            : cardApi && (cardApi.jquery || cardApi.nodeType)
+                ? (cardApi.jquery ? cardApi : $(cardApi))
+                : $();
+        if (!render.length) return;
+        var node = render[0];
         if (node) node.card_data = card;
-        render = render.jquery ? render : $(render);
         render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
-        render.off('.yaniGenreTile');
-        render.on('hover:enter.yaniGenreTile', function (event) {
-            if (event) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-            openGenreCatalog(card.yani_genre);
-        });
     }
 
     function bindGenreTiles(self, cards) {
         var root = self && self.render ? self.render() : null;
         if (!root) return;
         $(root).find('.card').each(function (index) {
-            bindGenreTile($(this), cards[index]);
+            var card = cards[index];
+            if (!card || !card.yani_genre) return;
+            if (this.card_data !== card) this.card_data = card;
+            $(this).addClass('yani-genre-tile-card yani-genre-catalog-tile');
         });
     }
 
@@ -13667,7 +13699,6 @@ function pluginYummyAnime() {
                 if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-tile-catalog yani-genres-tile-catalog');
                 bindGenreTiles(self, genreCards);
-                setTimeout(function () { bindGenreTiles(self, genreCards); }, 0);
                 if (!genreCards.length) Lampa.Noty.show(t('genres_empty'));
             }).catch(function (error) {
                 if (destroyed) return;
@@ -13677,21 +13708,24 @@ function pluginYummyAnime() {
             });
         };
 
+        // Lampa legacy signature: cardRender(object, data, cardInstance)
         comp.cardRender = function (first, second, third) {
-            var values = [first, second, third];
-            var element;
+            var cardApi;
             var card;
+            var values = [first, second, third];
             values.forEach(function (value) {
                 if (!value) return;
-                if (!element && (value.jquery || value.nodeType)) element = value;
+                if (!cardApi && typeof value.onEnter !== 'undefined' && typeof value.render === 'function') cardApi = value;
                 if (!card && value.yani_genre_tile) card = value;
                 var candidate = value.card || value.object || value.data;
                 if (!card && candidate && candidate.yani_genre_tile) card = candidate;
             });
-            var node = element && element.jquery ? element[0] : element;
+            if (!cardApi && third && typeof third.render === 'function') cardApi = third;
+            if (!card && second && second.yani_genre_tile) card = second;
+            var node = first && (first.jquery || first.nodeType) ? (first.jquery ? first[0] : first) : null;
             if (!card && node && node.card_data && node.card_data.yani_genre_tile) card = node.card_data;
-            if (!element || !card) return;
-            bindGenreTile(element.jquery ? element : $(element), card);
+            if (!card) return;
+            bindGenreTile(cardApi || node, card);
         };
 
         var originalGenresDestroy = comp.destroy;

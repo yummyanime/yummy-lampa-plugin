@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.47 — 2026-08-16
+
+- Fix genre and collection Enter by replacing Lampa Card `onEnter` instead of adding a second DOM handler
+- Fix duplicate Activity entries that required two Back presses and hung after a few opens
+
 ## 0.42.46 — 2026-08-16
 
 - Fix genre and collection opening on Lampa builds that mutate card `params`

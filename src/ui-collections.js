@@ -66,21 +66,40 @@
     }
 
     function bindCollectionCard(first, second, third, deps) {
-        var resolved = renderElement(first, second, third);
-        var element = resolved.element;
-        var card = resolved.card;
-        if (!element.length || !card) return;
-        var rendered = element;
-        var view = $('.card__view', rendered).first();
-
-        rendered.off('.yaniCollection');
-        rendered.on('hover:enter.yaniCollection', function (event) {
-            if (event) {
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
-            deps.open(card.yani_collection);
+        var cardApi;
+        var card;
+        var values = [first, second, third];
+        values.forEach(function (value) {
+            if (!value) return;
+            if (!cardApi && typeof value.onEnter !== 'undefined' && typeof value.render === 'function') cardApi = value;
+            if (!card && value.yani_collection) card = value;
+            var candidate = value.card || value.object || value.data;
+            if (!card && candidate && candidate.yani_collection) card = candidate;
         });
+        if (!cardApi && third && typeof third.render === 'function') cardApi = third;
+        if (!card && second && second.yani_collection) card = second;
+        if (!card) {
+            var resolved = renderElement(first, second, third);
+            card = resolved.card;
+            if (!cardApi && resolved.element && resolved.element.length) {
+                // Node-only fallback still decorates, but cannot replace legacy onEnter.
+            }
+        }
+        if (!card || !card.yani_collection) return;
+
+        // Legacy InteractionCategory assigns cardApi.onEnter = push(full) before
+        // cardRender. Replace it so Enter opens the collection once.
+        if (cardApi) {
+            cardApi.onEnter = function () { deps.open(card.yani_collection); };
+        }
+
+        var rendered = cardApi && typeof cardApi.render === 'function'
+            ? $(cardApi.render(true))
+            : renderElement(first, second, third).element;
+        if (!rendered || !rendered.length) return;
+        var view = $('.card__view', rendered).first();
+        if (rendered[0]) rendered[0].card_data = card;
+
         rendered.addClass('yani-collection-card yani-collection-catalog-tile');
         if (!rendered.closest('.yani-card-rails').length) {
             rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
@@ -306,7 +325,9 @@
             if (!root) return;
             $(root).find('.card').each(function (index) {
                 var card = this.card_data && this.card_data.yani_collection ? this.card_data : cards[index];
-                if (card) bindCollectionCard(this, card, null, deps);
+                if (!card) return;
+                this.card_data = card;
+                $(this).addClass('yani-collection-card yani-collection-catalog-tile');
             });
         }
 
@@ -316,7 +337,6 @@
             if (self.activity && self.activity.loader) self.activity.loader(false);
             if (self.render) self.render().addClass('yani-tile-catalog yani-collections-tile-catalog');
             bindVisibleCollectionTiles(self, catalogCards);
-            setTimeout(function () { bindVisibleCollectionTiles(self, catalogCards); }, 0);
         }
 
         comp.create = function () {

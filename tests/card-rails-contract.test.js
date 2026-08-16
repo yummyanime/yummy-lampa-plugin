@@ -23,9 +23,10 @@ assert.match(ui, /beginTileNavigation\('collection:' \+ String\(collection\.id\)
 assert.match(ui, /var requestedParams = copyParams\(object\.catalog_params \|\| object\.params/);
 assert.match(ui, /var originalGenresDestroy = comp\.destroy/);
 assert.doesNotMatch(ui, /yani_genre: genre,\s*params:/);
-assert.match(ui, /render\.off\('\.yaniGenreTile'\)/);
-assert.match(ui, /render\.on\('hover:enter\.yaniGenreTile'/);
+assert.match(ui, /cardApi\.onEnter = function \(\) \{ openGenreCatalog\(card\.yani_genre\); \}/);
+assert.doesNotMatch(ui, /hover:enter\.yaniGenreTile/);
 assert.doesNotMatch(ui, /click\.yaniGenreTile/);
+assert.doesNotMatch(ui, /setTimeout\(function \(\) \{ bindGenreTiles/);
 assert.match(ui, /function genreTilesRow\(genres\)/);
 assert.match(ui, /function genreTilePoster\(title, index\)/);
 assert.match(ui, /yani_genre_tile: true/);
