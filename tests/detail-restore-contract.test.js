@@ -13,7 +13,10 @@ assert.match(card, /component: 'yani_detail',[\s\S]{0,160}id: yaniId,[\s\S]{0,80
 assert.match(detail, /click\.yaniOrder'[\s\S]{0,120}openYummyDetail\(related, false\)/);
 assert.doesNotMatch(detail, /click\.yaniOrder'[\s\S]{0,120}openYummyDetail\(related, true\)/);
 assert.match(detail, /yani-detail__recommendation selector[\s\S]{0,900}hover:focus'[\s\S]{0,220}keepHorizontalFocusVisible\(list, row\)/);
-assert.match(detail, /function keepHorizontalFocusVisible\(container, element\)[\s\S]{0,900}viewport\.scrollLeft = targetRight - viewport\.clientWidth \+ padding/);
+assert.match(detail, /function keepHorizontalFocusVisible\(container, element\)[\s\S]{0,900}viewport\.getBoundingClientRect\(\)/);
+assert.match(detail, /target\.getBoundingClientRect\(\)/);
+assert.match(detail, /viewport\.scrollLeft = Math\.max\(0, viewport\.scrollLeft - \(leftEdge - targetRect\.left\)\)/);
+assert.match(detail, /viewport\.scrollLeft \+= targetRect\.right - rightEdge/);
 assert.match(detail, /function appendDetailNavigation\(container\)/);
 assert.match(detail, /enabled\.controller\.yaniDetailOwner !== detailComponent/);
 assert.match(detail, /Lampa\.Controller\.collectionAppend\(targets\)/);

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.43 — 2026-08-16
+
+- Fix duplicate genre and collection navigation entries that caused loading screens when returning to tile hubs
+- Fix recommended title focus leaving the visible horizontal row when navigating left
+
 ## 0.42.42 — 2026-08-16
 
 - Fix genre and collection tile clicks to open a separate catalog page with the old working loader

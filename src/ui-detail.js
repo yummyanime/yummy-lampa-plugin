@@ -38,14 +38,14 @@
         var target = element && element[0];
         if (!viewport || !target) return;
         var padding = Math.max(8, Math.round(viewport.clientWidth * 0.035));
-        var visibleLeft = viewport.scrollLeft;
-        var visibleRight = visibleLeft + viewport.clientWidth;
-        var targetLeft = target.offsetLeft;
-        var targetRight = targetLeft + target.offsetWidth;
-        if (targetLeft < visibleLeft + padding) {
-            viewport.scrollLeft = Math.max(0, targetLeft - padding);
-        } else if (targetRight > visibleRight - padding) {
-            viewport.scrollLeft = targetRight - viewport.clientWidth + padding;
+        var viewportRect = viewport.getBoundingClientRect();
+        var targetRect = target.getBoundingClientRect();
+        var leftEdge = viewportRect.left + padding;
+        var rightEdge = viewportRect.right - padding;
+        if (targetRect.left < leftEdge) {
+            viewport.scrollLeft = Math.max(0, viewport.scrollLeft - (leftEdge - targetRect.left));
+        } else if (targetRect.right > rightEdge) {
+            viewport.scrollLeft += targetRect.right - rightEdge;
         }
     }
 

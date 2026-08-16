@@ -167,6 +167,17 @@
         collection: null
     };
     var usagePolicyVisible = false;
+    var tileNavigationKey = '';
+    var tileNavigationAt = 0;
+
+    function beginTileNavigation(key) {
+        var now = Date.now();
+        key = String(key || '');
+        if (key && tileNavigationKey === key && now - tileNavigationAt < 1000) return false;
+        tileNavigationKey = key;
+        tileNavigationAt = now;
+        return true;
+    }
 
     function goBack() {
         if (window.Lampa && Lampa.Activity && Lampa.Activity.backward) {
@@ -3713,6 +3724,7 @@
         var title = genreTitle(context);
         var genreId = genreValue(context);
         if (!title || genreId === null) return;
+        if (!beginTileNavigation('genre:' + String(genreId))) return;
         Lampa.Activity.push({
             url: 'yani/genre/' + encodeURIComponent(genreId),
             title: title,
@@ -3736,6 +3748,7 @@
 
     function openCollection(collection) {
         if (!collection || collection.id === undefined || collection.id === null) return;
+        if (!beginTileNavigation('collection:' + String(collection.id))) return;
         Lampa.Activity.push({
             url: 'yani/collection/' + encodeURIComponent(collection.id),
             title: collection.title || t('collection'),
