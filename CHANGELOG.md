@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.38 — 2026-08-16
+
+- Fix search input showing duplicate fields on some devices by preferring Input.edit API and adding double-show guard
+
 ## 0.42.37 — 2026-08-16
 
 - Fix genre and collection tile cards showing portrait — mark items-line row container after build so CSS can style all cards reliably

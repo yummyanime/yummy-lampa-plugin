@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.37',
+        version: '0.42.38',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -16148,33 +16148,47 @@ function pluginYummyAnime() {
         });
     }
 
+    var inputActive = false;
     function showYummyInput(params, callback) {
         if (!Lampa.Input) {
             Lampa.Noty.show(t('input_unavailable'));
             return;
         }
+        // Prevent double-showing input on some devices
+        if (inputActive) return;
+        var controller = currentControllerName();
+        if (controller === 'input' || controller === 'keyboard') return;
+
+        inputActive = true;
         var navigation = transientNavigationSnapshot();
         var inputParams = Object.assign({}, params || {});
         var originalBack = inputParams.onBack;
         var complete = function (value) {
+            inputActive = false;
             var result = callback(value);
             setTimeout(function () {
-                var controller = currentControllerName();
-                if (!controller || controller === 'input' || controller === 'settings_component') {
+                var ctrl = currentControllerName();
+                if (!ctrl || ctrl === 'input' || ctrl === 'settings_component') {
                     restoreTransientInteraction(navigation);
                 }
             }, 0);
             return result;
         };
         inputParams.onBack = function () {
+            inputActive = false;
             if (originalBack) originalBack();
             restoreTransientInteraction(navigation);
         };
-        if (Lampa.Input.show) {
+        // Prefer Input.edit — documented standard API in recent Lampa versions.
+        // Input.show exists on some builds but can render duplicate UI components.
+        if (typeof Lampa.Input.edit === 'function') {
+            return Lampa.Input.edit(inputParams, complete);
+        }
+        if (typeof Lampa.Input.show === 'function') {
             inputParams.onEnter = complete;
             return Lampa.Input.show(inputParams);
         }
-        if (Lampa.Input.edit) return Lampa.Input.edit(inputParams, complete);
+        inputActive = false;
         Lampa.Noty.show(t('input_unavailable'));
     }
 
