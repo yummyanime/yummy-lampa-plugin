@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.40',
+        version: '0.42.41',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -1195,6 +1195,41 @@ function pluginYummyAnime() {
         Lampa.Storage.set(indexKey, JSON.stringify(keys));
     }
 
+    function queryString(params) {
+        var search = [];
+        Object.keys(params || {}).forEach(function (key) {
+            var value = params[key];
+            if (value === undefined || value === null || value === '') return;
+            if (typeof value === 'object') return;
+            search.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        });
+        return search.join('&');
+    }
+
+    function settleTimeout(promise, timeoutMs) {
+        var timeout = Number(timeoutMs || 0);
+        if (!timeout) return promise;
+        return new Promise(function (resolve, reject) {
+            var completed = false;
+            var timer = setTimeout(function () {
+                if (completed) return;
+                completed = true;
+                reject(new Error('YummyAnime request timeout'));
+            }, timeout);
+            promise.then(function (value) {
+                if (completed) return;
+                completed = true;
+                clearTimeout(timer);
+                resolve(value);
+            }, function (error) {
+                if (completed) return;
+                completed = true;
+                clearTimeout(timer);
+                reject(error);
+            });
+        });
+    }
+
     function request(path, options) {
         options = options || {};
         if (options.auth && !options.authRefreshChecked && window.LampaYaniAuth && LampaYaniAuth.token() && LampaYaniAuth.refreshIfNeeded) {
@@ -1221,12 +1256,13 @@ function pluginYummyAnime() {
             : '';
         if (pendingKey && pendingRequests[pendingKey]) return pendingRequests[pendingKey];
 
-        var operation = fetchWithRetry(config.apiBase + path, {
+        var timeoutMs = options.timeout || config.requestTimeout;
+        var operation = settleTimeout(fetchWithRetry(config.apiBase + path, {
             method: method,
             headers: headers,
             body: options.body,
             signal: options.signal
-        }, method === 'GET' && options.retry !== false, options.timeout).then(function (response) {
+        }, method === 'GET' && options.retry !== false, timeoutMs).then(function (response) {
             if (!response.ok) throw new Error('YummyAnime API: ' + response.status);
             return response.json();
         }).then(function (payload) {
@@ -1235,7 +1271,7 @@ function pluginYummyAnime() {
                 rememberCacheKey(cacheKey);
             }
             return payload;
-        }).catch(function (error) {
+        }), timeoutMs).catch(function (error) {
             if (method === 'GET' && options.cache !== false && window.Lampa && Lampa.Storage) {
                 try {
                     var cached = JSON.parse(Lampa.Storage.get(cacheKey, 'null'));
@@ -1300,8 +1336,9 @@ function pluginYummyAnime() {
             params.limit = params.limit || 20;
             return request('/anime?' + new URLSearchParams(params), {auth: true});
         },
+        queryString: queryString,
         catalog: function (params, options) {
-            return request('/anime?' + new URLSearchParams(params || {limit: 20}), Object.assign({auth: true}, options || {}));
+            return request('/anime?' + queryString(params || {limit: 20}), Object.assign({auth: true}, options || {}));
         },
         normalize: function (payload) {
             var response = payload && payload.response ? payload.response : payload;
@@ -4629,6 +4666,7 @@ function pluginYummyAnime() {
                     title: object.title || ('YummyAnime ' + t('top_rated')),
                     component: 'yani_top',
                     topMode: true,
+                    catalog_params: params,
                     params: params
                 });
                 return;
@@ -4640,6 +4678,7 @@ function pluginYummyAnime() {
                 title: object.title || ('YummyAnime ' + t('catalog')),
                 component: 'yani_catalog',
                 genre_context: object.genre_context,
+                catalog_params: params,
                 params: params
             });
         }
@@ -4650,6 +4689,7 @@ function pluginYummyAnime() {
                 title: object.title || ('YummyAnime ' + t('catalog')),
                 component: 'yani_catalog',
                 genre_context: object.genre_context,
+                catalog_params: params,
                 params: params
             });
         }
@@ -10382,6 +10422,7 @@ function pluginYummyAnime() {
 
         function buildInitial(self, items) {
             self.build({results: uniqueCards(items), total_pages: maxPages, title: deps.t('collections')});
+            if (self.activity && self.activity.loader) self.activity.loader(false);
             if (self.render) self.render().addClass('yani-tile-catalog yani-collections-tile-catalog');
         }
 
@@ -10452,8 +10493,18 @@ function pluginYummyAnime() {
         return comp;
     }
 
+    function collectionIdFrom(object) {
+        if (object && object.collectionId !== undefined && object.collectionId !== null && object.collectionId !== '') {
+            return object.collectionId;
+        }
+        var match = String(object && object.url || '').match(/collection\/([^/?#]+)/);
+        if (!match) return '';
+        try { return decodeURIComponent(match[1]); } catch (error) { return match[1]; }
+    }
+
     function detail(object, deps) {
         object.page = 1;
+        var collectionId = collectionIdFrom(object);
         var comp = new Lampa.InteractionCategory(object);
         var limit = 30;
         var maxPages = 1000;
@@ -10473,16 +10524,28 @@ function pluginYummyAnime() {
             var activityView = this.activity.render && this.activity.render(true);
             if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            deps.detail(object.collectionId, limit, 0, {timeout: 8000, retry: false}).then(function (payload) {
+            if (!collectionId) {
+                var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
+                states.offline({
+                    title: deps.t('collection_load_error'),
+                    onRetry: function () { self.create(); }
+                });
+                self.activity.toggle();
+                states.focus();
+                return;
+            }
+            deps.detail(collectionId, limit, 0, {timeout: 8000, retry: false, staleFallback: true}).then(function (payload) {
                 var collection = responseValue(payload) || {};
                 var anime = Array.isArray(collection.animes) ? collection.animes : [];
                 var cards = detailCards(collection);
                 if (anime.length < limit) object.page = maxPages;
                 self.build({results: cards, total_pages: maxPages, title: collection.title || deps.t('collection')});
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-collection-view');
                 if (!cards.length) deps.error(deps.t('collection_empty'));
             }).catch(function (error) {
                 console.error('[YummyAnime Collection]', error);
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
                 states.offline({
                     title: deps.t('collection_load_error'),
@@ -10494,7 +10557,7 @@ function pluginYummyAnime() {
         };
         comp.nextPageReuest = function (requestObject, resolve, reject) {
             var offset = Math.max(0, (Number(requestObject.page || 2) - 1) * limit);
-            deps.detail(object.collectionId, limit, offset, {timeout: 8000, retry: false}).then(function (payload) {
+            deps.detail(collectionId, limit, offset, {timeout: 8000, retry: false, staleFallback: true}).then(function (payload) {
                 var collection = responseValue(payload) || {};
                 var anime = Array.isArray(collection.animes) ? collection.animes : [];
                 if (anime.length < limit) requestObject.page = maxPages;
@@ -12169,9 +12232,11 @@ function pluginYummyAnime() {
     }
 
     function Catalog(object) {
+        // Snapshot API params before InteractionCategory mutates object.params
+        // with its own module config (items/loading/module).
+        var baseParams = catalogRequestParams(object);
         var comp = new Lampa.InteractionCategory(object);
         var topMode = Boolean(object.topMode);
-        var baseParams = copyParams(object.params || {limit: 30, sort: 'top', sort_forward: true});
         var limit = Number(baseParams.limit || 30);
         var maxPages = Math.ceil(20000 / limit) + 1;
         var seen = {};
@@ -12249,7 +12314,7 @@ function pluginYummyAnime() {
             var activityView = this.activity.render && this.activity.render(true);
             if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            LampaYaniApi.catalog(baseParams, object.genre_context ? {
+            LampaYaniApi.catalog(baseParams, object.genre_context || baseParams.genres ? {
                 timeout: 8000,
                 retry: false,
                 staleFallback: true
@@ -12260,13 +12325,14 @@ function pluginYummyAnime() {
                     requestedOffsets[baseParams.offset] = true;
                     if (raw.length < limit) object.page = maxPages;
                     self.build({results: results, total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
+                    if (self.activity && self.activity.loader) self.activity.loader(false);
                     installGenreHeader();
                     controls.install();
                 })
                 .catch(function (error) {
                     console.error('[YummyAnime]', error);
-                    self.activity.loader(false);
-                    if (object.genre_context) {
+                    if (self.activity && self.activity.loader) self.activity.loader(false);
+                    if (object.genre_context || baseParams.genres) {
                         var states = LampaYaniSectionState.forActivity(self.activity, {t: t});
                         states.offline({
                             title: t('catalog_load_error'),
@@ -12288,7 +12354,7 @@ function pluginYummyAnime() {
             }
             requestedOffsets[params.offset] = true;
 
-            LampaYaniApi.catalog(params, object.genre_context ? {
+            LampaYaniApi.catalog(params, object.genre_context || baseParams.genres ? {
                 timeout: 8000,
                 retry: false,
                 staleFallback: true
@@ -13608,6 +13674,7 @@ function pluginYummyAnime() {
             loadGenreList().then(function (genres) {
                 var cards = genreTilesRow(genres).results;
                 self.build({results: cards, total_pages: 1, title: t('genres')});
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-tile-catalog yani-genres-tile-catalog');
                 if (!cards.length) Lampa.Noty.show(t('genres_empty'));
             }).catch(function (error) {
@@ -15535,7 +15602,7 @@ function pluginYummyAnime() {
             title: title,
             component: 'yani_catalog',
             genre_context: context,
-            params: {limit: 30, genres: genreId}
+            catalog_params: {limit: 30, genres: genreId}
         });
     }
 
@@ -15865,6 +15932,40 @@ function pluginYummyAnime() {
             copy[key] = params[key];
         });
         return copy;
+    }
+
+    function sanitizeCatalogParams(params) {
+        var allowed = {
+            limit: true, offset: true, sort: true, sort_forward: true,
+            genres: true, types: true, status: true, year: true,
+            from_year: true, to_year: true, q: true
+        };
+        var clean = {};
+        Object.keys(params || {}).forEach(function (key) {
+            if (!allowed[key]) return;
+            var value = params[key];
+            if (value === undefined || value === null || value === '') return;
+            if (typeof value === 'object') return;
+            clean[key] = value;
+        });
+        return clean;
+    }
+
+    function routeSegment(url, name) {
+        var match = String(url || '').match(new RegExp('\\b' + name + '\\/([^/?#]+)'));
+        if (!match) return '';
+        try { return decodeURIComponent(match[1]); } catch (error) { return match[1]; }
+    }
+
+    function catalogRequestParams(object) {
+        var clean = sanitizeCatalogParams(object && (object.catalog_params || object.params) || {});
+        if (!clean.limit) clean.limit = 30;
+        if (!clean.genres) {
+            var genreId = routeSegment(object && object.url, 'genre');
+            if (genreId) clean.genres = genreId;
+        }
+        if (!clean.sort) clean.sort = 'top';
+        return clean;
     }
 
     function mapUniqueCards(items, seen) {

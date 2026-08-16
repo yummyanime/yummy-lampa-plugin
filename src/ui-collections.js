@@ -301,6 +301,7 @@
 
         function buildInitial(self, items) {
             self.build({results: uniqueCards(items), total_pages: maxPages, title: deps.t('collections')});
+            if (self.activity && self.activity.loader) self.activity.loader(false);
             if (self.render) self.render().addClass('yani-tile-catalog yani-collections-tile-catalog');
         }
 
@@ -371,8 +372,18 @@
         return comp;
     }
 
+    function collectionIdFrom(object) {
+        if (object && object.collectionId !== undefined && object.collectionId !== null && object.collectionId !== '') {
+            return object.collectionId;
+        }
+        var match = String(object && object.url || '').match(/collection\/([^/?#]+)/);
+        if (!match) return '';
+        try { return decodeURIComponent(match[1]); } catch (error) { return match[1]; }
+    }
+
     function detail(object, deps) {
         object.page = 1;
+        var collectionId = collectionIdFrom(object);
         var comp = new Lampa.InteractionCategory(object);
         var limit = 30;
         var maxPages = 1000;
@@ -392,16 +403,28 @@
             var activityView = this.activity.render && this.activity.render(true);
             if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            deps.detail(object.collectionId, limit, 0, {timeout: 8000, retry: false}).then(function (payload) {
+            if (!collectionId) {
+                var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
+                states.offline({
+                    title: deps.t('collection_load_error'),
+                    onRetry: function () { self.create(); }
+                });
+                self.activity.toggle();
+                states.focus();
+                return;
+            }
+            deps.detail(collectionId, limit, 0, {timeout: 8000, retry: false, staleFallback: true}).then(function (payload) {
                 var collection = responseValue(payload) || {};
                 var anime = Array.isArray(collection.animes) ? collection.animes : [];
                 var cards = detailCards(collection);
                 if (anime.length < limit) object.page = maxPages;
                 self.build({results: cards, total_pages: maxPages, title: collection.title || deps.t('collection')});
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-collection-view');
                 if (!cards.length) deps.error(deps.t('collection_empty'));
             }).catch(function (error) {
                 console.error('[YummyAnime Collection]', error);
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
                 states.offline({
                     title: deps.t('collection_load_error'),
@@ -413,7 +436,7 @@
         };
         comp.nextPageReuest = function (requestObject, resolve, reject) {
             var offset = Math.max(0, (Number(requestObject.page || 2) - 1) * limit);
-            deps.detail(object.collectionId, limit, offset, {timeout: 8000, retry: false}).then(function (payload) {
+            deps.detail(collectionId, limit, offset, {timeout: 8000, retry: false, staleFallback: true}).then(function (payload) {
                 var collection = responseValue(payload) || {};
                 var anime = Array.isArray(collection.animes) ? collection.animes : [];
                 if (anime.length < limit) requestObject.page = maxPages;

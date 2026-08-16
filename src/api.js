@@ -78,6 +78,41 @@
         Lampa.Storage.set(indexKey, JSON.stringify(keys));
     }
 
+    function queryString(params) {
+        var search = [];
+        Object.keys(params || {}).forEach(function (key) {
+            var value = params[key];
+            if (value === undefined || value === null || value === '') return;
+            if (typeof value === 'object') return;
+            search.push(encodeURIComponent(key) + '=' + encodeURIComponent(String(value)));
+        });
+        return search.join('&');
+    }
+
+    function settleTimeout(promise, timeoutMs) {
+        var timeout = Number(timeoutMs || 0);
+        if (!timeout) return promise;
+        return new Promise(function (resolve, reject) {
+            var completed = false;
+            var timer = setTimeout(function () {
+                if (completed) return;
+                completed = true;
+                reject(new Error('YummyAnime request timeout'));
+            }, timeout);
+            promise.then(function (value) {
+                if (completed) return;
+                completed = true;
+                clearTimeout(timer);
+                resolve(value);
+            }, function (error) {
+                if (completed) return;
+                completed = true;
+                clearTimeout(timer);
+                reject(error);
+            });
+        });
+    }
+
     function request(path, options) {
         options = options || {};
         if (options.auth && !options.authRefreshChecked && window.LampaYaniAuth && LampaYaniAuth.token() && LampaYaniAuth.refreshIfNeeded) {
@@ -104,12 +139,13 @@
             : '';
         if (pendingKey && pendingRequests[pendingKey]) return pendingRequests[pendingKey];
 
-        var operation = fetchWithRetry(config.apiBase + path, {
+        var timeoutMs = options.timeout || config.requestTimeout;
+        var operation = settleTimeout(fetchWithRetry(config.apiBase + path, {
             method: method,
             headers: headers,
             body: options.body,
             signal: options.signal
-        }, method === 'GET' && options.retry !== false, options.timeout).then(function (response) {
+        }, method === 'GET' && options.retry !== false, timeoutMs).then(function (response) {
             if (!response.ok) throw new Error('YummyAnime API: ' + response.status);
             return response.json();
         }).then(function (payload) {
@@ -118,7 +154,7 @@
                 rememberCacheKey(cacheKey);
             }
             return payload;
-        }).catch(function (error) {
+        }), timeoutMs).catch(function (error) {
             if (method === 'GET' && options.cache !== false && window.Lampa && Lampa.Storage) {
                 try {
                     var cached = JSON.parse(Lampa.Storage.get(cacheKey, 'null'));
@@ -183,8 +219,9 @@
             params.limit = params.limit || 20;
             return request('/anime?' + new URLSearchParams(params), {auth: true});
         },
+        queryString: queryString,
         catalog: function (params, options) {
-            return request('/anime?' + new URLSearchParams(params || {limit: 20}), Object.assign({auth: true}, options || {}));
+            return request('/anime?' + queryString(params || {limit: 20}), Object.assign({auth: true}, options || {}));
         },
         normalize: function (payload) {
             var response = payload && payload.response ? payload.response : payload;

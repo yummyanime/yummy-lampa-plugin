@@ -109,6 +109,7 @@
                     title: object.title || ('YummyAnime ' + t('top_rated')),
                     component: 'yani_top',
                     topMode: true,
+                    catalog_params: params,
                     params: params
                 });
                 return;
@@ -120,6 +121,7 @@
                 title: object.title || ('YummyAnime ' + t('catalog')),
                 component: 'yani_catalog',
                 genre_context: object.genre_context,
+                catalog_params: params,
                 params: params
             });
         }
@@ -130,6 +132,7 @@
                 title: object.title || ('YummyAnime ' + t('catalog')),
                 component: 'yani_catalog',
                 genre_context: object.genre_context,
+                catalog_params: params,
                 params: params
             });
         }

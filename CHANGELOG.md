@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.41 — 2026-08-16
+
+- Fix genre and collection pages hanging on load by isolating catalog query params from Lampa InteractionCategory and always clearing the activity loader
+
 ## 0.42.40 — 2026-08-16
 
 - Fix genre and collection pages getting stuck when the YummyAnime API is unavailable
