@@ -289,6 +289,7 @@
         var nextCatalogOffset = 0;
         var catalogDone = false;
         var catalogCards = [];
+        var destroyed = false;
 
         function uniqueCards(items) {
             return (items || []).map(function (collection) {
@@ -296,13 +297,7 @@
                 var key = id === undefined || id === null ? String(collection && collection.title || '') : String(id);
                 if (!key || seen[key]) return null;
                 seen[key] = true;
-                var card = collectionCard(collection);
-                card.params = {
-                    on: {
-                        'hover:enter': function () { deps.open(card.yani_collection); }
-                    }
-                };
-                return card;
+                return collectionCard(collection);
             }).filter(Boolean);
         }
 
@@ -334,6 +329,7 @@
                 deps.feed(control).catch(function (error) { return {__error: error}; }),
                 deps.load(limit, 0, control).catch(function (error) { return {__error: error}; })
             ]).then(function (payloads) {
+                if (destroyed) return;
                 var feedResponse = responseValue(payloads[0]) || {};
                 var feedItems = Array.isArray(feedResponse.collections) ? feedResponse.collections : [];
                 var catalogItems = payloads[1] && payloads[1].__error ? [] : collectionItems(payloads[1]);
@@ -344,7 +340,9 @@
                 catalogDone = catalogItems.length > 0 && catalogItems.length < limit;
                 buildInitial(self, items);
             }).catch(function (error) {
+                if (destroyed) return;
                 console.error('[YummyAnime Collections]', error);
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
                 states.offline({
                     title: deps.t('collections_load_error'),
@@ -389,6 +387,11 @@
         };
         comp.nextPageRequest = comp.nextPageReuest;
         comp.cardRender = function (first, second, third) { bindCollectionCard(first, second, third, deps); };
+        var originalCatalogDestroy = comp.destroy;
+        comp.destroy = function () {
+            destroyed = true;
+            if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
+        };
         return comp;
     }
 
@@ -398,6 +401,7 @@
         var limit = 30;
         var maxPages = 1000;
         var seen = {};
+        var destroyed = false;
 
         function detailCards(collection) {
             return (Array.isArray(collection.animes) ? collection.animes : []).map(deps.toCard).filter(function (card) {
@@ -412,14 +416,17 @@
             var self = this;
             this.activity.loader(true);
             deps.detail(object.collectionId, limit, 0).then(function (payload) {
+                if (destroyed) return;
                 var collection = responseValue(payload) || {};
                 var anime = Array.isArray(collection.animes) ? collection.animes : [];
                 var cards = detailCards(collection);
                 if (anime.length < limit) object.page = maxPages;
                 self.build({results: cards, total_pages: maxPages, title: collection.title || deps.t('collection')});
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-collection-view');
                 if (!cards.length) deps.error(deps.t('collection_empty'));
             }).catch(function (error) {
+                if (destroyed) return;
                 console.error('[YummyAnime Collection]', error);
                 self.activity.loader(false);
                 deps.error(deps.t('collection_load_error'));
@@ -440,6 +447,11 @@
         };
         comp.nextPageRequest = comp.nextPageReuest;
         comp.cardRender = deps.cardRender;
+        var originalDetailDestroy = comp.destroy;
+        comp.destroy = function () {
+            destroyed = true;
+            if (originalDetailDestroy) originalDetailDestroy.apply(this, arguments);
+        };
         return comp;
     }
 

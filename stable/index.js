@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.43',
+        version: '0.42.44',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -10373,6 +10373,7 @@ function pluginYummyAnime() {
         var nextCatalogOffset = 0;
         var catalogDone = false;
         var catalogCards = [];
+        var destroyed = false;
 
         function uniqueCards(items) {
             return (items || []).map(function (collection) {
@@ -10380,13 +10381,7 @@ function pluginYummyAnime() {
                 var key = id === undefined || id === null ? String(collection && collection.title || '') : String(id);
                 if (!key || seen[key]) return null;
                 seen[key] = true;
-                var card = collectionCard(collection);
-                card.params = {
-                    on: {
-                        'hover:enter': function () { deps.open(card.yani_collection); }
-                    }
-                };
-                return card;
+                return collectionCard(collection);
             }).filter(Boolean);
         }
 
@@ -10418,6 +10413,7 @@ function pluginYummyAnime() {
                 deps.feed(control).catch(function (error) { return {__error: error}; }),
                 deps.load(limit, 0, control).catch(function (error) { return {__error: error}; })
             ]).then(function (payloads) {
+                if (destroyed) return;
                 var feedResponse = responseValue(payloads[0]) || {};
                 var feedItems = Array.isArray(feedResponse.collections) ? feedResponse.collections : [];
                 var catalogItems = payloads[1] && payloads[1].__error ? [] : collectionItems(payloads[1]);
@@ -10428,7 +10424,9 @@ function pluginYummyAnime() {
                 catalogDone = catalogItems.length > 0 && catalogItems.length < limit;
                 buildInitial(self, items);
             }).catch(function (error) {
+                if (destroyed) return;
                 console.error('[YummyAnime Collections]', error);
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
                 states.offline({
                     title: deps.t('collections_load_error'),
@@ -10473,6 +10471,11 @@ function pluginYummyAnime() {
         };
         comp.nextPageRequest = comp.nextPageReuest;
         comp.cardRender = function (first, second, third) { bindCollectionCard(first, second, third, deps); };
+        var originalCatalogDestroy = comp.destroy;
+        comp.destroy = function () {
+            destroyed = true;
+            if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
+        };
         return comp;
     }
 
@@ -10482,6 +10485,7 @@ function pluginYummyAnime() {
         var limit = 30;
         var maxPages = 1000;
         var seen = {};
+        var destroyed = false;
 
         function detailCards(collection) {
             return (Array.isArray(collection.animes) ? collection.animes : []).map(deps.toCard).filter(function (card) {
@@ -10496,14 +10500,17 @@ function pluginYummyAnime() {
             var self = this;
             this.activity.loader(true);
             deps.detail(object.collectionId, limit, 0).then(function (payload) {
+                if (destroyed) return;
                 var collection = responseValue(payload) || {};
                 var anime = Array.isArray(collection.animes) ? collection.animes : [];
                 var cards = detailCards(collection);
                 if (anime.length < limit) object.page = maxPages;
                 self.build({results: cards, total_pages: maxPages, title: collection.title || deps.t('collection')});
+                if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-collection-view');
                 if (!cards.length) deps.error(deps.t('collection_empty'));
             }).catch(function (error) {
+                if (destroyed) return;
                 console.error('[YummyAnime Collection]', error);
                 self.activity.loader(false);
                 deps.error(deps.t('collection_load_error'));
@@ -10524,6 +10531,11 @@ function pluginYummyAnime() {
         };
         comp.nextPageRequest = comp.nextPageReuest;
         comp.cardRender = deps.cardRender;
+        var originalDetailDestroy = comp.destroy;
+        comp.destroy = function () {
+            destroyed = true;
+            if (originalDetailDestroy) originalDetailDestroy.apply(this, arguments);
+        };
         return comp;
     }
 
@@ -12197,7 +12209,7 @@ function pluginYummyAnime() {
     }
 
     function Catalog(object) {
-        var requestedParams = copyParams(object.params || {limit: 30, sort: 'top', sort_forward: true});
+        var requestedParams = copyParams(object.catalog_params || object.params || {limit: 30, sort: 'top', sort_forward: true});
         var comp = new Lampa.InteractionCategory(object);
         var topMode = Boolean(object.topMode);
         var baseParams = requestedParams;
@@ -12207,6 +12219,7 @@ function pluginYummyAnime() {
         var requestedOffsets = {};
         var genreHeader;
         var genreDescriptionRequested = false;
+        var destroyed = false;
 
         object.page = 1;
         baseParams.limit = limit;
@@ -12278,15 +12291,18 @@ function pluginYummyAnime() {
             this.activity.loader(true);
             LampaYaniApi.catalog(baseParams)
                 .then(function (payload) {
+                    if (destroyed) return;
                     var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
                     var results = mapUniqueCards(raw, seen);
                     requestedOffsets[baseParams.offset] = true;
                     if (raw.length < limit) object.page = maxPages;
                     self.build({results: results, total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
+                    if (self.activity && self.activity.loader) self.activity.loader(false);
                     installGenreHeader();
                     controls.install();
                 })
                 .catch(function (error) {
+                    if (destroyed) return;
                     console.error('[YummyAnime]', error);
                     self.activity.loader(false);
                     Lampa.Noty.show(t('catalog_load_error'));
@@ -12302,6 +12318,7 @@ function pluginYummyAnime() {
             requestedOffsets[params.offset] = true;
 
             LampaYaniApi.catalog(params).then(function (payload) {
+                if (destroyed) return reject(new Error('YummyAnime catalog was closed'));
                 var raw = annotateGenreTop(LampaYaniApi.normalize(payload), params.offset);
                 var results = mapUniqueCards(raw, seen);
                 if (raw.length < limit) requestObject.page = maxPages;
@@ -12319,6 +12336,7 @@ function pluginYummyAnime() {
         comp.cardRender = bindYummyCardRender;
         var originalCatalogDestroy = comp.destroy;
         comp.destroy = function () {
+            destroyed = true;
             controls.destroy();
             if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
         };
@@ -13635,11 +13653,13 @@ function pluginYummyAnime() {
         object.page = 1;
         var comp = new Lampa.InteractionCategory(object);
         var genreCards = [];
+        var destroyed = false;
 
         comp.create = function () {
             var self = this;
             this.activity.loader(true);
             loadGenreList().then(function (genres) {
+                if (destroyed) return;
                 genreCards = genreTilesRow(genres).results;
                 self.build({results: genreCards, total_pages: 1, title: t('genres')});
                 if (self.activity && self.activity.loader) self.activity.loader(false);
@@ -13648,6 +13668,7 @@ function pluginYummyAnime() {
                 setTimeout(function () { bindGenreTiles(self, genreCards); }, 0);
                 if (!genreCards.length) Lampa.Noty.show(t('genres_empty'));
             }).catch(function (error) {
+                if (destroyed) return;
                 console.error('[YummyAnime Genres]', error);
                 self.activity.loader(false);
                 Lampa.Noty.show(t('genres_load_error'));
@@ -13669,6 +13690,12 @@ function pluginYummyAnime() {
             if (!card && node && node.card_data && node.card_data.yani_genre_tile) card = node.card_data;
             if (!element || !card) return;
             bindGenreTile(element.jquery ? element : $(element), card);
+        };
+
+        var originalGenresDestroy = comp.destroy;
+        comp.destroy = function () {
+            destroyed = true;
+            if (originalGenresDestroy) originalGenresDestroy.apply(this, arguments);
         };
 
         return comp;
@@ -15448,24 +15475,14 @@ function pluginYummyAnime() {
                 poster: poster,
                 img: poster,
                 yani_genre_tile: true,
-                yani_genre: genre,
-                params: {
-                    on: {
-                        'hover:enter': function () { openGenreCatalog(genre); }
-                    }
-                }
+                yani_genre: genre
             };
         });
         return {
             title: t('genre_tiles') + ' · ' + cards.length,
             yani_genre_tiles: true,
             results: cards,
-            nomore: true,
-            card_events: {
-                onEnter: function (target, card) {
-                    if (card && card.yani_genre) openGenreCatalog(card.yani_genre);
-                }
-            }
+            nomore: true
         };
     }
 

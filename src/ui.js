@@ -358,7 +358,7 @@
     }
 
     function Catalog(object) {
-        var requestedParams = copyParams(object.params || {limit: 30, sort: 'top', sort_forward: true});
+        var requestedParams = copyParams(object.catalog_params || object.params || {limit: 30, sort: 'top', sort_forward: true});
         var comp = new Lampa.InteractionCategory(object);
         var topMode = Boolean(object.topMode);
         var baseParams = requestedParams;
@@ -368,6 +368,7 @@
         var requestedOffsets = {};
         var genreHeader;
         var genreDescriptionRequested = false;
+        var destroyed = false;
 
         object.page = 1;
         baseParams.limit = limit;
@@ -439,15 +440,18 @@
             this.activity.loader(true);
             LampaYaniApi.catalog(baseParams)
                 .then(function (payload) {
+                    if (destroyed) return;
                     var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
                     var results = mapUniqueCards(raw, seen);
                     requestedOffsets[baseParams.offset] = true;
                     if (raw.length < limit) object.page = maxPages;
                     self.build({results: results, total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
+                    if (self.activity && self.activity.loader) self.activity.loader(false);
                     installGenreHeader();
                     controls.install();
                 })
                 .catch(function (error) {
+                    if (destroyed) return;
                     console.error('[YummyAnime]', error);
                     self.activity.loader(false);
                     Lampa.Noty.show(t('catalog_load_error'));
@@ -463,6 +467,7 @@
             requestedOffsets[params.offset] = true;
 
             LampaYaniApi.catalog(params).then(function (payload) {
+                if (destroyed) return reject(new Error('YummyAnime catalog was closed'));
                 var raw = annotateGenreTop(LampaYaniApi.normalize(payload), params.offset);
                 var results = mapUniqueCards(raw, seen);
                 if (raw.length < limit) requestObject.page = maxPages;
@@ -480,6 +485,7 @@
         comp.cardRender = bindYummyCardRender;
         var originalCatalogDestroy = comp.destroy;
         comp.destroy = function () {
+            destroyed = true;
             controls.destroy();
             if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
         };
@@ -1796,11 +1802,13 @@
         object.page = 1;
         var comp = new Lampa.InteractionCategory(object);
         var genreCards = [];
+        var destroyed = false;
 
         comp.create = function () {
             var self = this;
             this.activity.loader(true);
             loadGenreList().then(function (genres) {
+                if (destroyed) return;
                 genreCards = genreTilesRow(genres).results;
                 self.build({results: genreCards, total_pages: 1, title: t('genres')});
                 if (self.activity && self.activity.loader) self.activity.loader(false);
@@ -1809,6 +1817,7 @@
                 setTimeout(function () { bindGenreTiles(self, genreCards); }, 0);
                 if (!genreCards.length) Lampa.Noty.show(t('genres_empty'));
             }).catch(function (error) {
+                if (destroyed) return;
                 console.error('[YummyAnime Genres]', error);
                 self.activity.loader(false);
                 Lampa.Noty.show(t('genres_load_error'));
@@ -1830,6 +1839,12 @@
             if (!card && node && node.card_data && node.card_data.yani_genre_tile) card = node.card_data;
             if (!element || !card) return;
             bindGenreTile(element.jquery ? element : $(element), card);
+        };
+
+        var originalGenresDestroy = comp.destroy;
+        comp.destroy = function () {
+            destroyed = true;
+            if (originalGenresDestroy) originalGenresDestroy.apply(this, arguments);
         };
 
         return comp;
@@ -3609,24 +3624,14 @@
                 poster: poster,
                 img: poster,
                 yani_genre_tile: true,
-                yani_genre: genre,
-                params: {
-                    on: {
-                        'hover:enter': function () { openGenreCatalog(genre); }
-                    }
-                }
+                yani_genre: genre
             };
         });
         return {
             title: t('genre_tiles') + ' · ' + cards.length,
             yani_genre_tiles: true,
             results: cards,
-            nomore: true,
-            card_events: {
-                onEnter: function (target, card) {
-                    if (card && card.yani_genre) openGenreCatalog(card.yani_genre);
-                }
-            }
+            nomore: true
         };
     }
 

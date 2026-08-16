@@ -15,7 +15,7 @@ assert.match(uiSource, /function Catalog\(object\)[\s\S]{0,5000}LampaYaniCatalog
 assert.match(uiSource, /function installGenreHeader\(\)/);
 assert.match(uiSource, /genre_context: context/);
 assert.match(uiSource, /params: \{limit: 30, genres: genreId\}/);
-assert.match(uiSource, /var requestedParams = copyParams\(object\.params/);
+assert.match(uiSource, /var requestedParams = copyParams\(object\.catalog_params \|\| object\.params/);
 assert.match(uiSource, /LampaYaniApi\.catalog\(baseParams\)/);
 assert.match(uiSource, /function genreDescription\(genre\)/);
 assert.match(uiSource, /LampaYaniGenreDescriptions\.resolve\(genre, locale\(\)\)/);

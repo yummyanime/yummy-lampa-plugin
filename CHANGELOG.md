@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.44 — 2026-08-16
+
+- Fix tile hub return navigation by removing duplicate enter handlers and ignoring late responses after a screen closes
+- Fix loading indicators persisting after genre and collection pages finish or fail
+
 ## 0.42.43 — 2026-08-16
 
 - Fix duplicate genre and collection navigation entries that caused loading screens when returning to tile hubs
