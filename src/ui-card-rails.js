@@ -121,6 +121,8 @@
         var loadingPage = false;
         var finished = false;
         var renderedRows = 0;
+        var boundaryTimer = 0;
+        var retryAfter = 0;
 
         function prepare(rows) {
             return (rows || []).filter(Boolean).map(function (row) {
@@ -141,6 +143,7 @@
                 if (reject) reject();
                 return;
             }
+            if (Date.now() < retryAfter) return;
             // A second end-of-scroll tick while a page is in flight must not
             // reject: Lampa treats reject as "no more rows" and never asks again.
             if (loadingPage) return;
@@ -168,6 +171,7 @@
 
             attempt(nextPage, 0).catch(function (error) {
                 loadingPage = false;
+                retryAfter = Date.now() + 3000;
                 if (reject) reject(error);
                 else if (deps.onError) deps.onError(error);
             });
@@ -204,6 +208,14 @@
             component.scroll.onEnd = function () {
                 loadIfBoundary(rowCount() - 1);
             };
+        }
+
+        function startBoundaryWatcher() {
+            if (boundaryTimer || typeof setInterval !== 'function') return;
+            boundaryTimer = setInterval(function () {
+                if (destroyed || finished || loadingPage) return;
+                loadIfBoundary(Number(component.active || 0));
+            }, 300);
         }
 
         function bindRowTriggers() {
@@ -262,6 +274,7 @@
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
                 bindScrollEnd();
                 bindRowTriggers();
+                startBoundaryWatcher();
                 // The first end-of-scroll event is easy to miss on TV (4 rows
                 // and a 1s InteractionMain guard). Prefetch the next batch so
                 // the fifth row is already on the way when the user reaches it.
@@ -310,6 +323,8 @@
         var originalDestroy = component.destroy;
         component.destroy = function () {
             destroyed = true;
+            if (boundaryTimer) clearInterval(boundaryTimer);
+            boundaryTimer = 0;
             if (originalDestroy) originalDestroy.apply(this, arguments);
         };
         return component;

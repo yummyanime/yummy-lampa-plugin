@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.28 — 2026-08-16
+
+- Fix repeated four-row loading without relying on Lampa scroll events
+
 ## 0.42.27 — 2026-08-16
 
 - Fix Genres and Collections stopping after the eighth hub row

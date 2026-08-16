@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.27',
+        version: '0.42.28',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -6077,6 +6077,8 @@ function pluginYummyAnime() {
         var loadingPage = false;
         var finished = false;
         var renderedRows = 0;
+        var boundaryTimer = 0;
+        var retryAfter = 0;
 
         function prepare(rows) {
             return (rows || []).filter(Boolean).map(function (row) {
@@ -6097,6 +6099,7 @@ function pluginYummyAnime() {
                 if (reject) reject();
                 return;
             }
+            if (Date.now() < retryAfter) return;
             // A second end-of-scroll tick while a page is in flight must not
             // reject: Lampa treats reject as "no more rows" and never asks again.
             if (loadingPage) return;
@@ -6124,6 +6127,7 @@ function pluginYummyAnime() {
 
             attempt(nextPage, 0).catch(function (error) {
                 loadingPage = false;
+                retryAfter = Date.now() + 3000;
                 if (reject) reject(error);
                 else if (deps.onError) deps.onError(error);
             });
@@ -6160,6 +6164,14 @@ function pluginYummyAnime() {
             component.scroll.onEnd = function () {
                 loadIfBoundary(rowCount() - 1);
             };
+        }
+
+        function startBoundaryWatcher() {
+            if (boundaryTimer || typeof setInterval !== 'function') return;
+            boundaryTimer = setInterval(function () {
+                if (destroyed || finished || loadingPage) return;
+                loadIfBoundary(Number(component.active || 0));
+            }, 300);
         }
 
         function bindRowTriggers() {
@@ -6218,6 +6230,7 @@ function pluginYummyAnime() {
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
                 bindScrollEnd();
                 bindRowTriggers();
+                startBoundaryWatcher();
                 // The first end-of-scroll event is easy to miss on TV (4 rows
                 // and a 1s InteractionMain guard). Prefetch the next batch so
                 // the fifth row is already on the way when the user reaches it.
@@ -6266,6 +6279,8 @@ function pluginYummyAnime() {
         var originalDestroy = component.destroy;
         component.destroy = function () {
             destroyed = true;
+            if (boundaryTimer) clearInterval(boundaryTimer);
+            boundaryTimer = 0;
             if (originalDestroy) originalDestroy.apply(this, arguments);
         };
         return component;

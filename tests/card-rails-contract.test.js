@@ -24,6 +24,8 @@ assert.match(source, /function requestNext\(resolve, reject\)/);
 assert.match(source, /function bindScrollEnd/);
 assert.match(source, /function bindRowTriggers/);
 assert.match(source, /function loadIfBoundary/);
+assert.match(source, /function startBoundaryWatcher/);
+assert.match(source, /setInterval\(function \(\) \{[\s\S]{0,180}loadIfBoundary\(Number\(component\.active \|\| 0\)\)/);
 assert.match(source, /function mountInteraction/);
 assert.match(source, /if \(loadingPage\) return/);
 assert.match(source, /component\.nextPageReuest/);
@@ -34,7 +36,19 @@ assert.match(css, /\.yani-card-rails \.items-cards \.card[\s\S]{0,350}flex:\s*0 
 assert.match(css, /\.yani-user-lists-view \.items-cards \.card[\s\S]{0,350}width:\s*12\.75em/);
 assert.doesNotMatch(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}width:\s*revert/);
 
-const context = {window: {}, isFinite: isFinite, Number: Number, Math: Math};
+let boundaryTick = null;
+const context = {
+    window: {},
+    isFinite: isFinite,
+    Number: Number,
+    Math: Math,
+    Date: Date,
+    setInterval: function (callback) {
+        boundaryTick = callback;
+        return 1;
+    },
+    clearInterval: function () {}
+};
 vm.runInNewContext(source, context);
 const rails = context.window.LampaYaniCardRails;
 assert.strictEqual(rails.rowNeedsMore(3, 4, 4), true, 'the 4th row must request the next batch');
@@ -96,14 +110,15 @@ const component = rails.create({}, {
     assert.ok(loadedPages.some(function (item) { return item[0] === 1; }), 'the next rail batch must be prefetched after the first four rows');
     assert.ok(builds.length >= 1);
     assert.equal(typeof component.scroll.onEnd, 'function');
+    assert.equal(typeof boundaryTick, 'function');
     assert.equal(builds[0][0].title, 'Page 0 row 0');
     component.active = 7;
-    component.scroll.onEnd();
+    boundaryTick();
     await Promise.resolve();
     await Promise.resolve();
     assert.ok(loadedPages.some(function (item) { return item[0] === 2; }), 'the 8th row must request the following batch');
     component.active = 11;
-    component.scroll.onEnd();
+    boundaryTick();
     await Promise.resolve();
     await Promise.resolve();
     assert.ok(loadedPages.some(function (item) { return item[0] === 3; }), 'the 12th row must keep requesting while data remains');
