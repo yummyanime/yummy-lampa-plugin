@@ -217,6 +217,18 @@
                 card_events: {
                     onEnter: function (target, card) {
                         if (card && card.yani_collection) deps.open(card.yani_collection);
+                    },
+                    onFocus: function (target, card) {
+                        // Lazily add text overlay when cardRender did not run
+                        if (!card || !card.yani_collection_tile || !target) return;
+                        var view = $(target).find('.card__view').first();
+                        if (!view.length || view.find('.yani-collection-tile-card__copy').length) return;
+                        var copy = $('<div class="yani-collection-tile-card__copy"></div>');
+                        copy.append($('<strong></strong>').text(card.title || ''));
+                        if (card.yani_collection_count) {
+                            copy.append($('<span></span>').text(card.yani_collection_count + ' ' + deps.t('anime_count')));
+                        }
+                        view.append(copy);
                     }
                 }
             };

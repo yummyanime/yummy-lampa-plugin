@@ -2609,6 +2609,7 @@ body > .yani-skip-prompt {
 .yani-genre-catalog-header__title { display: block; margin-top: .06em; font-size: 1.35em; line-height: 1.08; }
 .yani-genre-catalog-header__description { max-width: 62em; margin: .32em 0 0; color: rgba(255, 255, 255, .68); font-size: .78em; line-height: 1.38; white-space: normal; }
 
+/* Per-card selectors (when cardRender successfully adds the class) */
 .yani-card-rails .items-cards .card.yani-genre-tile-card {
     flex-basis: 11.2em;
     width: 11.2em;
@@ -2632,6 +2633,33 @@ body > .yani-skip-prompt {
     box-shadow: 0 0 0 .16em #fff, 0 0 0 .34em rgba(255,104,120,.52), 0 .65em 1.4em rgba(0,0,0,.32);
     transform: translateY(-.12em) scale(1.035);
 }
+/* Row-level selectors (primary path — applied by markTilesLines after build) */
+.yani-genre-tiles-line .card {
+    flex: 0 0 11.2em !important;
+    width: 11.2em !important;
+}
+.yani-genre-tiles-line .card .card__view {
+    padding-bottom: 45.45% !important;
+    border: .08em solid rgba(255,255,255,.16);
+    border-radius: .75em;
+    box-shadow: 0 .45em 1.15em rgba(0,0,0,.24);
+}
+.yani-genre-tiles-line .card .card__img,
+.yani-genre-tiles-line .card .card__view img {
+    border-radius: .68em;
+    object-fit: cover;
+}
+.yani-genre-tiles-line .card .card__title,
+.yani-genre-tiles-line .card .card__age,
+.yani-genre-tiles-line .card .yani-card-meta { display: none !important; }
+.yani-genre-tiles-line .card.focus .card__view {
+    border-color: #fff;
+    box-shadow: 0 0 0 .16em #fff, 0 0 0 .34em rgba(255,104,120,.52), 0 .65em 1.4em rgba(0,0,0,.32);
+    transform: translateY(-.12em) scale(1.035);
+}
+.yani-genre-tiles-line .card.focus .card__view::after,
+.yani-genre-tiles-line .card.hover .card__view::after { display: none; }
+/* Per-card selectors (when cardRender successfully adds the class) */
 .yani-card-rails .items-cards .card.yani-collection-tile-card {
     flex-basis: 13.2em;
     width: 13.2em;
@@ -2685,6 +2713,39 @@ body > .yani-skip-prompt {
     font-weight: 600;
 }
 .yani-collection-tile-card.focus .card__view {
+    border-color: #fff;
+    box-shadow: 0 0 0 .16em #fff, 0 0 0 .34em rgba(166,138,240,.55), 0 .65em 1.4em rgba(0,0,0,.32);
+    transform: translateY(-.12em) scale(1.035);
+}
+/* Row-level selectors (primary path — applied by markTilesLines after build) */
+.yani-collection-tiles-line .card {
+    flex: 0 0 13.2em !important;
+    width: 13.2em !important;
+}
+.yani-collection-tiles-line .card .card__view {
+    padding-bottom: 56.25% !important;
+    overflow: hidden;
+    border: .08em solid rgba(255,255,255,.16);
+    border-radius: .78em;
+    box-shadow: 0 .45em 1.15em rgba(0,0,0,.24);
+}
+.yani-collection-tiles-line .card .card__view::after {
+    position: absolute;
+    z-index: 2;
+    inset: 30% 0 0;
+    background: linear-gradient(180deg, transparent, rgba(11,10,18,.92));
+    content: '';
+    pointer-events: none;
+}
+.yani-collection-tiles-line .card .card__img,
+.yani-collection-tiles-line .card .card__view img {
+    border-radius: .7em;
+    object-fit: cover;
+}
+.yani-collection-tiles-line .card .card__title,
+.yani-collection-tiles-line .card .card__age,
+.yani-collection-tiles-line .card .yani-card-meta { display: none !important; }
+.yani-collection-tiles-line .card.focus .card__view {
     border-color: #fff;
     box-shadow: 0 0 0 .16em #fff, 0 0 0 .34em rgba(166,138,240,.55), 0 .65em 1.4em rgba(0,0,0,.32);
     transform: translateY(-.12em) scale(1.035);

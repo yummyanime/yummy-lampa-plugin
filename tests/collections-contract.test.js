@@ -46,6 +46,8 @@ assert.match(css, /\.yani-collection-card__previews/);
 assert.match(css, /\.yani-collection-card__meta/);
 assert.match(css, /\.yani-collection-tile-card \.card__view/);
 assert.match(css, /\.yani-collection-tile-card\.focus \.card__view/);
+assert.match(css, /\.yani-collection-tiles-line \.card .card__view/);
+assert.match(collections, /onFocus: function \(target, card\)/);
 
 const context = {window: {}};
 vm.runInNewContext(collections, context);

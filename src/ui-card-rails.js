@@ -180,6 +180,28 @@
             return step();
         }
 
+        // Lampa's compiled build may call cardRender with only the DOM node,
+        // so class-per-card is unreliable. Instead, mark the items-line container
+        // for the tiles row by position, letting CSS handle all cards inside it.
+        function markTilesLines(self, rows) {
+            var body = self.scroll && self.scroll.body ? self.scroll.body(true) : null;
+            if (!body && self.scroll && self.scroll.render) {
+                var root = self.scroll.render(true);
+                body = root && root.querySelector ? root.querySelector('.scroll__body') : root;
+            }
+            if (!body) return;
+            var bodyNode = body.jquery ? body[0] : body;
+            if (!bodyNode || !bodyNode.querySelectorAll) return;
+            var allLines = bodyNode.querySelectorAll('.items-line');
+            rows.forEach(function (row, i) {
+                if (!row) return;
+                var line = allLines[i];
+                if (!line) return;
+                if (row.yani_genre_tiles) line.className += ' yani-genre-tiles-line';
+                else if (row.yani_collection_tiles) line.className += ' yani-collection-tiles-line';
+            });
+        }
+
         function prependHeader(self, node) {
             if (!node) return;
             var element = node.jquery ? node[0] : node;
@@ -220,9 +242,11 @@
             Promise.all([header, loadAllRows()]).then(function (result) {
                 if (destroyed) return;
                 var rows = (result[1] || []).filter(Boolean);
-                self.build(prepare(rows));
+                var preparedRows = prepare(rows);
+                self.build(preparedRows);
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
                 prependHeader(self, result[0]);
+                markTilesLines(self, preparedRows);
             }).catch(function (error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Card Rails]', error);
