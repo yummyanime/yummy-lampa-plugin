@@ -29,6 +29,7 @@ assert.match(source, /yani_more: true/);
 assert.match(source, /yani-card-rails/);
 assert.match(source, /function mapLimit/);
 assert.match(source, /render\.addClass\('yani-genre-tile-card'\)/);
+assert.match(source, /node && node\.card_data/);
 assert.match(source, /row\.yani_genre_tiles \|\| row\.yani_collection_tiles/);
 assert.match(source, /render\.addClass\('yani-collection-tile-card'\)/);
 assert.match(source, /function loadAllRows/);
@@ -47,7 +48,18 @@ assert.match(css, /\.yani-card-rails \.items-cards \.card[\s\S]{0,350}flex:\s*0 
 assert.match(css, /\.yani-user-lists-view \.items-cards \.card[\s\S]{0,350}width:\s*12\.75em/);
 assert.doesNotMatch(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}width:\s*revert/);
 
-const context = {window: {}};
+const addedClasses = [];
+const context = {
+    window: {},
+    $: function (element) {
+        return {
+            addClass: function (name) {
+                addedClasses.push([element, name]);
+                return this;
+            }
+        };
+    }
+};
 vm.runInNewContext(source, context);
 const rails = context.window.LampaYaniCardRails;
 const line = rails.withMore({
@@ -83,6 +95,9 @@ const component = rails.create({}, {
         });
     }
 });
+const renderedGenreTile = {nodeType: 1, card_data: {yani_genre_tile: true}};
+component.cardRender(renderedGenreTile);
+assert.deepStrictEqual(addedClasses, [[renderedGenreTile, 'yani-genre-tile-card']]);
 
 (async function () {
     component.create();

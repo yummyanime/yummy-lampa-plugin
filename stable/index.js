@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.35',
+        version: '0.42.36',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -6008,6 +6008,13 @@ function pluginYummyAnime() {
                 if (candidate && (candidate.yani_more || candidate.yani_genre_tile || candidate.yani_collection_tile || candidate.yani_id)) card = candidate;
             }
         });
+        // Current Lampa builds can call cardRender with the rendered node only.
+        // Card stores the original payload on that node as `card_data`.
+        var node = element && element.jquery ? element[0] : element;
+        if (!card && node && node.card_data) {
+            var data = node.card_data;
+            if (data.yani_more || data.yani_genre_tile || data.yani_collection_tile || data.yani_id) card = data;
+        }
         if (!element && card && card.render) element = card.render(true);
         return {card: card, element: element};
     }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.36 — 2026-08-16
+
+- Fix genre and collection shortcut cards using Lampa's node-only render callback
+
 ## 0.42.35 — 2026-08-16
 
 - Add a TV-native collection shortcut row above collection rails
