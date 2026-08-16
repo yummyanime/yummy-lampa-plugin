@@ -163,6 +163,65 @@
             });
         }
 
+        function ensureAllCollections() {
+            return loadCollectionList().then(function () {
+                if (catalogDone) return collections;
+                return deps.load(20, catalogOffset).then(function (payload) {
+                    rememberCatalogPage(payload);
+                    return ensureAllCollections();
+                }).catch(function () {
+                    catalogDone = true;
+                    return collections;
+                });
+            });
+        }
+
+        function collectionTileFallback(title, index) {
+            var colors = [
+                ['#a68af0', '#6653b4'],
+                ['#ef7086', '#954e86'],
+                ['#58b9c3', '#3564a5'],
+                ['#e4a15c', '#b84f68']
+            ][index % 4];
+            var raw = String(title || '');
+            var display = raw.length > 24 ? raw.slice(0, 23) + '…' : raw;
+            var label = display.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            var size = display.length > 18 ? 25 : display.length > 13 ? 28 : 32;
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="440" height="248" viewBox="0 0 440 248">' +
+                '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="' + colors[0] + '"/><stop offset="1" stop-color="' + colors[1] + '"/></linearGradient></defs>' +
+                '<rect width="440" height="248" rx="28" fill="url(#g)"/><circle cx="370" cy="40" r="125" fill="#fff" opacity=".1"/>' +
+                '<path d="M48 65 112 38l64 27-64 27-64-27Zm0 40 64 27 64-27m-128 40 64 27 64-27" fill="none" stroke="#fff" stroke-opacity=".72" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>' +
+                '<text x="205" y="205" fill="#fff" font-family="sans-serif" font-size="' + size + '" font-weight="700">' + label + '</text></svg>';
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        }
+
+        function collectionTilesRow(list) {
+            var cards = (list || []).map(function (collection, index) {
+                var title = collection.title || collection.name || deps.t('collection');
+                var previews = previewPosters(collection);
+                var poster = previews[0] || collectionTileFallback(title, index);
+                return {
+                    title: title,
+                    poster: poster,
+                    img: poster,
+                    yani_collection_tile: true,
+                    yani_collection: collection,
+                    yani_collection_count: Number(collection.animes_count || collection.count || collection.total || (collection.animes || []).length || 0)
+                };
+            });
+            return {
+                title: deps.t('collections') + ' · ' + cards.length,
+                yani_collection_tiles: true,
+                results: cards,
+                nomore: true,
+                card_events: {
+                    onEnter: function (target, card) {
+                        if (card && card.yani_collection) deps.open(card.yani_collection);
+                    }
+                }
+            };
+        }
+
         function rowFor(collection) {
             var existing = Array.isArray(collection.animes) ? collection.animes : [];
             var load = existing.length
@@ -192,11 +251,13 @@
         function loadPage(page, size) {
             size = Math.max(1, Number(size || pageSize));
             var offset = Math.max(0, Number(page || 0)) * size;
-            return ensureCollections(offset + size).then(function (list) {
+            var source = Number(page || 0) === 0 ? ensureAllCollections() : ensureCollections(offset + size);
+            return source.then(function (list) {
                 var batch = list.slice(offset, offset + size);
                 if (!batch.length) return [];
                 return window.LampaYaniCardRails.mapLimit(batch, size, rowFor).then(function (rows) {
-                    return rows.filter(Boolean);
+                    rows = rows.filter(Boolean);
+                    return Number(page || 0) === 0 ? [collectionTilesRow(list)].concat(rows) : rows;
                 });
             });
         }

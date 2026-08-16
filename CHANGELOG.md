@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.42.35 — 2026-08-16
+
+- Add a TV-native collection shortcut row above collection rails
+
+## 0.42.34 — 2026-08-16
+
+- Refactor genre shortcuts into a TV-native horizontal card row
+
+## 0.42.33 — 2026-08-16
+
+- Fix catalog rendering after adding genre shortcut tiles
+
 ## 0.42.32 — 2026-08-16
 
 - Add genre shortcut tiles above the Genres hub rows

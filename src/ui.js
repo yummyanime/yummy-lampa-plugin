@@ -1768,11 +1768,6 @@
             openCard: function (card) { openYummyDetail(card, false); },
             onError: function () { Lampa.Noty.show(t('genres_load_error')); },
             pageSize: 8,
-            header: function (component, api) {
-                return loadGenreList().then(function (genres) {
-                    if (api && api.prepend) api.prepend(renderGenreTiles(genres));
-                });
-            },
             loadPage: createGenreRowLoader()
         });
     }
@@ -3520,64 +3515,92 @@
         return genreListRequest;
     }
 
-    function renderGenreTiles(genres) {
-        var wrap = $('<div class="yani-genre-tiles"></div>');
-        wrap.append($('<div class="yani-genre-tiles__title"></div>').text(t('genre_tiles')));
-        var grid = $('<div class="yani-genre-tiles__grid"></div>');
-        (genres || []).forEach(function (genre) {
+    function genreTilePoster(title, index) {
+        var colors = [
+            ['#ff6878', '#825ed8'],
+            ['#50c5b7', '#256ca9'],
+            ['#f0a45d', '#d34d74'],
+            ['#8b79ed', '#4c60b8']
+        ][index % 4];
+        var raw = String(title || '');
+        var display = raw.length > 20 ? raw.slice(0, 19) + '…' : raw;
+        var label = display.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        var mark = raw.charAt(0).toUpperCase();
+        var size = display.length > 15 ? 27 : display.length > 11 ? 30 : 34;
+        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="440" height="200" viewBox="0 0 440 200">' +
+            '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="' + colors[0] + '"/><stop offset="1" stop-color="' + colors[1] + '"/></linearGradient></defs>' +
+            '<rect width="440" height="200" rx="28" fill="url(#g)"/>' +
+            '<circle cx="388" cy="30" r="118" fill="#fff" opacity=".09"/><circle cx="388" cy="30" r="72" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="3"/>' +
+            '<text x="34" y="96" fill="#fff" fill-opacity=".28" font-family="sans-serif" font-size="86" font-weight="800">' + mark + '</text>' +
+            '<text x="34" y="155" fill="#fff" font-family="sans-serif" font-size="' + size + '" font-weight="700">' + label + '</text>' +
+            '<path d="m378 138 20 0m-7-7 7 7-7 7" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
+
+    function genreTilesRow(genres) {
+        var cards = (genres || []).map(function (genre, index) {
             var title = genreTitle(genre);
-            var tile = $('<div class="yani-genre-tile selector"></div>');
-            tile.append($('<span class="yani-genre-tile__mark" aria-hidden="true"></span>').text(title.charAt(0)));
-            tile.append($('<span class="yani-genre-tile__name"></span>').text(title));
-            tile.on('hover:enter click.yaniGenreTile', function (event) {
-                if (event) {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                }
-                openGenreCatalog(genre);
-            });
-            grid.append(tile);
+            var poster = genreTilePoster(title, index);
+            return {
+                title: title,
+                poster: poster,
+                img: poster,
+                yani_genre_tile: true,
+                yani_genre: genre
+            };
         });
-        wrap.append(grid);
-        return wrap;
+        return {
+            title: t('genre_tiles') + ' · ' + cards.length,
+            yani_genre_tiles: true,
+            results: cards,
+            nomore: true,
+            card_events: {
+                onEnter: function (target, card) {
+                    if (card && card.yani_genre) openGenreCatalog(card.yani_genre);
+                }
+            }
+        };
     }
 
     function createGenreRowLoader() {
         function loadGenreRows(page) {
             if (Number(page || 0) > 0) return Promise.resolve([]);
-            if (genreHubRows && Date.now() - genreHubRowsAt < GENRE_HUB_TTL) return Promise.resolve(genreHubRows);
-            if (genreHubRequest) return genreHubRequest;
-            genreHubRequest = loadGenreList().then(function (genres) {
-                return LampaYaniCardRails.mapLimit(genres, GENRE_HUB_CONCURRENCY, function (genre) {
-                    var id = genreValue(genre);
-                    return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}, {
-                        cacheTtl: GENRE_HUB_TTL,
-                        staleFallback: true
-                    }).then(function (payload) {
-                        var items = LampaYaniApi.normalize(payload).slice(0, 10);
-                        if (!items.length) return null;
-                        return {
-                            title: genreTitle(genre),
-                            results: items.map(toCard),
-                            onMore: function () { openGenreCatalog(genre); },
-                            visual: {
-                                from: '#ff6878',
-                                to: '#825ed8',
-                                icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
-                            }
-                        };
-                    }).catch(function () { return null; });
+            return loadGenreList().then(function (genres) {
+                var tiles = genreTilesRow(genres);
+                if (genreHubRows && Date.now() - genreHubRowsAt < GENRE_HUB_TTL) return [tiles].concat(genreHubRows);
+                if (genreHubRequest) return genreHubRequest.then(function (rows) { return [tiles].concat(rows); });
+                genreHubRequest = Promise.resolve().then(function () {
+                    return LampaYaniCardRails.mapLimit(genres, GENRE_HUB_CONCURRENCY, function (genre) {
+                        var id = genreValue(genre);
+                        return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}, {
+                            cacheTtl: GENRE_HUB_TTL,
+                            staleFallback: true
+                        }).then(function (payload) {
+                            var items = LampaYaniApi.normalize(payload).slice(0, 10);
+                            if (!items.length) return null;
+                            return {
+                                title: genreTitle(genre),
+                                results: items.map(toCard),
+                                onMore: function () { openGenreCatalog(genre); },
+                                visual: {
+                                    from: '#ff6878',
+                                    to: '#825ed8',
+                                    icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
+                                }
+                            };
+                        }).catch(function () { return null; });
+                    });
+                }).then(function (rows) {
+                    genreHubRows = (rows || []).filter(Boolean);
+                    genreHubRowsAt = Date.now();
+                    genreHubRequest = null;
+                    return genreHubRows;
+                }).catch(function (error) {
+                    genreHubRequest = null;
+                    throw error;
                 });
-            }).then(function (rows) {
-                genreHubRows = (rows || []).filter(Boolean);
-                genreHubRowsAt = Date.now();
-                genreHubRequest = null;
-                return genreHubRows;
-            }).catch(function (error) {
-                genreHubRequest = null;
-                throw error;
+                return genreHubRequest.then(function (rows) { return [tiles].concat(rows); });
             });
-            return genreHubRequest;
         }
 
         return loadGenreRows;

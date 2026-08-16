@@ -38,10 +38,12 @@
             var isElement = value.jquery || value.nodeType || typeof HTMLElement !== 'undefined' && value instanceof HTMLElement;
             if (isElement && !element) element = value;
             if (!card && value.yani_more) card = value;
+            if (!card && value.yani_genre_tile) card = value;
+            if (!card && value.yani_collection_tile) card = value;
             if (!card && value.yani_id) card = value;
             if (!card) {
                 var candidate = value.card || value.object || value.data;
-                if (candidate && (candidate.yani_more || candidate.yani_id)) card = candidate;
+                if (candidate && (candidate.yani_more || candidate.yani_genre_tile || candidate.yani_collection_tile || candidate.yani_id)) card = candidate;
             }
         });
         if (!element && card && card.render) element = card.render(true);
@@ -95,6 +97,23 @@
         var values = renderValues(first, second, third);
         if (!values.card || !values.element) return;
         var render = values.element.jquery ? values.element : $(values.element);
+        if (values.card.yani_genre_tile) {
+            render.addClass('yani-genre-tile-card');
+            return;
+        }
+        if (values.card.yani_collection_tile) {
+            render.addClass('yani-collection-tile-card');
+            var view = render.find('.card__view').first();
+            if (view.length && !view.find('.yani-collection-tile-card__copy').length) {
+                var copy = $('<div class="yani-collection-tile-card__copy"></div>');
+                copy.append($('<strong></strong>').text(values.card.title || ''));
+                if (values.card.yani_collection_count) {
+                    copy.append($('<span></span>').text(values.card.yani_collection_count + ' ' + deps.t('anime_count')));
+                }
+                view.append(copy);
+            }
+            return;
+        }
         if (values.card.yani_more) {
             render.addClass('yani-rail-more');
             return;
@@ -112,6 +131,7 @@
 
         function prepare(rows) {
             return (rows || []).filter(Boolean).map(function (row) {
+                if (row.yani_genre_tiles || row.yani_collection_tiles) return row;
                 return withMore(row, deps);
             });
         }
@@ -184,38 +204,22 @@
 
         component.create = function () {
             var self = this;
-            var opened = false;
             mountInteraction(self);
 
-            function reveal() {
-                if (destroyed || opened) return;
-                opened = true;
-                if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
-                if (self.activity && self.activity.loader) self.activity.loader(false);
-                if (self.activity && self.activity.toggle) self.activity.toggle();
-            }
+            var header = typeof deps.header === 'function'
+                ? Promise.resolve(deps.header(self))
+                : Promise.resolve(null);
 
-            var start = typeof deps.header === 'function'
-                ? Promise.resolve(deps.header(self, {prepend: function (node) { prependHeader(self, node); }})).then(reveal)
-                : Promise.resolve();
-
-            start.then(function () {
+            Promise.all([header, loadAllRows()]).then(function (result) {
                 if (destroyed) return;
-                return loadAllRows();
-            }).then(function (rows) {
-                if (destroyed) return;
-                rows = (rows || []).filter(Boolean);
-                if (opened && typeof self.emit === 'function') {
-                    self.emit('build', prepare(rows));
-                    if (self.activity && self.activity.loader) self.activity.loader(false);
-                    return;
-                }
+                var rows = (result[1] || []).filter(Boolean);
                 self.build(prepare(rows));
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
+                prependHeader(self, result[0]);
             }).catch(function (error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Card Rails]', error);
-                if (!opened) self.build([]);
+                self.build([]);
                 if (deps.onError) deps.onError(error);
             });
         };
