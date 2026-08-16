@@ -95,5 +95,18 @@ const sized = model.toCard({
 });
 assert.strictEqual(sized.poster, 'https://img.example/huge.jpg');
 assert.strictEqual(sized.img, 'https://img.example/huge.jpg');
+assert.strictEqual(sized.yani_poster_full, 'https://img.example/huge.jpg');
+
+const cardSized = model.toCard({
+    anime_id: 44,
+    title: 'Card sized',
+    poster: {
+        medium: 'https://img.example/medium.jpg',
+        big: 'https://img.example/big.jpg',
+        huge: 'https://img.example/huge.jpg'
+    }
+});
+assert.strictEqual(cardSized.poster, 'https://img.example/big.jpg');
+assert.strictEqual(cardSized.yani_poster_full, 'https://img.example/huge.jpg');
 
 console.log('card model module contract checks passed');

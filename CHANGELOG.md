@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.42.25 — 2026-08-16
+
+- Add internal Lampa player to the preferred player setting
+
+## 0.42.24 — 2026-08-16
+
+- Add endings-only and suggest-skip AniSkip modes
+
+## 0.42.23 — 2026-08-16
+
+- Fix keep YummyTV integration disabled by default
+
+## 0.42.22 — 2026-08-16
+
+- Fix YummyTV integration being disabled by default
+
+## 0.42.21 — 2026-08-16
+
+- Fix usage policy Close button asking Lampa to exit the app
+
+## 0.42.20 — 2026-08-16
+
+- Fix Watch flow reopening playback choice and killing the player
+
+## 0.42.19 — 2026-08-16
+
+- Fix refusing a parent TMDB series when YummyAnime is a later season
+
+## 0.42.18 — 2026-08-16
+
+- Fix TMDB card lookup for YummyAnime season sequels like Grand Blue 2
+
+## 0.42.17 — 2026-08-16
+
+- Fix Lampa card lookup from the title page missing English aliases
+
+## 0.42.16 — 2026-08-16
+
+- Fix TV card posters looking pixelated after downscale
+
 ## 0.42.15 — 2026-08-15
 
 - Add lazy batch loading to collection rows

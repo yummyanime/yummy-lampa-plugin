@@ -23,18 +23,35 @@
         try { return new URL(url).hostname.replace(/^www\./, ''); } catch (error) { return ''; }
     }
 
-    function posterUrl(value) {
+    function posterUrl(value, role) {
         if (!value) return '';
         if (typeof value === 'string') {
             value = value.trim();
             return value.indexOf('//') === 0 ? 'https:' + value : value;
         }
         if (typeof value !== 'object') return '';
-        return posterUrl(
-            value.huge || value.mega || value.big || value.large ||
-            value.fullsize || value.original || value.full ||
-            value.medium || value.small || value.preview || value.url || ''
-        );
+        // Cards on TV are only a few hundred pixels wide. Prefer a mid-size
+        // file so the WebView does not decode a huge poster and then crush it
+        // with a low-quality scaler. Fullscreen / detail still take the largest.
+        var full = value.huge || value.mega || value.fullsize || value.original || value.full ||
+            value.big || value.large || value.medium || value.small || value.preview || value.url || '';
+        if (role === 'card') {
+            return posterUrl(
+                value.big || value.large || value.huge || value.mega ||
+                value.fullsize || value.original || value.full ||
+                value.medium || value.small || value.preview || value.url || ''
+            );
+        }
+        return posterUrl(full);
+    }
+
+    function posterSources(value) {
+        var card = posterUrl(value, 'card');
+        var full = posterUrl(value, 'full');
+        return {
+            card: card || full,
+            full: full || card
+        };
     }
 
     function titleValues(item) {
@@ -47,12 +64,127 @@
         // Lampa and YummyAnime searches can resolve the same title.
         ['aliases', 'alternative_titles', 'alternative_names', 'other_titles', 'titles', 'synonyms', 'names'].forEach(function (key) {
             var list = item && item[key];
-            if (Array.isArray(list)) list.forEach(function (value) { add(typeof value === 'string' ? value : value && (value.title || value.name || value.value)); });
+            if (Array.isArray(list)) {
+                list.forEach(function (value) { add(typeof value === 'string' ? value : value && (value.title || value.name || value.value)); });
+                return;
+            }
+            if (list && typeof list === 'object') {
+                Object.keys(list).forEach(function (aliasKey) {
+                    var value = list[aliasKey];
+                    add(typeof value === 'string' ? value : value && (value.title || value.name || value.value));
+                });
+            }
         });
         return values;
     }
 
     function normalizeMatchTitle(value) { return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').trim(); }
+
+    function titleScriptRank(title) {
+        if (/[A-Za-z]/.test(title) && !/[А-Яа-яЁё]/.test(title)) return 0;
+        if (/[\u3040-\u30ff\u3400-\u9fff]/.test(title)) return 1;
+        return 2;
+    }
+
+    function stripSeasonSuffix(title) {
+        var value = String(title || '').trim();
+        if (!value) return '';
+        var patterns = [
+            /\s*[:\-–—]?\s*(?:the\s+)?(?:\d+(?:st|nd|rd|th)\s+)?seasons?\s*\d*\s*$/i,
+            /\s*[:\-–—]?\s*s(?:eason)?\s*\d+\s*$/i,
+            /\s*[:\-–—]?\s*(?:tv|тв)\s*[- ]?\d+\s*$/i,
+            /\s*[:\-–—]?\s*сезон\s*\d+\s*$/i,
+            /\s*[:\-–—]?\s*\d+\s*сезон\s*$/i,
+            /\s*第\s*\d+\s*期\s*$/,
+            /\s*[:\-–—]?\s*(?:II|III|IV|VI|VII|VIII|IX|X|V)\s*$/i,
+            /\s*[:\-–—]?\s*[2-9]\s*$/
+        ];
+        var next = value;
+        var changed = true;
+        while (changed) {
+            changed = false;
+            for (var index = 0; index < patterns.length; index++) {
+                var stripped = next.replace(patterns[index], '').trim();
+                if (stripped && stripped !== next) {
+                    next = stripped;
+                    changed = true;
+                }
+            }
+        }
+        return next;
+    }
+
+    function titleMatchCores(titles) {
+        var cores = [];
+        (titles || []).forEach(function (title) {
+            var core = normalizeMatchTitle(stripSeasonSuffix(title));
+            if (core && cores.indexOf(core) < 0) cores.push(core);
+        });
+        return cores;
+    }
+
+    function titlesOverlap(left, right) {
+        if (!left || !right) return false;
+        if (left === right) return true;
+        if (left.indexOf(right) < 0 && right.indexOf(left) < 0) return false;
+        return Math.min(left.length, right.length) >= 6;
+    }
+
+    var romanSeasonValues = {i: 1, ii: 2, iii: 3, iv: 4, v: 5, vi: 6, vii: 7, viii: 8, ix: 9, x: 10};
+
+    function parseSeasonHint(title) {
+        var value = String(title || '').replace(/\s*[\(\[]?\s*\d{4}\s*[\)\]]?\s*$/i, '').trim();
+        if (!value) return 0;
+        var match = value.match(/(?:season|сезон|s)\s*(\d+)\s*$/i) ||
+            value.match(/(\d+)\s*сезон\s*$/i) ||
+            value.match(/(?:tv|тв)\s*[- ]?(\d+)\s*$/i) ||
+            value.match(/(\d+)(?:st|nd|rd|th)\s+season\s*$/i) ||
+            value.match(/第\s*(\d+)\s*期\s*$/);
+        if (match) return Number(match[1]) || 0;
+        match = value.match(/\s(II|III|IV|VI|VII|VIII|IX|X|V)\s*$/i);
+        if (match) return romanSeasonValues[match[1].toLowerCase()] || 0;
+        match = value.match(/\s([2-9])\s*$/);
+        return match ? Number(match[1]) : 0;
+    }
+
+    function cardSeasonHint(card) {
+        var titles = [];
+        ['title', 'name', 'original_title', 'original_name'].forEach(function (key) {
+            if (card && card[key]) titles.push(card[key]);
+        });
+        if (card && Array.isArray(card.yani_titles)) titles = titles.concat(card.yani_titles);
+        var season = 0;
+        titles.forEach(function (title) {
+            var hint = parseSeasonHint(title);
+            if (hint > season) season = hint;
+        });
+        return season;
+    }
+
+    function isSafeTmdbSeasonMatch(yaniCard, candidate) {
+        var expected = standardSearchTitles(yaniCard || {}).map(normalizeMatchTitle).filter(Boolean);
+        var tmdbTitles = [
+            candidate && candidate.title,
+            candidate && candidate.name,
+            candidate && candidate.original_title,
+            candidate && candidate.original_name
+        ].map(normalizeMatchTitle).filter(Boolean);
+        if (tmdbTitles.some(function (title) { return expected.indexOf(title) >= 0; })) return true;
+
+        var yummyYear = String(yaniCard && (yaniCard.release_date || yaniCard.year) || '').slice(0, 4);
+        var tmdbYear = String(candidate && (candidate.release_date || candidate.first_air_date) || '').slice(0, 4);
+        if (/^\d{4}$/.test(yummyYear) && /^\d{4}$/.test(tmdbYear) && Math.abs(Number(yummyYear) - Number(tmdbYear)) <= 1) {
+            return true;
+        }
+
+        var yummySeason = cardSeasonHint(yaniCard);
+        var tmdbSeason = 0;
+        [candidate && candidate.title, candidate && candidate.name, candidate && candidate.original_title, candidate && candidate.original_name].forEach(function (title) {
+            var hint = parseSeasonHint(title);
+            if (hint > tmdbSeason) tmdbSeason = hint;
+        });
+        return yummySeason >= 2 && tmdbSeason === yummySeason;
+    }
 
     function standardSearchTitles(card) {
         var result = [], values = titleValues(card || {});
@@ -61,8 +193,46 @@
             if (result.indexOf(title) < 0) result.push(title);
             var withoutYear = String(title).replace(/\s*[\(\[]?\s*\d{4}\s*[\)\]]?\s*$/i, '').trim();
             if (withoutYear && result.indexOf(withoutYear) < 0) result.push(withoutYear);
+            var core = stripSeasonSuffix(withoutYear || title);
+            if (core && result.indexOf(core) < 0) result.push(core);
         });
-        return result;
+        // TMDB indexes English/romaji far more reliably than a long localised
+        // YummyAnime title. Search those first so the title-page button does
+        // not burn the query budget on a Russian name that never matches.
+        return result.sort(function (left, right) {
+            var rank = titleScriptRank(left) - titleScriptRank(right);
+            return rank || left.length - right.length;
+        });
+    }
+
+    function scoreTitleMatch(expectedTitles, expectedYear, candidate) {
+        var expected = (expectedTitles || []).map(normalizeMatchTitle).filter(Boolean);
+        var titles = [
+            candidate && candidate.title,
+            candidate && candidate.name,
+            candidate && candidate.original_title,
+            candidate && candidate.original_name
+        ].map(normalizeMatchTitle).filter(Boolean);
+        var expectedCores = titleMatchCores(expectedTitles);
+        var candidateCores = titleMatchCores(titles);
+        var exact = titles.some(function (title) { return expected.indexOf(title) >= 0; }) ||
+            candidateCores.some(function (title) { return expectedCores.indexOf(title) >= 0; });
+        var contained = !exact && (
+            titles.some(function (title) {
+                return expected.some(function (value) { return titlesOverlap(title, value); });
+            }) ||
+            candidateCores.some(function (title) {
+                return expectedCores.some(function (value) { return titlesOverlap(title, value); });
+            })
+        );
+        var candidateYear = String(candidate && (candidate.release_date || candidate.first_air_date) || '').slice(0, 4);
+        var yearScore = 0;
+        if (expectedYear && /^\d{4}$/.test(expectedYear) && /^\d{4}$/.test(candidateYear)) {
+            var delta = Math.abs(Number(expectedYear) - Number(candidateYear));
+            if (delta === 0) yearScore = 30;
+            else if (delta === 1) yearScore = 20;
+        }
+        return (exact ? 100 : contained ? 75 : 0) + yearScore;
     }
 
     function yummyTvDetailsUrl(animeId) {
@@ -308,9 +478,15 @@
         normalizeVideoUrl: normalizeVideoUrl,
         videoHost: videoHost,
         posterUrl: posterUrl,
+        posterSources: posterSources,
         titleValues: titleValues,
         normalizeMatchTitle: normalizeMatchTitle,
+        stripSeasonSuffix: stripSeasonSuffix,
+        parseSeasonHint: parseSeasonHint,
+        cardSeasonHint: cardSeasonHint,
+        isSafeTmdbSeasonMatch: isSafeTmdbSeasonMatch,
         standardSearchTitles: standardSearchTitles,
+        scoreTitleMatch: scoreTitleMatch,
         yummyTvDetailsUrl: yummyTvDetailsUrl,
         internalPlayerItem: internalPlayerItem,
         detailRouteId: detailRouteId,

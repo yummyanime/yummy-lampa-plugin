@@ -113,6 +113,7 @@
         yummyTvEnabled: function () { return yummyTvEnabled(); },
         yummyTvAnimeId: function (card) { return yummyTvAnimeId(card); },
         openYummyTv: function (card) { return openYummyTv(card); },
+        cancelExternalRestore: function () { return cancelExternalRestore(); },
         loadVideos: function (id, options) { return videoData.payload(id, options); }
     });
     var playbackReturnState = playbackMenu.playbackReturnState;
@@ -1550,9 +1551,12 @@
                 content.append($('<div class="yani-policy__paragraph"></div>').text(paragraph));
             });
             accept = $('<div class="yani-policy__accept selector"></div>').text(t('usage_policy_accept'));
-            accept.on('hover:enter click.yaniPolicyAccept', function () {
-                usagePolicyVisible = false;
-                goBack();
+            accept.on('hover:enter click.yaniPolicyAccept', function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                closeUsagePolicy();
             });
             html.append(mark, title, content, accept);
             html.on('hover:focus', function (event) {
@@ -1572,7 +1576,10 @@
                 right: function () {},
                 up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); },
                 down: function () { movePageDown(scroll); },
-                back: function () { usagePolicyVisible = false; goBack(); }
+                enter: function () {
+                    if (accept && accept.trigger) accept.trigger('hover:enter');
+                },
+                back: function () { closeUsagePolicy(); }
             });
             Lampa.Controller.toggle('content');
         };
@@ -1581,14 +1588,69 @@
         this.destroy = function () { usagePolicyVisible = false; scroll.destroy(); html.remove(); };
     }
 
+    var usagePolicyLayer = null;
+    var usagePolicyController = '';
+
+    function closeUsagePolicy() {
+        usagePolicyVisible = false;
+        if (usagePolicyLayer) {
+            usagePolicyLayer.remove();
+            usagePolicyLayer = null;
+        }
+        var controller = usagePolicyController || 'settings';
+        usagePolicyController = '';
+        if (window.Lampa && Lampa.Controller && Lampa.Controller.toggle) {
+            try { Lampa.Controller.toggle(controller); } catch (ignore) {}
+        }
+    }
+
     function showUsagePolicy() {
-        if (!Lampa.Activity || !Lampa.Activity.push || usagePolicyVisible) return;
+        if (usagePolicyVisible) return;
         usagePolicyVisible = true;
-        Lampa.Activity.push({
-            url: 'yani/policy',
-            title: t('usage_policy_title'),
-            component: 'yani_policy'
+        usagePolicyController = document.querySelector('.settings') ? 'settings' : (currentControllerName() || 'settings');
+        var layer = $('<div class="yani-policy-layer"></div>');
+        var dialog = $('<div class="yani-policy"></div>');
+        var mark = $('<div class="yani-policy__mark" aria-hidden="true"></div>').html(yummyAnimeIcon());
+        var title = $('<div class="yani-policy__title"></div>').text(t('usage_policy_title'));
+        var content = $('<div class="yani-policy__content"></div>');
+        [
+            t('usage_policy_as_is'),
+            t('usage_policy_information'),
+            t('usage_policy_legal'),
+            t('usage_policy_responsibility')
+        ].forEach(function (paragraph) {
+            content.append($('<div class="yani-policy__paragraph"></div>').text(paragraph));
         });
+        var accept = $('<div class="yani-policy__accept selector"></div>').text(t('usage_policy_accept'));
+        accept.on('hover:enter click.yaniPolicyAccept', function (event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            closeUsagePolicy();
+        });
+        dialog.append(mark, title, content, accept);
+        layer.append(dialog);
+        layer.on('hover:focus', function (event) {
+            var target = $(event.target).closest('.selector');
+            layer.find('.focus').removeClass('focus');
+            target.addClass('focus');
+        });
+        $('body').append(layer);
+        usagePolicyLayer = layer;
+        Lampa.Controller.add('yani_policy', {
+            toggle: function () {
+                Lampa.Controller.collectionSet(layer);
+                Lampa.Controller.collectionFocus(accept, layer);
+            },
+            left: function () {},
+            right: function () {},
+            up: function () { if (window.Navigator && Navigator.canmove('up')) Navigator.move('up'); },
+            down: function () { if (window.Navigator && Navigator.canmove('down')) Navigator.move('down'); },
+            enter: function () { accept.trigger('hover:enter'); },
+            back: function () { closeUsagePolicy(); }
+        });
+        Lampa.Controller.toggle('yani_policy');
     }
 
     function homeIcon(key) {
@@ -2660,6 +2722,8 @@
         }
         card.yani_id = id;
         if (notifyFallback && Lampa.Noty) Lampa.Noty.show(t('lampa_card_fallback'));
+        var current = Lampa.Activity && Lampa.Activity.active && Lampa.Activity.active();
+        if (current && current.component === 'yani_detail' && String(current.yani_id || current.id) === String(id)) return;
         Lampa.Activity.push({
             url: 'yani/detail/' + encodeURIComponent(id),
             title: card.title,
@@ -2785,10 +2849,15 @@
             poster: card.poster || card.img || ''
         };
         if (!isExternalPlayableUrl(current.url, current.source)) {
+            // The user already chose "watch in player". Asking again with the
+            // same YummyTV dialog left a stale Select onBack that then reported
+            // the player as unavailable.
+            if (openEmbeddedEpisode(card, group, selected, current.url)) return;
             showExternalPlaybackOptions(card, {
                 url: current.url,
                 title: current.title,
                 onPlayer: function () {
+                    if (openEmbeddedEpisode(card, group, selected, current.url)) return true;
                     if (openAndroidAppUri(current.url)) return true;
                     return openExternalUri(current.url);
                 }
@@ -2879,8 +2948,8 @@
         return true;
     }
 
-    function openAllohaEmbed(card, group, selected, url) {
-        if (!Lampa.Activity || !Lampa.Activity.push) return false;
+    function openEmbeddedEpisode(card, group, selected, url) {
+        if (!url || !Lampa.Activity || !Lampa.Activity.push) return false;
         try {
             rememberPlayback(card, group, selected);
             // Activity owns the back stack for the embedded page and will
@@ -2894,9 +2963,13 @@
             });
             return true;
         } catch (error) {
-            console.warn('[YummyAnime] Alloha embedded player failed to open', error);
+            console.warn('[YummyAnime] Embedded player failed to open', error);
             return false;
         }
+    }
+
+    function openAllohaEmbed(card, group, selected, url) {
+        return openEmbeddedEpisode(card, group, selected, url);
     }
 
     function setLoading(enabled) {
@@ -2965,6 +3038,7 @@
     }
 
     function playbackTargetPreference() {
+        if (Lampa.Storage && Lampa.Storage.get && Lampa.Storage.get('yani_player_preference', 'last') === 'lampa') return 'internal';
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_playback_target', 'ask') : 'ask';
         return value === 'internal' || value === 'external' ? value : 'ask';
     }
@@ -2998,7 +3072,14 @@
 
     function skipPreference() {
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_aniskip', 'off') : 'off';
-        return value === 'op' || value === 'op_ed' ? value : 'off';
+        return value === 'op' || value === 'ed' || value === 'op_ed' || value === 'suggest' ? value : 'off';
+    }
+
+    function skipTypesForMode(mode) {
+        return {
+            op: mode === 'op' || mode === 'op_ed' || mode === 'suggest',
+            ed: mode === 'ed' || mode === 'op_ed' || mode === 'suggest'
+        };
     }
 
     function autoNextEnabled() {
@@ -3023,6 +3104,7 @@
         if (!playbackWatcher) return;
         clearInterval(playbackWatcher.timer);
         playbackWatcher = null;
+        destroySkipPrompt();
     }
 
     function startPlaybackWatcher(context) {
@@ -3038,6 +3120,11 @@
             timer: 0,
             segments: [],
             skipped: {},
+            skipMode: skipMode,
+            skipPrompt: skipMode === 'suggest',
+            skipReady: false,
+            skipLoading: false,
+            skipLength: 0,
             autoNext: autoNext,
             progressSync: progressSync,
             lastLocalSync: 0,
@@ -3052,7 +3139,8 @@
         };
         playbackWatcher = state;
         state.timer = setInterval(function () { watchPlayback(generation, context, state); }, 1000);
-        if (skipMode !== 'off') loadSkipSegments(generation, context, state, skipMode);
+        var initialLength = Number(context.selected && context.selected.duration || 0);
+        if (skipMode !== 'off' && initialLength >= 60) loadSkipSegments(generation, context, state, skipMode, initialLength);
     }
 
     function flushPlaybackProgress(remote) {
@@ -3069,20 +3157,129 @@
         stopPlaybackWatcher();
     }
 
-    function loadSkipSegments(generation, context, state, mode) {
+    function loadSkipSegments(generation, context, state, mode, episodeLength) {
         if (!window.LampaYaniAniSkip) return;
         var ids = (context.card && context.card.yani_remote_ids) || {};
         var malId = Number(ids.myanimelist_id || ids.mal_id || 0);
         var selected = context.selected || {};
         var episode = Number(selected.number || selected.index || 0);
         if (!malId || !episode) return;
-        LampaYaniAniSkip.times(malId, episode, selected.duration).then(function (intervals) {
-            if (generation !== playbackWatcherGeneration) return;
+        var length = Math.max(0, Math.round(Number(episodeLength) || 0));
+        state.skipLoading = true;
+        state.skipReady = false;
+        state.skipLength = length;
+        state.skipRequest = (state.skipRequest || 0) + 1;
+        var request = state.skipRequest;
+        LampaYaniAniSkip.times(malId, episode, length).then(function (intervals) {
+            if (generation !== playbackWatcherGeneration || request !== state.skipRequest) return;
+            var types = skipTypesForMode(mode);
             var segments = [];
-            if (intervals.op) segments.push({type: 'op', interval: intervals.op, label: t('aniskip_opening_skipped')});
-            if (mode === 'op_ed' && intervals.ed) segments.push({type: 'ed', interval: intervals.ed, label: t('aniskip_ending_skipped')});
+            if (types.op && intervals.op) segments.push({type: 'op', interval: intervals.op, label: t('aniskip_opening_skipped')});
+            if (types.ed && intervals.ed) segments.push({type: 'ed', interval: intervals.ed, label: t('aniskip_ending_skipped')});
             state.segments = segments;
+            state.skipLoading = false;
+            state.skipReady = true;
         });
+    }
+
+    var skipPromptState = {root: null, panel: null, segment: null, video: null};
+
+    function skipPromptLabel(segment) {
+        if (segment && segment.type === 'ed') return t('aniskip_skip_ending');
+        if (segment && segment.type === 'op') return t('aniskip_skip_opening');
+        return t('aniskip_skip');
+    }
+
+    function skipPromptHost() {
+        return document.querySelector('.player') || document.querySelector('.player-video') || document.body;
+    }
+
+    function bindSkipAction(element) {
+        if (!element || element._yani_skip_bound) return element;
+        element._yani_skip_bound = true;
+        element.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            confirmSkipPrompt();
+        });
+        if (window.$) $(element).on('hover:enter', function () { confirmSkipPrompt(); });
+        return element;
+    }
+
+    function ensureSkipPrompt() {
+        if (skipPromptState.root && document.body.contains(skipPromptState.root)) return skipPromptState.root;
+        var button = document.createElement('div');
+        button.className = 'yani-skip-prompt selector';
+        skipPromptState.root = bindSkipAction(button);
+        return skipPromptState.root;
+    }
+
+    function syncSkipPanelButton(segment) {
+        var right = document.querySelector('.player-panel__right') ||
+            document.querySelector('.player-panel .player-panel__buttons') ||
+            document.querySelector('.player-panel');
+        if (!right) return;
+        var button = skipPromptState.panel;
+        if (!button || !document.body.contains(button)) {
+            button = document.createElement('div');
+            button.className = 'player-panel__button selector yani-skip-panel';
+            skipPromptState.panel = bindSkipAction(button);
+        }
+        if (skipPromptState.panel.parentNode !== right) right.appendChild(skipPromptState.panel);
+        skipPromptState.panel.textContent = skipPromptLabel(segment);
+        skipPromptState.panel.style.display = '';
+    }
+
+    function hideSkipPanelButton() {
+        if (skipPromptState.panel) skipPromptState.panel.style.display = 'none';
+    }
+
+    function showSkipPrompt(segment, video) {
+        var button = ensureSkipPrompt();
+        var host = skipPromptHost();
+        if (button.parentNode !== host) host.appendChild(button);
+        button.textContent = skipPromptLabel(segment);
+        button.classList.add('yani-skip-prompt--visible');
+        skipPromptState.segment = segment;
+        skipPromptState.video = video;
+        syncSkipPanelButton(segment);
+    }
+
+    function hideSkipPrompt() {
+        if (skipPromptState.root) skipPromptState.root.classList.remove('yani-skip-prompt--visible');
+        skipPromptState.segment = null;
+        skipPromptState.video = null;
+        hideSkipPanelButton();
+    }
+
+    function destroySkipPrompt() {
+        hideSkipPrompt();
+        if (skipPromptState.root && skipPromptState.root.parentNode) skipPromptState.root.parentNode.removeChild(skipPromptState.root);
+        skipPromptState.root = null;
+        if (skipPromptState.panel && skipPromptState.panel.parentNode) skipPromptState.panel.parentNode.removeChild(skipPromptState.panel);
+        skipPromptState.panel = null;
+    }
+
+    function applySkip(video, segment, state) {
+        if (!video || !segment || !state || state.skipped[segment.type]) return;
+        state.skipped[segment.type] = true;
+        try {
+            video.currentTime = segment.interval.end;
+        } catch (error) {
+            console.warn('[YummyAnime] Could not skip a segment', error);
+            state.skipped[segment.type] = false;
+            return;
+        }
+        Lampa.Noty.show(segment.label);
+        hideSkipPrompt();
+    }
+
+    function confirmSkipPrompt() {
+        var state = playbackWatcher;
+        var segment = skipPromptState.segment;
+        var video = skipPromptState.video || playerVideoElement();
+        if (!state || !segment || !video) return;
+        applySkip(video, segment, state);
     }
 
     function watchPlayback(generation, context, state) {
@@ -3100,6 +3297,15 @@
         state.lastObservedPosition = position;
         state.lastObservedDuration = duration;
 
+        if (state.skipMode !== 'off' && duration >= 60) {
+            var rounded = Math.round(duration);
+            if (!state.skipLoading && (!state.skipReady || Math.abs((state.skipLength || 0) - rounded) > 15)) {
+                state.segments = [];
+                hideSkipPrompt();
+                loadSkipSegments(generation, context, state, state.skipMode, rounded);
+            }
+        }
+
         if (position > 0) {
             var now = Date.now();
             var finalState = video.paused || video.ended || duration > 0 && position >= duration - 2;
@@ -3115,18 +3321,21 @@
             }
         }
 
+        var activePrompt = null;
         state.segments.forEach(function (segment) {
             if (state.skipped[segment.type]) return;
-            if (position < segment.interval.start || position >= segment.interval.end - 1) return;
-            state.skipped[segment.type] = true;
-            try {
-                video.currentTime = segment.interval.end;
-            } catch (error) {
-                console.warn('[YummyAnime] Could not skip a segment', error);
+            var inside = position >= segment.interval.start && position < segment.interval.end - 1;
+            if (state.skipPrompt) {
+                if (inside) activePrompt = segment;
                 return;
             }
-            Lampa.Noty.show(segment.label);
+            if (!inside) return;
+            applySkip(video, segment, state);
         });
+        if (state.skipPrompt) {
+            if (activePrompt) showSkipPrompt(activePrompt, video);
+            else hideSkipPrompt();
+        }
 
         if (!state.autoNext || duration < 60 || position <= 0) return;
         var remaining = duration - position;
@@ -3235,7 +3444,8 @@
 
     function playerMatchesPreference(group, preference) {
         if (!preference) return false;
-        var value = playerKey(group);
+        if (String(preference).toLowerCase() === 'lampa') return groupPlaybackPriority(group) > 0;
+        var value = String(group && (group.player || group.title) || '').toLowerCase();
         return value.indexOf(String(preference).toLowerCase()) >= 0;
     }
 
@@ -3598,6 +3808,10 @@
 
     function restoreExternalFocus() {
         if (!externalRestoreState.pending) return;
+        if (playbackReturnState.active) {
+            cancelExternalRestore();
+            return;
+        }
         var elapsed = Date.now() - externalRestoreState.openedAt;
         // Android may emit focus while the chooser is only starting. Ignore
         // that event until the app departed or enough time has passed.
@@ -3751,7 +3965,7 @@
             param: {
                 name: 'yani_player_preference',
                 type: 'select',
-                values: {last: t('player_last'), ask: t('player_ask'), kodik: 'Kodik', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'},
+                values: {last: t('player_last'), ask: t('player_ask'), lampa: t('watch_internal_lampa'), kodik: 'Kodik', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'},
                 default: 'last'
             },
             field: {name: t('player_preference'), description: t('player_preference_description')}
@@ -3773,7 +3987,7 @@
             param: {
                 name: 'yani_aniskip',
                 type: 'select',
-                values: {off: t('aniskip_off'), op: t('aniskip_openings'), op_ed: t('aniskip_openings_endings')},
+                values: {off: t('aniskip_off'), op: t('aniskip_openings'), ed: t('aniskip_endings'), op_ed: t('aniskip_openings_endings'), suggest: t('aniskip_suggest')},
                 default: 'off'
             },
             field: {name: t('aniskip'), description: t('aniskip_description')}

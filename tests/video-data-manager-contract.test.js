@@ -20,7 +20,7 @@ assert.match(ui, /loadVideos: function \(id, options\) \{ return videoData\.payl
 assert.match(ui, /loadVideos: function \(id, options\) \{ return videoData\.list\(id, options\); \}/);
 assert.match(detail, /function loadDetailVideos\(\)/);
 assert.match(detail, /videosAbort\.abort\(\)/);
-assert.match(menu, /loadVideos\(card\.yani_id\)/);
+assert.match(menu, /loadVideosForPlayback\(card\.yani_id\)/);
 assert.match(renderers, /loadVideos\(card\.yani_id\)/);
 
 function abortError() {

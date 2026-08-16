@@ -61,6 +61,26 @@
     margin-top: .28em;
 }
 
+.yani-catalog-view .card .card__img,
+.yani-catalog-view .card .card__view img,
+.yani-genre-catalog-view .card .card__img,
+.yani-genre-catalog-view .card .card__view img,
+.yani-account-list-view .card .card__img,
+.yani-account-list-view .card .card__view img,
+.yani-collection-view .card .card__view img,
+.yani-collection-view .card .card__img,
+.category-full.yani-card-grid .card .card__img,
+.items-cards.yani-card-grid .card .card__img,
+.yani-card-rails .card .card__img,
+.yani-card-rails .card .card__view img,
+.yani-detail__poster {
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    image-rendering: auto;
+    -ms-interpolation-mode: bicubic;
+}
+
 .yani-card-rails .category-full,
 .yani-card-rails .items-cards,
 .yani-card-rails .items-cards.yani-card-grid,
@@ -1283,6 +1303,20 @@
     .yani-home__episode-stage-marker { animation: none !important; }
 }
 
+.yani-policy-layer {
+    position: fixed;
+    z-index: 10050;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2em;
+    box-sizing: border-box;
+    background: rgba(4, 5, 9, .72);
+}
+
+.yani-policy-layer .yani-policy { margin: 0; }
+
 .yani-policy {
     width: min(54em, calc(100% - 3em));
     margin: 2.5em auto;
@@ -1316,6 +1350,35 @@
 .yani-policy__paragraph + .yani-policy__paragraph { margin-top: .8em; }
 .yani-policy__accept { width: fit-content; margin-top: 1.6em; padding: .78em 1.35em; border-radius: .55em; background: #ef6470; color: #fff; font-weight: 600; }
 .yani-policy__accept.focus { background: #fff; color: #17171b; box-shadow: 0 0 0 .16em #ef6470; transform: scale(1.035); }
+
+.yani-skip-prompt {
+    position: absolute;
+    right: 2.2em;
+    bottom: 6.4em;
+    z-index: 40;
+    display: none;
+    padding: .72em 1.25em;
+    border: .08em solid rgba(255,255,255,.28);
+    border-radius: .55em;
+    background: rgba(18,18,23,.82);
+    box-shadow: 0 .6em 1.6em rgba(0,0,0,.35);
+    color: #fff;
+    font-size: 1.05em;
+    font-weight: 650;
+    letter-spacing: .01em;
+    pointer-events: auto;
+}
+body > .yani-skip-prompt {
+    position: fixed;
+    z-index: 10040;
+}
+.yani-skip-prompt--visible { display: block; }
+.yani-skip-prompt.focus,
+.yani-skip-prompt:hover {
+    border-color: #fff;
+    background: #fff;
+    color: #17171b;
+}
 
 @media (max-width: 700px) {
     .yani-policy { width: calc(100% - 1.4em); margin: 1em auto; padding: 1.4em; }

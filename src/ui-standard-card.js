@@ -47,7 +47,7 @@
             // Do not leave the UI blocked if a third-party TMDB proxy silently
             // drops a request. The normal request callbacks still win when they
             // finish in time.
-            setTimeout(function () { finish(null); }, 12000);
+            setTimeout(function () { finish(null); }, 20000);
             enrichCardForStandardSearch(card).then(findStandardLampaCard).then(finish).catch(function (error) {
                 console.warn('[YummyAnime] Native Lampa card lookup failed', error);
                 finish(null);
@@ -117,10 +117,9 @@
             Lampa.Activity.push = guardedPush;
         }
 
-        var standardNativeCacheStorageKey = 'yani_standard_native_matches_v1';
+        var standardNativeCacheStorageKey = 'yani_standard_native_matches_v2';
         var standardNativeCacheLimit = 60;
         var standardNativePositiveTtl = 30 * 24 * 60 * 60 * 1000;
-        var standardNativeNegativeTtl = 10 * 60 * 1000;
         var standardNativeCache = null;
         var standardNativePending = {};
 
@@ -187,11 +186,15 @@
 
         function rememberStandardNativeMatch(key, match) {
             var compact = compactStandardNativeMatch(match);
+            // A miss must not be stored. The title-page button used to cache an
+            // empty result after a slow TMDB proxy lookup and then keep saying
+            // the Lampa card was missing.
+            if (!compact) return null;
             var now = Date.now();
             loadStandardNativeCache()[key] = {
                 updated: now,
-                expires: now + (compact ? standardNativePositiveTtl : standardNativeNegativeTtl),
-                empty: !compact,
+                expires: now + standardNativePositiveTtl,
+                empty: false,
                 match: compact
             };
             saveStandardNativeCache();
@@ -370,22 +373,29 @@
         }
 
         function bestStandardCard(items, yaniCard) {
-            var expectedTitles = LampaYaniUiUtils.standardSearchTitles(yaniCard).map(LampaYaniUiUtils.normalizeMatchTitle).filter(Boolean);
+            var expectedTitles = LampaYaniUiUtils.standardSearchTitles(yaniCard);
             var expectedYear = String(yaniCard.release_date || '').slice(0, 4);
             items.forEach(function (entry) {
-                var candidate = entry.card || {};
-                var titles = [candidate.title, candidate.name, candidate.original_title, candidate.original_name].map(LampaYaniUiUtils.normalizeMatchTitle).filter(Boolean);
-                var exact = titles.some(function (title) { return expectedTitles.indexOf(title) >= 0; });
-                var partial = !exact && titles.some(function (title) {
-                    return expectedTitles.some(function (expected) { return title.indexOf(expected) >= 0 || expected.indexOf(title) >= 0; });
-                });
-                var candidateYear = String(candidate.release_date || candidate.first_air_date || '').slice(0, 4);
-                entry.score = (exact ? 100 : partial ? 40 : 0) + (expectedYear && candidateYear === expectedYear ? 30 : 0);
+                entry.score = LampaYaniUiUtils.scoreTitleMatch(expectedTitles, expectedYear, entry.card || {});
             });
             items.sort(function (a, b) { return b.score - a.score; });
-            if (!items.length || items[0].score < 70 || !isValidNativeId(items[0].card && items[0].card.id)) return null;
-            items[0].card.source = items[0].card.source || 'tmdb';
-            return items[0];
+            for (var index = 0; index < items.length; index++) {
+                var entry = items[index];
+                if (!entry || entry.score < 70 || !isValidNativeId(entry.card && entry.card.id)) continue;
+                if (!LampaYaniUiUtils.isSafeTmdbSeasonMatch(yaniCard, entry.card)) {
+                    console.warn('[YummyAnime] Skipping parent TMDB series for a later YummyAnime season', {
+                        yaniId: getYummyId(yaniCard),
+                        yaniTitle: yaniCard && yaniCard.title,
+                        yaniYear: yaniCard && yaniCard.release_date,
+                        tmdbTitle: entry.card.name || entry.card.title || '',
+                        tmdbYear: entry.card.first_air_date || entry.card.release_date || ''
+                    });
+                    continue;
+                }
+                entry.card.source = entry.card.source || 'tmdb';
+                return entry;
+            }
+            return null;
         }
 
         var nativeMatchCache = {};

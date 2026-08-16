@@ -104,11 +104,12 @@
         malId = Number(malId) || 0;
         episode = Number(episode) || 0;
         if (!malId || !episode) return Promise.resolve({});
-        var key = malId + ':' + episode;
+        var length = Math.max(0, Math.round(Number(episodeLength) || 0));
+        var key = malId + ':' + episode + ':' + length;
         var hit = cached(key);
         if (hit) return Promise.resolve(hit);
         var url = API_BASE + '/skip-times/' + malId + '/' + episode +
-            '?types[]=op&types[]=ed&episodeLength=' + (Math.max(0, Math.round(Number(episodeLength) || 0)));
+            '?types[]=op&types[]=ed&episodeLength=' + length;
         return requestText(url).then(function (text) {
             return remember(key, parse(text));
         }).catch(function (error) {

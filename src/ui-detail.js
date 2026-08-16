@@ -226,7 +226,7 @@
 
         function togglePosterViewer(poster, cardData) {
             if (closePosterViewer()) return;
-            var source = poster.attr('src') || cardData.img || cardData.poster || '';
+            var source = cardData.yani_poster_full || poster.attr('src') || cardData.img || cardData.poster || '';
             if (!source) return;
             posterExpanded = true;
             poster.attr('aria-expanded', 'true');
@@ -387,7 +387,11 @@
             var searchButton = $('<div class="yani-detail__button yani-detail__button--lampa selector"></div>');
             searchButton.append($('<span class="yani-detail__button-icon"></span>').html(lampaIcon()));
             searchButton.append($('<span></span>').text(t('open_lampa_search')));
-            searchButton.on('hover:enter', function () {
+            searchButton.on('hover:enter click.yaniLampaCard', function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
                 openStandardLampaCard(data);
             });
             bindDetailButtonFocus(searchButton);

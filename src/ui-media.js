@@ -140,22 +140,36 @@
         return render;
     }
 
+    function isLowMemoryDevice() {
+        var navigatorInfo = window.navigator || {};
+        return Number(navigatorInfo.deviceMemory || 0) > 0 && Number(navigatorInfo.deviceMemory) <= 2;
+    }
+
     function prepareImage(image) {
         if (!image || !image.length) return;
-        image.attr('loading', 'lazy').attr('decoding', 'async');
+        // Cheap TV WebViews often decode `lazy`/`async` posters at a thumbnail
+        // size and then stretch them. Fullscreen creates a fresh <img> without
+        // those hints, which is why the same file looks sharp there.
+        var lowMemory = isLowMemoryDevice();
+        image.attr('loading', lowMemory ? 'lazy' : 'eager').attr('decoding', lowMemory ? 'async' : 'sync');
+    }
+
+    function applyPoster(image, box, poster) {
+        if (!poster) return;
+        if (image && image.length) image.attr('src', poster);
+        if (box && box.length) box.css('background-image', 'url("' + poster.replace(/"/g, '%22') + '")');
     }
 
     function attach(element, card) {
         var render = renderElement(element, card);
         var image = render.find('img').first();
         var box = render.find('.card__img').first();
-        var apply = function (poster) {
-            if (!poster) return;
-            if (image.length) image.attr('src', poster);
-            if (box.length) box.css('background-image', 'url("' + poster.replace(/"/g, '%22') + '")');
-        };
+        var apply = function (poster) { applyPoster(image, box, poster); };
         var alternative = function () { find(card).then(apply); };
         prepareImage(image);
+        // Always write the plugin URL over Lampa's copy. Some builds keep a
+        // resized/cached bitmap that stays soft even after the real file loads.
+        apply(card && (card.poster || card.img) || '');
         if (image.length) image.off('error.yaniPoster').one('error.yaniPoster', alternative);
         // Do not create a second hidden Image probe. On low-memory WebViews it
         // decoded every catalog poster twice and could terminate the process.

@@ -60,6 +60,12 @@ aniskip.times(20, 3, 1440).then((intervals) => {
     nextBody = '{"found":false,"results":null}';
     return aniskip.times(21, 9).then((intervals) => assert.deepEqual(Object.keys(intervals), []));
 }).then(() => {
+    nextBody = payload;
+    return aniskip.times(20, 3, 1680).then(() => {
+        assert.strictEqual(requested.length, 3, 'a different episode length must not reuse the previous cache entry');
+        assert.ok(requested[2].indexOf('episodeLength=1680') >= 0, 'AniSkip must receive the measured episode length');
+    });
+}).then(() => {
     console.log('aniskip tests passed');
 }).catch((error) => {
     console.error(error);

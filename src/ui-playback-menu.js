@@ -38,8 +38,12 @@
         var openYummyTv = deps.openYummyTv || function () { return false; };
         var loadVideos = deps.loadVideos || function (id, options) { return LampaYaniApi.videos(id, options); };
 
+        var cancelExternalRestore = deps.cancelExternalRestore || function () {};
+        var playbackSession = 0;
+        var restoreTimer = null;
         var playbackReturnState = {
             active: false,
+            session: 0,
             controller: 'content',
             element: null,
             collection: null
@@ -100,6 +104,13 @@
         function beginPlaybackNavigation(element, collection) {
             // Temporary Select windows must not replace the detail controller and
             // focus target that need to be restored after playback.
+            playbackSession += 1;
+            playbackReturnState.session = playbackSession;
+            if (restoreTimer) {
+                clearTimeout(restoreTimer);
+                restoreTimer = null;
+            }
+            cancelExternalRestore();
             if (playbackReturnState.active) return;
             var controller = currentControllerName() || 'content';
             if (controller === 'select') controller = 'content';
@@ -130,7 +141,11 @@
 
         function restorePlaybackInteraction(snapshot) {
             snapshot = snapshot && snapshot.controller ? snapshot : playbackReturnSnapshot();
-            setTimeout(function () {
+            var session = playbackReturnState.session;
+            if (restoreTimer) clearTimeout(restoreTimer);
+            restoreTimer = setTimeout(function () {
+                restoreTimer = null;
+                if (playbackReturnState.session !== session || !playbackReturnState.active) return;
                 try {
                     var controller = snapshot.controller && snapshot.controller !== 'select' ? snapshot.controller : 'content';
                     if (window.Lampa && Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
@@ -153,7 +168,7 @@
                 } catch (error) {
                     console.warn('[YummyAnime] Could not restore playback navigation', error);
                 } finally {
-                    clearPlaybackReturn();
+                    if (playbackReturnState.session === session) clearPlaybackReturn();
                 }
             }, 0);
         }
@@ -164,8 +179,18 @@
                 return false;
             }
             params = Object.assign({}, params || {});
+            var settled = false;
             var originalBack = params.onBack;
+            var originalSelect = params.onSelect;
+            // Some Lampa builds close Select by calling onBack even after a
+            // choice. That used to restore the title card and kill the next
+            // voice / episode / player window.
+            params.onSelect = function (item) {
+                settled = true;
+                if (originalSelect) originalSelect(item);
+            };
             params.onBack = function () {
+                if (settled) return;
                 if (originalBack) originalBack();
                 restorePlaybackInteraction();
             };
@@ -228,6 +253,17 @@
             }, navigation);
         }
 
+        function isAbortError(error) {
+            return Boolean(error && (error.name === 'AbortError' || /aborted/i.test(String(error && error.message || ''))));
+        }
+
+        function loadVideosForPlayback(id) {
+            return loadVideos(id).catch(function (error) {
+                if (!isAbortError(error)) throw error;
+                return loadVideos(id);
+            });
+        }
+
         function openVideos(card, resume) {
             beginPlaybackNavigation();
             if (!card || !card.yani_id) {
@@ -238,7 +274,7 @@
             if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
             enrichEpisodeTitles(card);
 
-            loadVideos(card.yani_id).then(function (payload) {
+            loadVideosForPlayback(card.yani_id).then(function (payload) {
                 if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
                 var videos = payload && payload.response ? payload.response : payload;
                 videos = (Array.isArray(videos) ? videos : []).filter(function (video) {

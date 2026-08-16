@@ -63,11 +63,14 @@ const context = {
     parseFloat: parseFloat
 };
 context.window.LampaYani = {};
+context.Lampa = context.window.Lampa;
 vm.runInNewContext(source, context);
 
+let shown;
 const api = context.window.LampaYaniPlaybackMenu.create({
     t: function (key) { return key; },
-    showYummySelect: function () { return true; }
+    showYummySelect: function (params) { shown = params; return true; },
+    currentControllerName: function () { return 'content'; }
 });
 
 assert.strictEqual(api.playerKey({player: 'Kodik'}), 'kodik');
@@ -75,7 +78,22 @@ assert.strictEqual(api.videoSourceUrl({iframe_url: 'https://example/a.m3u8'}), '
 assert.strictEqual(api.playbackReturnState.active, false);
 api.beginPlaybackNavigation();
 assert.strictEqual(api.playbackReturnState.active, true);
+assert.ok(api.playbackReturnState.session > 0);
 api.clearPlaybackReturn();
 assert.strictEqual(api.playbackReturnState.active, false);
+
+api.beginPlaybackNavigation();
+var firstSession = api.playbackReturnState.session;
+var selected = false;
+api.showPlaybackSelect({
+    title: 'choose',
+    items: [{title: 'one'}],
+    onSelect: function () { selected = true; }
+});
+shown.onSelect({title: 'one'});
+shown.onBack();
+assert.strictEqual(selected, true);
+assert.strictEqual(api.playbackReturnState.active, true);
+assert.strictEqual(api.playbackReturnState.session, firstSession);
 
 console.log('playback menu module contract checks passed');

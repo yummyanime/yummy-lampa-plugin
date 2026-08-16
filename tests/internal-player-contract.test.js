@@ -14,5 +14,8 @@ assert.ok(
 );
 assert.ok(internalPlayback.includes('LampaYaniUiUtils.internalPlayerItem'), 'internal playback must preserve normalized stream metadata');
 assert.ok(!source.includes("playInternalPlayer(current, playlist) || openExternalPlayer(current, playlist, card)"), 'internal mode must not silently fall back to an external player');
+assert.match(source, /lampa: t\('watch_internal_lampa'\)/);
+assert.match(source, /get\('yani_player_preference', 'last'\) === 'lampa'\) return 'internal'/);
+assert.match(source, /preference\)\.toLowerCase\(\) === 'lampa'\) return groupPlaybackPriority\(group\) > 0/);
 
 console.log('internal-player contract tests passed');

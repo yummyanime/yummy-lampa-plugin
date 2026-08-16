@@ -38,6 +38,8 @@ const context = {
         LampaYaniUiUtils: {
             standardSearchTitles: function () { return []; },
             normalizeMatchTitle: function (v) { return String(v || '').toLowerCase(); },
+            scoreTitleMatch: function () { return 0; },
+            isSafeTmdbSeasonMatch: function () { return true; },
             titleValues: function () { return []; }
         },
         LampaYaniApi: {
