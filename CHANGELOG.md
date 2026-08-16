@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.27 — 2026-08-16
+
+- Fix Genres and Collections stopping after the eighth hub row
+
 ## 0.42.26 — 2026-08-16
 
 - Fix Genres and Collections hub rows not loading after the first four

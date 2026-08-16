@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.26',
+        version: '0.42.27',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -6047,6 +6047,16 @@ function pluginYummyAnime() {
         };
     }
 
+    function rowNeedsMore(index, count, size) {
+        size = Math.max(1, Number(size || 4));
+        count = Math.max(0, Number(count || 0));
+        index = Number(index);
+        if (!count || !isFinite(index) || index < 0) return false;
+        var remaining = count - 1 - index;
+        if (remaining >= size) return false;
+        return (index + 1) % size === 0 || remaining <= 0;
+    }
+
     function decorateCard(first, second, third, deps) {
         var values = renderValues(first, second, third);
         if (!values.card || !values.element) return;
@@ -6066,6 +6076,7 @@ function pluginYummyAnime() {
         var nextPage = 0;
         var loadingPage = false;
         var finished = false;
+        var renderedRows = 0;
 
         function prepare(rows) {
             return (rows || []).filter(Boolean).map(function (row) {
@@ -6118,20 +6129,63 @@ function pluginYummyAnime() {
             });
         }
 
+        function rowCount() {
+            if (component.items && component.items.length) return component.items.length;
+            return renderedRows;
+        }
+
+        function loadIfBoundary(index) {
+            var count = rowCount();
+            if (index == null || index < 0) index = count - 1;
+            if (!rowNeedsMore(index, count, pageSize)) return;
+            requestNext(appendRows, function () {});
+        }
+
         function appendRows(rows) {
             if (destroyed || !rows || !rows.length) return;
+            renderedRows += rows.length;
             // Later pages must not go through InteractionMain.build(): that
             // toggles the activity and steals focus from the row the user is on.
             if (typeof component.emit === 'function') component.emit('build', rows);
             else component.build(rows);
             bindScrollEnd();
+            bindRowTriggers();
+            // If the user is already sitting on the 8th/12th/... row, do not
+            // wait for another end-of-scroll event that Lampa will not fire.
+            loadIfBoundary(Number(component.active || 0));
         }
 
         function bindScrollEnd() {
             if (!component.scroll) return;
             component.scroll.onEnd = function () {
-                requestNext(appendRows, function () {});
+                loadIfBoundary(rowCount() - 1);
             };
+        }
+
+        function bindRowTriggers() {
+            var items = component.items;
+            if (!items || !items.length) return;
+            items.forEach(function (item, index) {
+                if (!item || item._yani_rail_more) return;
+                item._yani_rail_more = true;
+                if (typeof item.use === 'function') {
+                    item.use({
+                        onToggle: function () {
+                            var current = items.indexOf(item);
+                            loadIfBoundary(current < 0 ? index : current);
+                        }
+                    });
+                    return;
+                }
+                var toggle = item.toggle;
+                if (typeof toggle !== 'function') return;
+                item.toggle = function () {
+                    var result = toggle.apply(this, arguments);
+                    var current = (component.items || items).indexOf(item);
+                    loadIfBoundary(current < 0 ? index : current);
+                    return result;
+                };
+            });
         }
 
         function mountInteraction(self) {
@@ -6158,10 +6212,12 @@ function pluginYummyAnime() {
                 if (destroyed) return;
                 rows = (rows || []).filter(Boolean);
                 nextPage = 1;
+                renderedRows = rows.length;
                 if (!rows.length) finished = true;
                 self.build(prepare(rows));
                 if (self.render) self.render().addClass('yani-card-rails ' + (deps.viewClass || ''));
                 bindScrollEnd();
+                bindRowTriggers();
                 // The first end-of-scroll event is easy to miss on TV (4 rows
                 // and a 1s InteractionMain guard). Prefetch the next batch so
                 // the fifth row is already on the way when the user reaches it.
@@ -6181,7 +6237,23 @@ function pluginYummyAnime() {
         };
         component.nextPageRequest = component.nextPageReuest;
         if (typeof component.use === 'function') {
-            component.use({onNext: requestNext});
+            component.use({
+                onNext: requestNext,
+                onInstance: function (item) {
+                    if (!item || item._yani_rail_more) return;
+                    item._yani_rail_more = true;
+                    if (typeof item.use !== 'function') return;
+                    item.use({
+                        onToggle: function () {
+                            var current = (component.items || []).indexOf(item);
+                            loadIfBoundary(current);
+                        }
+                    });
+                },
+                onDown: function () {
+                    loadIfBoundary(Number(component.active || 0));
+                }
+            });
         }
         if (window.LampaYaniNavigation && LampaYaniNavigation.attachComponent) {
             LampaYaniNavigation.attachComponent(component, {
@@ -6204,7 +6276,8 @@ function pluginYummyAnime() {
         create: create,
         mapLimit: mapLimit,
         withMore: withMore,
-        morePoster: morePoster
+        morePoster: morePoster,
+        rowNeedsMore: rowNeedsMore
     };
 }(window));
 

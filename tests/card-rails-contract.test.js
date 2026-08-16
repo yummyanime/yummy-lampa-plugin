@@ -22,19 +22,26 @@ assert.match(source, /yani-card-rails/);
 assert.match(source, /function mapLimit/);
 assert.match(source, /function requestNext\(resolve, reject\)/);
 assert.match(source, /function bindScrollEnd/);
+assert.match(source, /function bindRowTriggers/);
+assert.match(source, /function loadIfBoundary/);
 assert.match(source, /function mountInteraction/);
 assert.match(source, /if \(loadingPage\) return/);
 assert.match(source, /component\.nextPageReuest/);
-assert.match(source, /component\.use\(\{onNext: requestNext\}\)/);
+assert.match(source, /onInstance: function \(item\)/);
 assert.match(source, /component\.scroll\.onEnd = function/);
 assert.match(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}display:\s*flex/);
 assert.match(css, /\.yani-card-rails \.items-cards \.card[\s\S]{0,350}flex:\s*0 0 12\.75em/);
 assert.match(css, /\.yani-user-lists-view \.items-cards \.card[\s\S]{0,350}width:\s*12\.75em/);
 assert.doesNotMatch(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}width:\s*revert/);
 
-const context = {window: {}};
+const context = {window: {}, isFinite: isFinite, Number: Number, Math: Math};
 vm.runInNewContext(source, context);
 const rails = context.window.LampaYaniCardRails;
+assert.strictEqual(rails.rowNeedsMore(3, 4, 4), true, 'the 4th row must request the next batch');
+assert.strictEqual(rails.rowNeedsMore(7, 8, 4), true, 'the 8th row must request the next batch');
+assert.strictEqual(rails.rowNeedsMore(11, 12, 4), true, 'every later multiple of four must keep loading');
+assert.strictEqual(rails.rowNeedsMore(3, 8, 4), false, 'a 4th row must not reload when the next four are already present');
+assert.strictEqual(rails.rowNeedsMore(5, 8, 4), false, 'a mid-batch row must not start another request');
 const line = rails.withMore({
     title: 'Isekai',
     total: 42,
@@ -53,20 +60,30 @@ context.Lampa = {
         this.html = {append: function () {}, contains: function () { return false; }};
         this.scroll = {minus: function () {}, render: function () { return {nodeType: 1}; }};
         this.emit = function (name, data) {
-            if (name === 'build' && data) builds.push(data);
+            if (name === 'build' && data) {
+                builds.push(data);
+                this.items = this.items.concat(data.map(function () { return {}; }));
+            }
         };
-        this.build = function (rows) { builds.push(rows); };
+        this.active = 0;
+        this.items = [];
+        this.build = function (rows) {
+            builds.push(rows);
+            this.items = this.items.concat((rows || []).map(function () { return {}; }));
+        };
         this.render = function () { return {addClass: function () {}}; };
     }
 };
 const loadedPages = [];
 const component = rails.create({}, {
     t: function (key) { return key; },
-    pageSize: 2,
+    pageSize: 4,
     loadPage: function (page, size) {
         loadedPages.push([page, size]);
-        if (page > 1) return [];
-        return [{title: 'Page ' + page, results: [{title: 'Card ' + page}]}];
+        if (page > 3) return [];
+        return [0, 1, 2, 3].map(function (index) {
+            return {title: 'Page ' + page + ' row ' + index, results: [{title: 'Card'}]};
+        });
     }
 });
 
@@ -75,15 +92,21 @@ const component = rails.create({}, {
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
-    assert.deepStrictEqual(loadedPages.slice(0, 1), [[0, 2]]);
+    assert.deepStrictEqual(loadedPages.slice(0, 1), [[0, 4]]);
     assert.ok(loadedPages.some(function (item) { return item[0] === 1; }), 'the next rail batch must be prefetched after the first four rows');
     assert.ok(builds.length >= 1);
     assert.equal(typeof component.scroll.onEnd, 'function');
-    assert.equal(builds[0][0].title, 'Page 0');
+    assert.equal(builds[0][0].title, 'Page 0 row 0');
+    component.active = 7;
     component.scroll.onEnd();
     await Promise.resolve();
     await Promise.resolve();
-    assert.ok(loadedPages.some(function (item) { return item[0] === 2; }), 'reaching the last visible row must request the following batch');
+    assert.ok(loadedPages.some(function (item) { return item[0] === 2; }), 'the 8th row must request the following batch');
+    component.active = 11;
+    component.scroll.onEnd();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.ok(loadedPages.some(function (item) { return item[0] === 3; }), 'the 12th row must keep requesting while data remains');
     console.log('card rails contract checks passed');
 }()).catch(function (error) {
     console.error(error);
