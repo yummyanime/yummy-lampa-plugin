@@ -347,11 +347,10 @@
     }
 
     function Catalog(object) {
-        // Snapshot API params before InteractionCategory mutates object.params
-        // with its own module config (items/loading/module).
-        var baseParams = catalogRequestParams(object);
+        var requestedParams = copyParams(object.params || {limit: 30, sort: 'top', sort_forward: true});
         var comp = new Lampa.InteractionCategory(object);
         var topMode = Boolean(object.topMode);
+        var baseParams = requestedParams;
         var limit = Number(baseParams.limit || 30);
         var maxPages = Math.ceil(20000 / limit) + 1;
         var seen = {};
@@ -426,38 +425,21 @@
 
         comp.create = function () {
             var self = this;
-            var activityView = this.activity.render && this.activity.render(true);
-            if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            LampaYaniApi.catalog(baseParams, object.genre_context || baseParams.genres ? {
-                timeout: 8000,
-                retry: false,
-                staleFallback: true
-            } : {})
+            LampaYaniApi.catalog(baseParams)
                 .then(function (payload) {
                     var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
                     var results = mapUniqueCards(raw, seen);
                     requestedOffsets[baseParams.offset] = true;
                     if (raw.length < limit) object.page = maxPages;
                     self.build({results: results, total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
-                    if (self.activity && self.activity.loader) self.activity.loader(false);
                     installGenreHeader();
                     controls.install();
                 })
                 .catch(function (error) {
                     console.error('[YummyAnime]', error);
-                    if (self.activity && self.activity.loader) self.activity.loader(false);
-                    if (object.genre_context || baseParams.genres) {
-                        var states = LampaYaniSectionState.forActivity(self.activity, {t: t});
-                        states.offline({
-                            title: t('catalog_load_error'),
-                            onRetry: function () { self.create(); }
-                        });
-                        self.activity.toggle();
-                        states.focus();
-                    } else {
-                        Lampa.Noty.show(t('catalog_load_error'));
-                    }
+                    self.activity.loader(false);
+                    Lampa.Noty.show(t('catalog_load_error'));
                 });
         };
         comp.nextPageReuest = function (requestObject, resolve, reject) {
@@ -469,11 +451,7 @@
             }
             requestedOffsets[params.offset] = true;
 
-            LampaYaniApi.catalog(params, object.genre_context || baseParams.genres ? {
-                timeout: 8000,
-                retry: false,
-                staleFallback: true
-            } : {}).then(function (payload) {
+            LampaYaniApi.catalog(params).then(function (payload) {
                 var raw = annotateGenreTop(LampaYaniApi.normalize(payload), params.offset);
                 var results = mapUniqueCards(raw, seen);
                 if (raw.length < limit) requestObject.page = maxPages;
@@ -1779,19 +1757,46 @@
         });
     }
 
+    function bindGenreTile(render, card) {
+        if (!render || !card || !card.yani_genre) return;
+        var node = render.jquery ? render[0] : render;
+        if (node) node.card_data = card;
+        render = render.jquery ? render : $(render);
+        render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
+        render.add(render.find('*')).off('hover:enter click');
+        render.on('hover:enter.yaniGenreTile click.yaniGenreTile', function (event) {
+            if (event) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+            openGenreCatalog(card.yani_genre);
+        });
+    }
+
+    function bindGenreTiles(self, cards) {
+        var root = self && self.render ? self.render() : null;
+        if (!root) return;
+        $(root).find('.card').each(function (index) {
+            bindGenreTile($(this), cards[index]);
+        });
+    }
+
     function Genres(object) {
         object.page = 1;
         var comp = new Lampa.InteractionCategory(object);
+        var genreCards = [];
 
         comp.create = function () {
             var self = this;
             this.activity.loader(true);
             loadGenreList().then(function (genres) {
-                var cards = genreTilesRow(genres).results;
-                self.build({results: cards, total_pages: 1, title: t('genres')});
+                genreCards = genreTilesRow(genres).results;
+                self.build({results: genreCards, total_pages: 1, title: t('genres')});
                 if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-tile-catalog yani-genres-tile-catalog');
-                if (!cards.length) Lampa.Noty.show(t('genres_empty'));
+                bindGenreTiles(self, genreCards);
+                setTimeout(function () { bindGenreTiles(self, genreCards); }, 0);
+                if (!genreCards.length) Lampa.Noty.show(t('genres_empty'));
             }).catch(function (error) {
                 console.error('[YummyAnime Genres]', error);
                 self.activity.loader(false);
@@ -1813,16 +1818,7 @@
             var node = element && element.jquery ? element[0] : element;
             if (!card && node && node.card_data && node.card_data.yani_genre_tile) card = node.card_data;
             if (!element || !card) return;
-            var render = element.jquery ? element : $(element);
-            render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
-            render.add(render.find('*')).off('hover:enter click');
-            render.on('hover:enter.yaniGenreTile click.yaniGenreTile', function (event) {
-                if (event) {
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                }
-                openGenreCatalog(card.yani_genre);
-            });
+            bindGenreTile(element.jquery ? element : $(element), card);
         };
 
         return comp;
@@ -3602,7 +3598,12 @@
                 poster: poster,
                 img: poster,
                 yani_genre_tile: true,
-                yani_genre: genre
+                yani_genre: genre,
+                params: {
+                    on: {
+                        'hover:enter': function () { openGenreCatalog(genre); }
+                    }
+                }
             };
         });
         return {
@@ -3717,7 +3718,7 @@
             title: title,
             component: 'yani_catalog',
             genre_context: context,
-            catalog_params: {limit: 30, genres: genreId}
+            params: {limit: 30, genres: genreId}
         });
     }
 
@@ -4047,40 +4048,6 @@
             copy[key] = params[key];
         });
         return copy;
-    }
-
-    function sanitizeCatalogParams(params) {
-        var allowed = {
-            limit: true, offset: true, sort: true, sort_forward: true,
-            genres: true, types: true, status: true, year: true,
-            from_year: true, to_year: true, q: true
-        };
-        var clean = {};
-        Object.keys(params || {}).forEach(function (key) {
-            if (!allowed[key]) return;
-            var value = params[key];
-            if (value === undefined || value === null || value === '') return;
-            if (typeof value === 'object') return;
-            clean[key] = value;
-        });
-        return clean;
-    }
-
-    function routeSegment(url, name) {
-        var match = String(url || '').match(new RegExp('\\b' + name + '\\/([^/?#]+)'));
-        if (!match) return '';
-        try { return decodeURIComponent(match[1]); } catch (error) { return match[1]; }
-    }
-
-    function catalogRequestParams(object) {
-        var clean = sanitizeCatalogParams(object && (object.catalog_params || object.params) || {});
-        if (!clean.limit) clean.limit = 30;
-        if (!clean.genres) {
-            var genreId = routeSegment(object && object.url, 'genre');
-            if (genreId) clean.genres = genreId;
-        }
-        if (!clean.sort) clean.sort = 'top';
-        return clean;
     }
 
     function mapUniqueCards(items, seen) {

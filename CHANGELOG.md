@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.42 — 2026-08-16
+
+- Fix genre and collection tile clicks to open a separate catalog page with the old working loader
+
 ## 0.42.41 — 2026-08-16
 
 - Fix genre and collection pages hanging on load by isolating catalog query params from Lampa InteractionCategory and always clearing the activity loader
