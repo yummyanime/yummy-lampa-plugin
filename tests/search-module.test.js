@@ -27,6 +27,8 @@ const ranked = searchModule.rankCards([
 ], 'naruto', utils);
 assert.strictEqual(ranked[0].title, 'Наруто');
 assert.strictEqual(ranked[1].title, 'Naruto Shippuden');
+assert.match(source, /params:\s*\{\s*save:\s*true/);
+assert.match(source, /source\.params\.start_typing/);
 
 (async function () {
     const calls = [];

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.43.0 — 2026-08-16
+
+- Fix genre and collection Enter navigation on legacy Lampa Card onEnter
+- Fix native TMDB near-miss matches for similar live-action titles
+- Fix Lampa global Search crash from a missing YummyAnime source params object
+
+## 0.42.49 — 2026-08-16
+
+- Fix Lampa global Search crash caused by a YummyAnime source without params
+
 ## 0.42.48 — 2026-08-16
 
 - Fix opening YummyAnime titles in Lampa when a similar live-action TMDB title shares the year

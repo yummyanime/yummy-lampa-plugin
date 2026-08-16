@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.42.48',
+        version: '0.43.0',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -4444,6 +4444,11 @@ function pluginYummyAnime() {
             window.yummyanime_search_source_ready = true;
             lampa.Search.addSource({
                 title: options.sourceTitle || 'YummyAnime',
+                // Lampa Results.empty reads source.params.start_typing / nofound
+                // immediately on create. Missing params crashes global Search.
+                params: {
+                    save: true
+                },
                 search: search,
                 onSelect: function (params, close) {
                     if (typeof close === 'function') close();
