@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.42.30 — 2026-08-16
+
+- Fix Genres and Collections hubs by loading all rail rows before render
+
 ## 0.42.29 — 2026-08-16
 
 - Fix rail pagination using the focused DOM row instead of stale Lampa state
