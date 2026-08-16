@@ -18,7 +18,7 @@ assert.ok(ui.indexOf("key: 'search'") < ui.indexOf("key: 'collections'"), 'Searc
 assert.match(ui, /Lampa\.Component\.add\('yani_collections'/);
 assert.match(ui, /Lampa\.Component\.add\('yani_collection'/);
 assert.match(ui, /Lampa\.Component\.add\('yani_genres'/);
-assert.match(ui, /LampaYaniCollections\.hub/);
+assert.match(ui, /LampaYaniCollections\.catalog/);
 assert.match(collections, /response\.collections/);
 assert.match(collections, /function hub\(object, deps\)/);
 assert.match(collections, /LampaYaniCardRails\.create/);
@@ -37,6 +37,8 @@ assert.match(collections, /yani-collections-hub/);
 assert.match(collections, /yani-collection-view/);
 assert.match(collections, /comp\.nextPageReuest/);
 assert.match(collections, /yani_collection_previews/);
+assert.match(collections, /yani_collection_tile: true/);
+assert.match(collections, /yani-tile-catalog yani-collections-tile-catalog/);
 assert.match(collections, /deps\.open\(card\.yani_collection\)/);
 assert.match(collections, /\.map\(deps\.toCard\)/);
 assert.match(collections, /deps\.detail\(object\.collectionId, limit, offset\)/);
@@ -47,6 +49,7 @@ assert.match(css, /\.yani-collection-card__meta/);
 assert.match(css, /\.yani-collection-tile-card \.card__view/);
 assert.match(css, /\.yani-collection-tile-card\.focus \.card__view/);
 assert.match(css, /\.yani-collection-tiles-line \.card .card__view/);
+assert.match(css, /\.yani-collections-tile-catalog \.card__view::after/);
 assert.match(collections, /onFocus: function \(target, card\)/);
 
 const context = {window: {}};

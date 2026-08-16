@@ -37,11 +37,12 @@
             poster: previews[0] || '',
             img: previews[0] || '',
             yani_collection_id: collection.id,
+            yani_collection_tile: true,
             yani_collection: collection,
             yani_collection_previews: previews,
             yani_collection_views: Number(collection.views || 0),
             yani_collection_likes: likes,
-            yani_collection_count: Array.isArray(collection.animes) ? collection.animes.length : 0
+            yani_collection_count: Number(collection.animes_count || collection.count || collection.total || (Array.isArray(collection.animes) ? collection.animes.length : 0) || 0)
         };
     }
 
@@ -71,7 +72,6 @@
         if (!element.length || !card) return;
         var rendered = element;
         var view = $('.card__view', rendered).first();
-        var previews = card.yani_collection_previews || [];
 
         rendered.add(rendered.find('*')).off('hover:enter click');
         rendered.on('hover:enter.yaniCollection click.yaniCollection', function (event) {
@@ -81,25 +81,18 @@
             }
             deps.open(card.yani_collection);
         });
-        rendered.addClass('yani-collection-card');
+        rendered.addClass('yani-collection-card yani-collection-catalog-tile');
         if (!rendered.closest('.yani-card-rails').length) {
             rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
         }
 
-        if (view.length && previews.length > 1 && !view.find('.yani-collection-card__previews').length) {
-            var mosaic = $('<div class="yani-collection-card__previews"></div>');
-            previews.slice(1, 4).forEach(function (url) {
-                mosaic.append($('<span></span>').css('background-image', 'url("' + String(url).replace(/"/g, '%22') + '")'));
-            });
-            view.append(mosaic);
-        }
-
-        if (view.length && !view.find('.yani-collection-card__meta').length) {
-            var labels = [];
-            if (card.yani_collection_count) labels.push(card.yani_collection_count + ' ' + deps.t('anime_count'));
-            if (card.yani_collection_views) labels.push('◉ ' + card.yani_collection_views);
-            if (card.yani_collection_likes) labels.push('♥ ' + card.yani_collection_likes);
-            if (labels.length) view.append($('<div class="yani-collection-card__meta"></div>').text(labels.join(' · ')));
+        if (view.length && !view.find('.yani-collection-tile-card__copy').length) {
+            var copy = $('<div class="yani-collection-tile-card__copy"></div>');
+            copy.append($('<strong></strong>').text(card.title || ''));
+            if (card.yani_collection_count) {
+                copy.append($('<span></span>').text(card.yani_collection_count + ' ' + deps.t('anime_count')));
+            }
+            view.append(copy);
         }
     }
 
@@ -308,6 +301,7 @@
 
         function buildInitial(self, items) {
             self.build({results: uniqueCards(items), total_pages: maxPages, title: deps.t('collections')});
+            if (self.render) self.render().addClass('yani-tile-catalog yani-collections-tile-catalog');
         }
 
         comp.create = function () {

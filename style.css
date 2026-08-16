@@ -2717,6 +2717,71 @@ body > .yani-skip-prompt {
     box-shadow: 0 0 0 .16em #fff, 0 0 0 .34em rgba(166,138,240,.55), 0 .65em 1.4em rgba(0,0,0,.32);
     transform: translateY(-.12em) scale(1.035);
 }
+
+/* Genres and collections are intentionally simple TV-first tile catalogs. */
+.yani-tile-catalog .category-full,
+.yani-tile-catalog .items-cards {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 1.05em .9em !important;
+    width: 100% !important;
+    padding: .7em 1em 2.5em !important;
+    box-sizing: border-box;
+}
+.yani-tile-catalog .card {
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.yani-tile-catalog .card__view {
+    padding-bottom: 56.25% !important;
+    overflow: hidden;
+    border: .08em solid rgba(255,255,255,.14);
+    border-radius: 1em;
+    background: rgba(255,255,255,.055);
+    box-shadow: 0 .65em 1.6em rgba(0,0,0,.22), inset 0 .06em 0 rgba(255,255,255,.08);
+    transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.yani-tile-catalog .card__img,
+.yani-tile-catalog .card__view img {
+    width: 100%;
+    height: 100%;
+    border-radius: .94em;
+    object-fit: cover;
+}
+.yani-tile-catalog .card > .card__title,
+.yani-tile-catalog .card__age,
+.yani-tile-catalog .card > .yani-card-meta,
+.yani-tile-catalog .yani-collection-card__meta,
+.yani-tile-catalog .yani-collection-card__previews { display: none !important; }
+.yani-tile-catalog .card.focus .card__view {
+    border-color: #fff;
+    box-shadow: 0 0 0 .16em #fff, 0 0 0 .38em rgba(255,104,120,.5), 0 .9em 2em rgba(0,0,0,.34);
+    transform: translateY(-.18em) scale(1.025);
+}
+.yani-collections-tile-catalog .card__view::after {
+    position: absolute;
+    z-index: 2;
+    inset: 26% 0 0;
+    background: linear-gradient(180deg, transparent, rgba(10,9,17,.94));
+    content: '';
+    pointer-events: none;
+}
+.yani-genres-tile-catalog .card__view { padding-bottom: 45.45% !important; }
+
+@media (min-width: 100em) {
+    .yani-tile-catalog .category-full,
+    .yani-tile-catalog .items-cards { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 70em) {
+    .yani-tile-catalog .category-full,
+    .yani-tile-catalog .items-cards { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 42em) {
+    .yani-tile-catalog .category-full,
+    .yani-tile-catalog .items-cards { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: .75em .58em !important; padding: .55em .5em 2em !important; }
+}
 /* Row-level selectors (primary path — applied by markTilesLines after build) */
 .yani-collection-tiles-line .card {
     flex: 0 0 13.2em !important;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.42.39 — 2026-08-16
+
+- Refactor Genres and Collections into focused tile catalogs
+- Add adaptive TV navigation and responsive tile layouts
+
 ## 0.42.38 — 2026-08-16
 
 - Fix search input showing duplicate fields on some devices by preferring Input.edit API and adding double-show guard

@@ -1740,7 +1740,7 @@
     }
 
     function Collections(object) {
-        return LampaYaniCollections.hub(object, {
+        return LampaYaniCollections.catalog(object, {
             t: t,
             feed: LampaYaniApi.feed,
             load: LampaYaniApi.collectionCatalog,
@@ -1757,19 +1757,51 @@
     }
 
     function Genres(object) {
-        return LampaYaniCardRails.create(object, {
-            id: 'genres:' + String(object && object.url || 'yani/genres'),
-            viewClass: 'yani-genres-hub',
-            t: t,
-            decorate: function (element, card) {
-                cardRenderers.decorate(element, card);
-                LampaYaniMedia.attachPosterFallback(element, card);
-            },
-            openCard: function (card) { openYummyDetail(card, false); },
-            onError: function () { Lampa.Noty.show(t('genres_load_error')); },
-            pageSize: 8,
-            loadPage: createGenreRowLoader()
-        });
+        object.page = 1;
+        var comp = new Lampa.InteractionCategory(object);
+
+        comp.create = function () {
+            var self = this;
+            this.activity.loader(true);
+            loadGenreList().then(function (genres) {
+                var cards = genreTilesRow(genres).results;
+                self.build({results: cards, total_pages: 1, title: t('genres')});
+                if (self.render) self.render().addClass('yani-tile-catalog yani-genres-tile-catalog');
+                if (!cards.length) Lampa.Noty.show(t('genres_empty'));
+            }).catch(function (error) {
+                console.error('[YummyAnime Genres]', error);
+                self.activity.loader(false);
+                Lampa.Noty.show(t('genres_load_error'));
+            });
+        };
+
+        comp.cardRender = function (first, second, third) {
+            var values = [first, second, third];
+            var element;
+            var card;
+            values.forEach(function (value) {
+                if (!value) return;
+                if (!element && (value.jquery || value.nodeType)) element = value;
+                if (!card && value.yani_genre_tile) card = value;
+                var candidate = value.card || value.object || value.data;
+                if (!card && candidate && candidate.yani_genre_tile) card = candidate;
+            });
+            var node = element && element.jquery ? element[0] : element;
+            if (!card && node && node.card_data && node.card_data.yani_genre_tile) card = node.card_data;
+            if (!element || !card) return;
+            var render = element.jquery ? element : $(element);
+            render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
+            render.add(render.find('*')).off('hover:enter click');
+            render.on('hover:enter.yaniGenreTile click.yaniGenreTile', function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                }
+                openGenreCatalog(card.yani_genre);
+            });
+        };
+
+        return comp;
     }
 
     function CollectionDetail(object) {
