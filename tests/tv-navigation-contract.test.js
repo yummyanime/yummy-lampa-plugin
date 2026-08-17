@@ -23,6 +23,16 @@ assert.match(notifications, /collectionSet\(scroll\.render\(\), false, true\)/);
 
 assert.match(player, /yani-player__back selector/);
 assert.match(player, /collectionFocus\(back, html, true\)/);
+assert.match(schedule, /function refreshFocus\(element\)/);
+assert.match(schedule, /function moveDay\(delta\)/);
+assert.match(schedule, /select\(next, 'chip'\)/);
+assert.match(schedule, /select\(index, 'releases'\)/);
+assert.match(schedule, /select\(selectedDay - 1, 'releases'\)/);
+assert.match(schedule, /select\(selectedDay \+ 1, 'releases'\)/);
+assert.match(schedule, /if \(current\.hasClass\('yani-schedule__day-chip'\)\)[\s\S]{0,200}moveDay\(-1\)/);
+assert.match(schedule, /if \(current\.hasClass\('yani-schedule__day-chip'\)\)[\s\S]{0,200}moveDay\(1\)/);
+assert.match(schedule, /focusSelectedChip\(\)/);
+assert.match(schedule, /data-yani-focus-key/);
 assert.match(schedule, /function shortcutBadge\(color\)[\s\S]{0,500}yani-schedule__shortcut-badge/);
 assert.match(schedule, /function updateShortcutBadges\(\)[\s\S]{0,900}shortcutBadge\('green'\)[\s\S]{0,500}shortcutBadge\('yellow'\)[\s\S]{0,500}shortcutBadge\('blue'\)/);
 assert.match(schedule, /group\.relativeOffset === 0\) chip\.append\(shortcutBadge\('red'\)\)/);

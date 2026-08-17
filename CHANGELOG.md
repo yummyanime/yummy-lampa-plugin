@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.44.1 — 2026-08-17
+
+- Fix schedule day focus navigation jumping between chips and titles
+- Add per-episode voice and subtitle team lists on the schedule page
+
 ## 0.44.0 — 2026-08-17
 
 - Fix confusing shared “player” wording by splitting sources and playback players in settings and voice selection

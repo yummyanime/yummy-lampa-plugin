@@ -1889,8 +1889,119 @@ body > .yani-skip-prompt {
     opacity: 1;
 }
 
+.yani-schedule__translations {
+    width: 100%;
+    margin-top: 0.55em;
+    padding: 0.55em 0.6em;
+    border: 0.07em solid rgba(255, 255, 255, 0.12);
+    border-radius: 0.58em;
+    box-sizing: border-box;
+    background: rgba(12, 18, 28, 0.42);
+}
+
+.yani-schedule__translations-title {
+    margin-bottom: 0.4em;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.78em;
+    font-weight: 750;
+    letter-spacing: 0.02em;
+}
+
+.yani-schedule__translation-row {
+    display: grid;
+    grid-template-columns: 7.6em minmax(0, 1fr);
+    align-items: start;
+    gap: 0.45em;
+    padding: 0.28em 0;
+}
+
+.yani-schedule__translation-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.32em;
+    min-height: 1.55em;
+    color: rgba(255, 255, 255, 0.68);
+    font-size: 0.68em;
+    font-weight: 650;
+}
+
+.yani-schedule__translation-heading svg {
+    width: 1.1em;
+    height: 1.1em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.yani-schedule__translation-heading b {
+    min-width: 1.3em;
+    padding: 0.14em 0.3em;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 0.86em;
+    text-align: center;
+}
+
+.yani-schedule__translation-row--voices .yani-schedule__translation-heading { color: #91d9ff; }
+.yani-schedule__translation-row--subtitles .yani-schedule__translation-heading { color: #d3afff; }
+
+.yani-schedule__translation-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.28em;
+    min-width: 0;
+}
+
+.yani-schedule__translation-list span {
+    overflow: hidden;
+    max-width: 12em;
+    padding: 0.26em 0.46em;
+    border: 0.06em solid rgba(255, 255, 255, 0.13);
+    border-radius: 0.38em;
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.66em;
+    font-weight: 600;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.yani-schedule__translation-row--voices .yani-schedule__translation-list span {
+    border-color: rgba(93, 190, 240, 0.2);
+    background: rgba(63, 153, 207, 0.12);
+}
+
+.yani-schedule__translation-row--subtitles .yani-schedule__translation-list span {
+    border-color: rgba(191, 143, 242, 0.22);
+    background: rgba(137, 84, 191, 0.13);
+}
+
 .yani-schedule__item.focus .yani-schedule__episode,
 .yani-schedule__item.focus .yani-schedule__timezone { color: #41566b; }
+
+.yani-schedule__item.focus .yani-schedule__translations {
+    border-color: rgba(22, 117, 165, 0.28);
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.yani-schedule__item.focus .yani-schedule__translations-title { color: #2a4054; }
+.yani-schedule__item.focus .yani-schedule__translation-heading { color: #3a5368; }
+.yani-schedule__item.focus .yani-schedule__translation-row--voices .yani-schedule__translation-heading { color: #1675a5; }
+.yani-schedule__item.focus .yani-schedule__translation-row--subtitles .yani-schedule__translation-heading { color: #6b4a96; }
+.yani-schedule__item.focus .yani-schedule__translation-heading b { background: rgba(16, 24, 32, 0.1); color: #101820; }
+.yani-schedule__item.focus .yani-schedule__translation-list span {
+    border-color: rgba(16, 24, 32, 0.12);
+    background: rgba(16, 24, 32, 0.06);
+    color: #101820;
+}
+
+@media (max-width: 720px) {
+    .yani-schedule__translation-row { grid-template-columns: 1fr; gap: 0.22em; }
+}
 
 .yani-schedule__release {
     min-width: 8em;

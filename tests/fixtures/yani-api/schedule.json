@@ -1,7 +1,7 @@
 {
   "endpoint": "GET /anime/schedule",
   "anonymized": true,
-  "notes": "Schedule uses episodes.prev_date / episodes.next_date (unix seconds or ms).",
+  "notes": "Schedule uses episodes.prev_date / episodes.next_date (unix seconds or ms). Optional per-episode videos[] can mark existing voice/subtitle availability on the schedule row.",
   "response": [
     {
       "anime_id": 10001,
@@ -17,7 +17,17 @@
         "count": 24,
         "prev_date": 1785895200,
         "next_date": 1786500000
-      }
+      },
+      "videos": [
+        {
+          "number": "12",
+          "data": {"dubbing": "Studio Example", "player": "Kodik"}
+        },
+        {
+          "number": "12",
+          "data": {"dubbing": "Subtitles Team", "player": "Alloha"}
+        }
+      ]
     },
     {
       "anime_id": 10004,
