@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.4 — 2026-08-17
+
+- Fix schedule title poster size increased by about 50 percent
+
 ## 0.44.3 — 2026-08-17
 
 - Fix release cut past already published 0.44.1 with schedule crash and translation list fixes

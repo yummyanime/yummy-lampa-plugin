@@ -1841,7 +1841,7 @@ body > .yani-skip-prompt {
     position: relative;
     display: flex;
     align-items: center;
-    min-height: 6.2em;
+    min-height: 9.3em;
     margin-bottom: 0.65em;
     padding: 0.65em 1em;
     border-radius: 0.65em;
@@ -1861,8 +1861,8 @@ body > .yani-skip-prompt {
 }
 
 .yani-schedule__poster {
-    width: 4em;
-    height: 5.5em;
+    width: 6em;
+    height: 8.25em;
     margin-right: 1em;
     border-radius: 0.35em;
     object-fit: cover;
