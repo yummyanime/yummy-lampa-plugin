@@ -146,8 +146,7 @@
             var translations = $('<div class="yani-schedule__translations"></div>').hide();
             info.append($('<div class="yani-schedule__title"></div>').text(card.title));
             info.append($('<div class="yani-schedule__episode"></div>').text(episodeLabel(episodes, entry.aired)));
-            var availability = createAvailability(entry);
-            if (availability) info.append(availability);
+            info.append(translations);
             release.append($('<div class="yani-schedule__time"></div>').text(timeLabel(releaseDate))); release.append($('<div class="yani-schedule__timezone"></div>').text(t('local_time')));
             row.append(poster, info, release);
             enrichItemTranslations(translations, entry);

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.44.3 — 2026-08-17
+
+- Fix release cut past already published 0.44.1 with schedule crash and translation list fixes
+
+## 0.44.2 — 2026-08-17
+
+- Fix schedule page crash from a leftover createAvailability call after translation list rewrite
+
 ## 0.44.1 — 2026-08-17
 
 - Fix schedule day focus navigation jumping between chips and titles

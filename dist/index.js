@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.1',
+        version: '0.44.3',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -8220,8 +8220,7 @@ function pluginYummyAnime() {
             var translations = $('<div class="yani-schedule__translations"></div>').hide();
             info.append($('<div class="yani-schedule__title"></div>').text(card.title));
             info.append($('<div class="yani-schedule__episode"></div>').text(episodeLabel(episodes, entry.aired)));
-            var availability = createAvailability(entry);
-            if (availability) info.append(availability);
+            info.append(translations);
             release.append($('<div class="yani-schedule__time"></div>').text(timeLabel(releaseDate))); release.append($('<div class="yani-schedule__timezone"></div>').text(t('local_time')));
             row.append(poster, info, release);
             enrichItemTranslations(translations, entry);

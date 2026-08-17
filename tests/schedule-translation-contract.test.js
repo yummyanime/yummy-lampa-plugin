@@ -4,6 +4,8 @@ const fs = require('fs');
 const schedule = fs.readFileSync('src/ui-schedule.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
+assert.match(schedule, /info\.append\(translations\)/);
+assert.doesNotMatch(schedule, /createAvailability/);
 assert.match(schedule, /videosCache = \{\}/);
 assert.match(schedule, /function translationGroupsFromVideos\(videos, episode\)/);
 assert.match(schedule, /if \(episode && number && Number\(number\) !== Number\(episode\)\) return/);
