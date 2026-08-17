@@ -23,8 +23,9 @@ assert.match(source, /androidExternalPlayerAvailable/);
 assert.match(source, /Tizen \/ WebOS/);
 assert.match(ui, /androidExternalPlayerAvailable: function \(\) \{ return isAndroidPlatform\(\); \}/);
 assert.match(ui, /function isAndroidPlatform\(\)/);
-assert.match(ui, /if \(value === 'external' && !isAndroidPlatform\(\)\) return 'internal'/);
-assert.match(ui, /if \(isAndroidPlatform\(\)\) playbackTargetValues\.external/);
+assert.match(ui, /if \(!isAndroidPlatform\(\)\) return 'internal'/);
+assert.match(ui, /yani_playback_target_locked/);
+assert.match(ui, /external: t\('playback_target_external'\)/);
 assert.match(fs.readFileSync('src/ui-utils.js', 'utf8'), /function isAndroidPlatform\(\)/);
 
 const context = {
