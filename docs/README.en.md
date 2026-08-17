@@ -14,7 +14,9 @@ A new Lampa extension powered by the official YummyAnime (Yani) API.
 - favorites and user lists;
 - a dedicated My Lists section with recent horizontal rows for signed-in users;
 - viewing comments;
-- dubbing and episode selection with direct-stream playback in Lampa or an external player;
+- dubbing and source selection, then playback in the internal Lampa player or an external Android player;
+- per-source visibility toggles so Kodik, Alloha, CVH, Sibnet and Aksor can be hidden from the dubbing list;
+- preferred-player setting on Android: ask every time, internal Lampa player, or external Android player (system app chooser); locked to internal Lampa outside Android;
 - blocking Alloha in media players when no direct stream is available, with a clear Lampac warning;
 - optional self-hosted Lampac resolution of Alloha sources into direct HLS;
 - self-hosted resolver service in `server/` that serves Alloha as a plain HLS stream;
@@ -22,8 +24,7 @@ A new Lampa extension powered by the official YummyAnime (Yani) API.
 - automatic next-episode playback with its stream resolved in advance;
 - optional, disabled-by-default YummyTV app integration;
 - YummyAnime button on standard Lampa cards and Online registration when that module is available;
-- all players and dubbings returned by the YummyAnime API;
-- preferred-player setting with the last selected source remembered;
+- all video sources and dubbings returned by the YummyAnime API (filtered by the Show sources settings);
 - local playback history, one-click resume, episode duration and view counts;
 - optional automatic internal-player progress synchronization for authorized YummyAnime users, with manual account-page sync when disabled;
 - standard Lampa detail cards for matched YummyAnime catalog and schedule entries;
@@ -32,7 +33,7 @@ A new Lampa extension powered by the official YummyAnime (Yani) API.
 - paginated comments and nested read-only reply threads;
 - YummyAnime service status with availability, latency and per-service history;
 - Russian, English and Ukrainian extension interface;
-- a compact Available translations panel on title details, with separate voice-team and subtitle lists and no player-name or duplicate clutter;
+- a compact Available translations panel on title details, with separate voice-team and subtitle lists and no source-name or duplicate clutter;
 - posters, titles, year, rating and description;
 - rating-service logos on cards and detail pages;
 - alternative poster sources through Jikan, Shikimori and AniList;
@@ -88,9 +89,29 @@ Search is passed through the `q` parameter. The public application key is sent i
 - `server/` — service that turns an Alloha player page into a plain HLS stream;
 - `style.css` — styles.
 
+## Sources vs players
+
+The extension treats two different things separately:
+
+| Concept | Meaning | Examples |
+| --- | --- | --- |
+| **Source** | Video service / aggregator that provides the stream or embed | Kodik, Alloha, CVH, Sibnet, Aksor |
+| **Player** | Where the direct stream is actually played | Internal Lampa player, external Android player |
+
+In settings:
+
+1. **Show sources** — toggles for Kodik, Alloha, CVH, Sibnet and Aksor. Disabled sources are omitted from the dubbing list when you press Watch.
+2. **Preferred player** — ask every time, internal Lampa player, or external Android player.
+
+On Android, the preferred-player setting is fully editable. On every other platform the setting is inactive, locked to the internal Lampa player, and external playback is never offered.
+
+The external option opens Android’s installed-app chooser. Lampa does not expose a list of installed packages to the extension, so individual apps such as MX Player or VLC cannot be enumerated in settings.
+
+When watching, the voice menu is titled **Choose dubbing and source**. Each row shows the dubbing team and the source name.
+
 ## Playback and Alloha
 
-Direct HLS/DASH/MP4/WebM URLs can be played in Lampa or handed to an external Android player. Choose the behavior under `Settings → YummyAnime → Playback target`.
+Direct HLS/DASH/MP4/WebM URLs can be played in Lampa or handed to an external Android player. Choose the behavior under `Settings → YummyAnime → Preferred player`.
 
 Alloha never exposes a direct stream: its player page refuses to run outside an iframe, the manifest requires `authorizations` and `accepts-controls` headers where the latter rotates over a WebSocket every couple of minutes, and the token inside the `master.m3u8` path is single-use. A browser cannot attach those headers to a cross-origin request, which is why the extension cannot solve this on its own and defers to an external service.
 
@@ -102,7 +123,7 @@ Direct-stream providers are tried in order:
 
 With none of them configured, selecting Alloha shows a warning and playback is blocked. An empty address disables the matching adapter. The extension contains no Alloha or Lampac credentials.
 
-The private YummyTV application integration is disabled by default and can be enabled separately in the playback sources settings block.
+The private YummyTV application integration is disabled by default and can be enabled separately under `Settings → YummyAnime → Services and sources`.
 
 ## Implemented
 

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.43.4',
+        version: '0.44.0',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -280,22 +280,32 @@ function pluginYummyAnime() {
     messages.ru.open_yummytv = 'Открыть в YummyTV';
     messages.ru.yummytv_open_failed = 'Не удалось открыть YummyTV. Убедитесь, что приложение установлено';
     messages.ru.yummytv_id_missing = 'Не удалось определить ID тайтла YummyAnime';
-    messages.ru.watch_in_player = 'Смотреть в плеере';
-    messages.ru.watch_in_player_description = 'Открыть источник во внешнем плеере или браузере';
+    messages.ru.watch_in_player = 'Смотреть через YummyAnime';
+    messages.ru.watch_in_player_description = 'Выбрать озвучку, источник и способ воспроизведения';
     messages.ru.watch_in_yummytv = 'Смотреть в YummyTV';
     messages.ru.watch_in_yummytv_description = 'Открыть тайтл в установленном приложении YummyTV';
-    messages.ru.choose_playback = 'Выберите способ просмотра';
-    messages.ru.watch_external_player = 'Внешний плеер';
-    messages.ru.watch_external_player_description = 'Открыть поток во внешнем Android-плеере';
+    messages.ru.choose_playback = 'Выберите плеер';
+    messages.ru.watch_external_player = 'Внешний Android-плеер';
+    messages.ru.watch_external_player_description = 'Открыть поток через системный выбор установленных Android-плееров';
     messages.ru.watch_internal_lampa = 'Внутренний плеер Lampa';
     messages.ru.watch_internal_lampa_description = 'Проигрывать прямой поток внутри Lampa';
     messages.ru.internal_player_unavailable = 'Не удалось запустить внутренний плеер Lampa';
-    messages.ru.playback_target = 'Способ просмотра';
-    messages.ru.playback_target_description = 'Как открывать прямые видеопотоки YummyAnime';
-    messages.ru.playback_target_ask = 'Спрашивать';
-    messages.ru.playback_target_external = 'Внешний плеер';
+    messages.ru.player = 'Источник';
+    messages.ru.player_preference = 'Предпочтительный плеер';
+    messages.ru.player_preference_description = 'Где воспроизводить прямые видеопотоки: спрашивать каждый раз, внутренний плеер Lampa или внешний Android-плеер (системный выбор приложений). Доступно только на Android';
+    messages.ru.player_preference_non_android = 'На этой платформе доступен только внутренний плеер Lampa';
+    messages.ru.player_preference_non_android_description = 'На платформах кроме Android выбор плеера недоступен: используется внутренний плеер Lampa';
+    messages.ru.playback_target = 'Предпочтительный плеер';
+    messages.ru.playback_target_description = 'Где воспроизводить прямые видеопотоки YummyAnime';
+    messages.ru.playback_target_ask = 'Всегда спрашивать';
+    messages.ru.playback_target_external = 'Внешний Android-плеер';
     messages.ru.playback_target_internal = 'Внутренний плеер Lampa';
-    messages.ru.playback_services = 'Источники воспроизведения';
+    messages.ru.playback_services = 'Сервисы и источники';
+    messages.ru.display_sources = 'Отображать источники';
+    messages.ru.display_sources_description = 'Какие видеосервисы показывать в списке озвучек при просмотре';
+    messages.ru.source_visibility_description = 'Показывать этот источник в списке озвучек';
+    messages.ru.no_enabled_sources = 'Все источники скрыты в настройках. Включите хотя бы один в «Отображать источники»';
+    messages.ru.choose_voice = 'Выберите озвучку и источник';
     messages.ru.yummytv_integration = 'Интеграция с YummyTV';
     messages.ru.yummytv_integration_description = 'Показывать необязательные кнопки открытия тайтлов в приложении YummyTV';
     messages.ru.lampac_server = 'Сервер Lampac';
@@ -347,22 +357,32 @@ function pluginYummyAnime() {
     messages.en.open_yummytv = 'Open in YummyTV';
     messages.en.yummytv_open_failed = 'Could not open YummyTV. Make sure the app is installed';
     messages.en.yummytv_id_missing = 'Could not determine the YummyAnime title ID';
-    messages.en.watch_in_player = 'Watch in player';
-    messages.en.watch_in_player_description = 'Open the source in an external player or browser';
+    messages.en.watch_in_player = 'Watch via YummyAnime';
+    messages.en.watch_in_player_description = 'Choose dubbing, source and playback player';
     messages.en.watch_in_yummytv = 'Watch in YummyTV';
     messages.en.watch_in_yummytv_description = 'Open the title in the installed YummyTV app';
-    messages.en.choose_playback = 'Choose how to watch';
-    messages.en.watch_external_player = 'External player';
-    messages.en.watch_external_player_description = 'Open the stream in an external Android player';
+    messages.en.choose_playback = 'Choose a player';
+    messages.en.watch_external_player = 'External Android player';
+    messages.en.watch_external_player_description = 'Open the stream through Android’s installed-player chooser';
     messages.en.watch_internal_lampa = 'Internal Lampa player';
     messages.en.watch_internal_lampa_description = 'Play the direct stream inside Lampa';
     messages.en.internal_player_unavailable = 'Could not start the internal Lampa player';
-    messages.en.playback_target = 'Playback target';
-    messages.en.playback_target_description = 'How YummyAnime should open direct video streams';
+    messages.en.player = 'Source';
+    messages.en.player_preference = 'Preferred player';
+    messages.en.player_preference_description = 'Where to play direct video streams: ask every time, internal Lampa player, or an external Android player (system app chooser). Available on Android only';
+    messages.en.player_preference_non_android = 'Only the internal Lampa player is available on this platform';
+    messages.en.player_preference_non_android_description = 'Outside Android, preferred-player selection is unavailable and playback always uses the internal Lampa player';
+    messages.en.playback_target = 'Preferred player';
+    messages.en.playback_target_description = 'Where YummyAnime should play direct video streams';
     messages.en.playback_target_ask = 'Ask every time';
-    messages.en.playback_target_external = 'External player';
+    messages.en.playback_target_external = 'External Android player';
     messages.en.playback_target_internal = 'Internal Lampa player';
-    messages.en.playback_services = 'Playback sources';
+    messages.en.playback_services = 'Services and sources';
+    messages.en.display_sources = 'Show sources';
+    messages.en.display_sources_description = 'Which video services appear in the dubbing list when watching';
+    messages.en.source_visibility_description = 'Show this source in the dubbing list';
+    messages.en.no_enabled_sources = 'All sources are hidden in settings. Enable at least one under “Show sources”';
+    messages.en.choose_voice = 'Choose dubbing and source';
     messages.en.yummytv_integration = 'YummyTV integration';
     messages.en.yummytv_integration_description = 'Show optional actions for opening titles in the YummyTV app';
     messages.en.lampac_server = 'Lampac server';
@@ -574,7 +594,27 @@ function pluginYummyAnime() {
         language_name: 'Мова / Language', language_description: 'Мова інтерфейсу розширення YummyAnime', language_changed: 'Мову YummyAnime змінено. Відкрийте розширення знову.', section_visibility_description: 'Показувати цей розділ на головному екрані YummyAnime', lampa_card_integration: 'Картка Lampa', lampa_card_rating: 'Рейтинг YummyAnime', lampa_card_rating_description: 'Показувати рейтинг YummyAnime на звичайній картці Lampa', lampa_card_button: 'Кнопка YummyAnime', lampa_card_button_description: 'Показувати кнопку з логотипом YummyAnime на звичайній картці Lampa', version_name: 'YummyAnime', version_label: 'Версія', website_description: 'Офіційний сайт YummyAnime', extension: 'Розширення', account_statistics: 'Статистика', genres_statistics: 'Жанри', ratings_statistics: 'Оцінки', types_statistics: 'Типи', auth_title: 'Авторизація YummyAnime', auth_authorized: 'Ви увійшли до облікового запису YummyAnime', auth_not_authorized: 'Вхід не виконано', auth_login: 'Нікнейм або Email', auth_password: 'Пароль', auth_submit: 'Увійти', auth_account: 'Обліковий запис',
         login_name: 'Увійти до YummyAnime', refresh_name: 'Оновити токен YummyAnime', login_first: 'Спочатку увійдіть до YummyAnime', token_refreshed: 'Токен YummyAnime оновлено', token_refresh_error: 'Не вдалося оновити токен YummyAnime', logout_name: 'Вийти з YummyAnime', logged_out: 'Ви вийшли з YummyAnime', api_check_name: 'Перевірити YummyAnime API', api_ok: 'YummyAnime API працює', api_error: 'YummyAnime API недоступний або публічний токен неправильний', email_prompt: 'Нікнейм або Email', email_required: 'Введіть нікнейм або email YummyAnime', password_prompt: 'Пароль YummyAnime', password_required: 'Введіть пароль YummyAnime', login_ok: 'Вхід до YummyAnime виконано', login_error: 'Помилка входу до YummyAnime', comments_title: 'Коментарі YummyAnime', comments_error: 'Не вдалося завантажити коментарі', kinopoisk: 'Кінопошук'
     });
-    messages.uk.player_preference_description = 'Вибране джерело буде показано першим. «Внутрішній плеєр Lampa» надає перевагу прямим потокам і відкриває їх у вбудованому плеєрі';
+    messages.uk.player_preference_description = 'Де відтворювати прямі відеопотоки: запитувати щоразу, внутрішній плеєр Lampa або зовнішній Android-плеєр (системний вибір застосунків). Доступно лише на Android';
+    messages.uk.player_preference_non_android = 'На цій платформі доступний лише внутрішній плеєр Lampa';
+    messages.uk.player_preference_non_android_description = 'Поза Android вибір плеєра недоступний: завжди використовується внутрішній плеєр Lampa';
+    messages.uk.player = 'Джерело';
+    messages.uk.player_preference = 'Бажаний плеєр';
+    messages.uk.display_sources = 'Показувати джерела';
+    messages.uk.display_sources_description = 'Які відеосервіси показувати в списку озвучень під час перегляду';
+    messages.uk.source_visibility_description = 'Показувати це джерело в списку озвучень';
+    messages.uk.no_enabled_sources = 'Усі джерела приховано в налаштуваннях. Увімкніть хоча б одне в «Показувати джерела»';
+    messages.uk.choose_playback = 'Виберіть плеєр';
+    messages.uk.watch_external_player = 'Зовнішній Android-плеєр';
+    messages.uk.watch_external_player_description = 'Відкрити потік через системний вибір встановлених Android-плеєрів';
+    messages.uk.playback_target = 'Бажаний плеєр';
+    messages.uk.playback_target_description = 'Де відтворювати прямі відеопотоки YummyAnime';
+    messages.uk.playback_target_ask = 'Завжди запитувати';
+    messages.uk.playback_target_external = 'Зовнішній Android-плеєр';
+    messages.uk.playback_target_internal = 'Внутрішній плеєр Lampa';
+    messages.uk.playback_services = 'Сервіси та джерела';
+    messages.uk.watch_in_player = 'Дивитися через YummyAnime';
+    messages.uk.watch_in_player_description = 'Вибрати озвучення, джерело та спосіб відтворення';
+    messages.uk.choose_voice = 'Виберіть озвучення та джерело';
     messages.uk.genre_top_position = 'Топ-100 жанру «{genre}»: місце {position}';
     messages.uk.status_released = 'Вийшов';
     messages.uk.status_ongoing = 'Онгоїнг';
@@ -6705,6 +6745,8 @@ function pluginYummyAnime() {
         };
         var playbackTargetPreference = deps.playbackTargetPreference || function () { return 'ask'; };
         var androidExternalPlayerAvailable = deps.androidExternalPlayerAvailable || function () { return false; };
+        var isPlaybackSourceEnabled = deps.isPlaybackSourceEnabled || function () { return true; };
+        var playbackSourceId = deps.playbackSourceId || function () { return ''; };
         var openExternalPlayer = deps.openExternalPlayer || function () { return false; };
         var playInternalPlayer = deps.playInternalPlayer || function () { return false; };
         var yummyTvEnabled = deps.yummyTvEnabled || function () { return false; };
@@ -6969,7 +7011,7 @@ function pluginYummyAnime() {
                 var groups = {};
                 videos.forEach(function (video) {
                     var data = LampaYaniUiUtils.videoData(video);
-                    var title = data.dubbing || data.player || t('player');
+                    var title = data.dubbing || data.player || t('source');
                     var quality = videoQualityLabel(video);
                     var key = title + '|' + String(data.player_id || data.player || '') + '|' + quality;
                     if (!groups[key]) groups[key] = {title: title, player: data.player || '', quality: quality, source: LampaYaniUiUtils.videoHost(videoSourceUrl(video)), videos: []};
@@ -6978,12 +7020,20 @@ function pluginYummyAnime() {
 
                 var voices = Object.keys(groups).map(function (key) {
                     var group = groups[key];
+                    var sourceName = group.player && group.player !== group.title ? group.player : '';
                     return {
-                        title: group.title + (group.player && group.player !== group.title ? ' · ' + group.player : ''),
+                        title: group.title + (sourceName ? ' · ' + sourceName : ''),
                         subtitle: voiceOptionSubtitle(group),
                         group: group
                     };
+                }).filter(function (voice) {
+                    return isPlaybackSourceEnabled(playbackSourceId(voice.group));
                 });
+                if (!voices.length) {
+                    Lampa.Noty.show(t('no_enabled_sources'));
+                    restorePlaybackInteraction();
+                    return;
+                }
                 var preferredPlayer = getPreferredPlayer();
                 voices.sort(function (a, b) {
                     if (!allohaIframeEnabled()) {
@@ -12135,6 +12185,8 @@ function pluginYummyAnime() {
         episodeOptionTitle: function (card, video) { return episodeOptionTitle(card, video); },
         playbackTargetPreference: function () { return playbackTargetPreference(); },
         androidExternalPlayerAvailable: function () { return isAndroidPlatform(); },
+        isPlaybackSourceEnabled: function (sourceId) { return isPlaybackSourceEnabled(sourceId); },
+        playbackSourceId: function (group) { return playbackSourceId(group); },
         openExternalPlayer: function (current, playlist, card) { return openExternalPlayer(current, playlist, card); },
         playInternalPlayer: function (current, playlist) { return playInternalPlayer(current, playlist); },
         yummyTvEnabled: function () { return yummyTvEnabled(); },
@@ -15188,10 +15240,41 @@ function pluginYummyAnime() {
             : false;
     }
 
+    var PLAYBACK_SOURCE_IDS = ['kodik', 'alloha', 'cvh', 'sibnet', 'aksor'];
+
+    function migrateLegacyPlayerPreference() {
+        if (!Lampa.Storage || Lampa.Storage.get('yani_player_pref_migrated', false)) return;
+        var legacy = Lampa.Storage.get('yani_player_preference', 'last');
+        if (legacy === 'lampa') {
+            var target = Lampa.Storage.get('yani_playback_target', 'ask');
+            if (target === 'ask' || !target) Lampa.Storage.set('yani_playback_target', 'internal');
+            Lampa.Storage.set('yani_player_preference', 'last');
+        }
+        Lampa.Storage.set('yani_player_pref_migrated', true);
+    }
+
+    function playbackSourceId(group) {
+        var key = String(group && (group.player || group.title || group.source) || '').toLowerCase();
+        if (!key) return '';
+        for (var i = 0; i < PLAYBACK_SOURCE_IDS.length; i++) {
+            if (key.indexOf(PLAYBACK_SOURCE_IDS[i]) >= 0) return PLAYBACK_SOURCE_IDS[i];
+        }
+        return '';
+    }
+
+    function isPlaybackSourceEnabled(sourceId) {
+        if (!sourceId) return true;
+        if (!Lampa.Storage || !Lampa.Storage.get) return true;
+        var value = Lampa.Storage.get('yani_source_' + sourceId, true);
+        return value !== false && value !== 'false' && value !== 0 && value !== '0';
+    }
+
     function playbackTargetPreference() {
-        if (Lampa.Storage && Lampa.Storage.get && Lampa.Storage.get('yani_player_preference', 'last') === 'lampa') return 'internal';
+        migrateLegacyPlayerPreference();
+        // External Android players are unavailable outside Android, so playback
+        // is always forced through the internal Lampa player on other platforms.
+        if (!isAndroidPlatform()) return 'internal';
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_playback_target', 'ask') : 'ask';
-        if (value === 'external' && !isAndroidPlatform()) return 'internal';
         return value === 'internal' || value === 'external' ? value : 'ask';
     }
 
@@ -15664,15 +15747,11 @@ function pluginYummyAnime() {
 
     function getPreferredPlayer() {
         if (!Lampa.Storage) return '';
-        var preference = Lampa.Storage.get('yani_player_preference', 'last');
-        if (preference === 'ask') return '';
-        if (preference === 'last') return Lampa.Storage.get('yani_last_player', '');
-        return preference;
+        return Lampa.Storage.get('yani_last_player', '') || '';
     }
 
     function playerMatchesPreference(group, preference) {
         if (!preference) return false;
-        if (String(preference).toLowerCase() === 'lampa') return groupPlaybackPriority(group) > 0;
         var value = String(group && (group.player || group.title) || '').toLowerCase();
         return value.indexOf(String(preference).toLowerCase()) >= 0;
     }
@@ -16229,6 +16308,7 @@ function pluginYummyAnime() {
 
     function addSettings() {
         if (!Lampa.SettingsApi || !Lampa.SettingsApi.addComponent) return;
+        migrateLegacyPlayerPreference();
 
         Lampa.SettingsApi.addComponent({
             component: 'yani',
@@ -16266,30 +16346,47 @@ function pluginYummyAnime() {
 
         Lampa.SettingsApi.addParam({
             component: 'yani',
-            param: {
-                name: 'yani_player_preference',
-                type: 'select',
-                values: {last: t('player_last'), ask: t('player_ask'), lampa: t('watch_internal_lampa'), kodik: 'Kodik', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'},
-                default: 'last'
-            },
-            field: {name: t('player_preference'), description: t('player_preference_description')}
+            param: {name: 'yani_display_sources_title', type: 'title'},
+            field: {name: t('display_sources'), description: t('display_sources_description')}
+        });
+        PLAYBACK_SOURCE_IDS.forEach(function (sourceId) {
+            var label = sourceId.charAt(0).toUpperCase() + sourceId.slice(1);
+            Lampa.SettingsApi.addParam({
+                component: 'yani',
+                param: {name: 'yani_source_' + sourceId, type: 'trigger', default: true},
+                field: {name: label, description: t('source_visibility_description')}
+            });
         });
 
-        var playbackTargetValues = {
-            ask: t('playback_target_ask'),
-            internal: t('playback_target_internal')
-        };
-        if (isAndroidPlatform()) playbackTargetValues.external = t('playback_target_external');
-        Lampa.SettingsApi.addParam({
-            component: 'yani',
-            param: {
-                name: 'yani_playback_target',
-                type: 'select',
-                values: playbackTargetValues,
-                default: 'ask'
-            },
-            field: {name: t('playback_target'), description: t('playback_target_description')}
-        });
+        if (isAndroidPlatform()) {
+            Lampa.SettingsApi.addParam({
+                component: 'yani',
+                param: {
+                    name: 'yani_playback_target',
+                    type: 'select',
+                    values: {
+                        ask: t('playback_target_ask'),
+                        internal: t('playback_target_internal'),
+                        external: t('playback_target_external')
+                    },
+                    default: 'ask'
+                },
+                field: {name: t('player_preference'), description: t('player_preference_description')}
+            });
+        } else {
+            if (Lampa.Storage) Lampa.Storage.set('yani_playback_target', 'internal');
+            Lampa.SettingsApi.addParam({
+                component: 'yani',
+                param: {name: 'yani_playback_target_locked', type: 'button'},
+                field: {
+                    name: t('player_preference') + ': ' + t('playback_target_internal'),
+                    description: t('player_preference_non_android_description')
+                },
+                onChange: function () {
+                    Lampa.Noty.show(t('player_preference_non_android'));
+                }
+            });
+        }
 
         Lampa.SettingsApi.addParam({
             component: 'yani',

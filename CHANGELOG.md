@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.44.0 — 2026-08-17
+
+- Fix confusing shared “player” wording by splitting sources and playback players in settings and voice selection
+- Add per-source visibility toggles for Kodik, Alloha, CVH, Sibnet and Aksor
+- Refactor preferred player to ask / internal Lampa / external Android chooser
+- Fix preferred-player selection being inactive outside Android and locked to the internal Lampa player
+
 ## 0.43.4 — 2026-08-17
 
 - Fix AniSkip suggest-skip buttons being visible but unreachable with a TV remote

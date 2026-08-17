@@ -32,6 +32,8 @@
         };
         var playbackTargetPreference = deps.playbackTargetPreference || function () { return 'ask'; };
         var androidExternalPlayerAvailable = deps.androidExternalPlayerAvailable || function () { return false; };
+        var isPlaybackSourceEnabled = deps.isPlaybackSourceEnabled || function () { return true; };
+        var playbackSourceId = deps.playbackSourceId || function () { return ''; };
         var openExternalPlayer = deps.openExternalPlayer || function () { return false; };
         var playInternalPlayer = deps.playInternalPlayer || function () { return false; };
         var yummyTvEnabled = deps.yummyTvEnabled || function () { return false; };
@@ -296,7 +298,7 @@
                 var groups = {};
                 videos.forEach(function (video) {
                     var data = LampaYaniUiUtils.videoData(video);
-                    var title = data.dubbing || data.player || t('player');
+                    var title = data.dubbing || data.player || t('source');
                     var quality = videoQualityLabel(video);
                     var key = title + '|' + String(data.player_id || data.player || '') + '|' + quality;
                     if (!groups[key]) groups[key] = {title: title, player: data.player || '', quality: quality, source: LampaYaniUiUtils.videoHost(videoSourceUrl(video)), videos: []};
@@ -305,12 +307,20 @@
 
                 var voices = Object.keys(groups).map(function (key) {
                     var group = groups[key];
+                    var sourceName = group.player && group.player !== group.title ? group.player : '';
                     return {
-                        title: group.title + (group.player && group.player !== group.title ? ' · ' + group.player : ''),
+                        title: group.title + (sourceName ? ' · ' + sourceName : ''),
                         subtitle: voiceOptionSubtitle(group),
                         group: group
                     };
+                }).filter(function (voice) {
+                    return isPlaybackSourceEnabled(playbackSourceId(voice.group));
                 });
+                if (!voices.length) {
+                    Lampa.Noty.show(t('no_enabled_sources'));
+                    restorePlaybackInteraction();
+                    return;
+                }
                 var preferredPlayer = getPreferredPlayer();
                 voices.sort(function (a, b) {
                     if (!allohaIframeEnabled()) {
