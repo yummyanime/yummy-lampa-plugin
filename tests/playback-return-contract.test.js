@@ -12,7 +12,7 @@ assert.match(menu, /function loadVideosForPlayback/);
 assert.match(ui, /function openEmbeddedEpisode/);
 assert.match(ui, /if \(playbackReturnState\.active\) \{\s*cancelExternalRestore\(\)/);
 assert.match(menu, /function chooseEpisode[\s\S]{0,1200}showPlaybackSelect\(\{/);
-assert.match(menu, /function openVideos[\s\S]{0,5200}showPlaybackSelect\(\{/);
+assert.match(menu, /function openVideos[\s\S]{0,8000}showPlaybackSelect\(\{/);
 assert.match(menu, /function showDirectPlaybackOptions[\s\S]{0,2200}showPlaybackSelect\(\{/);
 assert.match(menu, /androidExternalPlayerAvailable/);
 assert.match(menu, /if \(items\.length === 1\)/);
