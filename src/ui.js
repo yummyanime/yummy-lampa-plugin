@@ -544,6 +544,11 @@
         var activateHomeFocus = function () {};
         var updateEpisodeCountdown = function () {};
         var homeCollection = function () { return scroll.render(); };
+        var railCollection = function () { return scroll.render(); };
+        var railNodes = function () { return $(); };
+        var isRailFocus = function () { return false; };
+        var focusHomeElement = function () { return false; };
+        var focusSectionRail = function () { return false; };
         var lastHomeSection = 'explore';
         var lastIntroContext = '';
         var lastIntroPoster = '';
@@ -815,7 +820,36 @@
             setChapterState('service', 'loading');
 
             homeCollection = function () {
+                // Keep the section rail out of spatial Navigator: on Android TV it
+                // sits between tiles and steals one invisible focus step.
+                return scroll.render();
+            };
+            railCollection = function () {
                 return scroll.render().add(sectionRail);
+            };
+            railNodes = function () {
+                return sectionRail.find('.yani-home__section-rail-node.selector');
+            };
+            isRailFocus = function (element) {
+                return Boolean(element && $(element).hasClass('yani-home__section-rail-node'));
+            };
+            focusHomeElement = function (element, collection) {
+                if (!element) return false;
+                last = element;
+                collection = collection && collection.length ? collection : (isRailFocus(element) ? railCollection() : homeCollection());
+                Lampa.Controller.collectionSet(collection);
+                if (window.Navigator && Navigator.add) Navigator.add(element);
+                Lampa.Controller.collectionFocus(element, collection);
+                if (!isRailFocus(element)) scroll.update($(element), true);
+                return true;
+            };
+            focusSectionRail = function (preferred) {
+                var nodes = railNodes();
+                if (!nodes.length) return false;
+                var target = preferred && nodes.filter(function () { return this === preferred; }).first();
+                if (!target || !target.length) target = sectionRail.find('.yani-home__section-rail-node--active.selector').first();
+                if (!target.length) target = nodes.first();
+                return focusHomeElement(target[0], railCollection());
             };
 
             sectionDefinitions.forEach(function (definition) {
@@ -1532,14 +1566,12 @@
         this.start = function () {
             Lampa.Controller.add('content', {
                 toggle: function () {
-                    var collection = homeCollection();
-                    Lampa.Controller.collectionSet(collection);
                     var target = last && document.documentElement.contains(last) ? last : false;
                     if (!target) {
                         var savedKey = Lampa.Storage && Lampa.Storage.get ? String(Lampa.Storage.get(homeFocusStorageKey, '') || '') : '';
                         var availableKeys = [];
                         var availableNodes = {};
-                        collection.find('.selector[data-yani-home-key]').each(function () {
+                        homeCollection().find('.selector[data-yani-home-key]').each(function () {
                             var key = String($(this).attr('data-yani-home-key') || '');
                             if (!key) return;
                             availableKeys.push(key);
@@ -1548,17 +1580,47 @@
                         var focusKey = LampaYaniHomeInsights.dashboardInitialFocus(savedKey, preferredHomeKey, availableKeys);
                         target = availableNodes[focusKey] || false;
                     }
-                    if (!target) target = collection.find('.selector')[0] || false;
-                    Lampa.Controller.collectionFocus(target, collection);
-                    if (target) {
-                        renderIntroContext($(target));
-                        scroll.update($(target), true);
-                    }
+                    if (!target) target = homeCollection().find('.selector')[0] || false;
+                    focusHomeElement(target, isRailFocus(target) ? railCollection() : homeCollection());
+                    if (target) renderIntroContext($(target));
                 },
-                left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); },
-                right: function () { Navigator.move('right'); },
-                up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); },
-                down: function () { movePageDown(scroll); },
+                left: function () {
+                    if (isRailFocus(last)) {
+                        var key = String($(last).data('yani-home-target-key') || '');
+                        var tile = key && homeButtons[key] && homeButtons[key][0];
+                        if (!tile) tile = homeCollection().find('.selector[data-yani-home-key]').first()[0];
+                        if (tile) focusHomeElement(tile, homeCollection());
+                        else Lampa.Controller.toggle('menu');
+                        return;
+                    }
+                    if (Navigator.canmove('left')) Navigator.move('left');
+                    else Lampa.Controller.toggle('menu');
+                },
+                right: function () {
+                    if (isRailFocus(last)) return;
+                    if (Navigator.canmove('right')) Navigator.move('right');
+                    else focusSectionRail();
+                },
+                up: function () {
+                    if (isRailFocus(last)) {
+                        var nodes = railNodes();
+                        var index = nodes.index(last);
+                        if (index > 0) focusHomeElement(nodes.get(index - 1), railCollection());
+                        else Lampa.Controller.toggle('head');
+                        return;
+                    }
+                    if (Navigator.canmove('up')) Navigator.move('up');
+                    else Lampa.Controller.toggle('head');
+                },
+                down: function () {
+                    if (isRailFocus(last)) {
+                        var nodes = railNodes();
+                        var index = nodes.index(last);
+                        if (index >= 0 && index + 1 < nodes.length) focusHomeElement(nodes.get(index + 1), railCollection());
+                        return;
+                    }
+                    movePageDown(scroll);
+                },
                 back: goBack
             });
             Lampa.Controller.toggle('content');
@@ -1578,6 +1640,11 @@
             renderIntroContext = function () {};
             updateEpisodeCountdown = function () {};
             homeCollection = function () { return scroll.render(); };
+            railCollection = function () { return scroll.render(); };
+            railNodes = function () { return $(); };
+            isRailFocus = function () { return false; };
+            focusHomeElement = function () { return false; };
+            focusSectionRail = function () { return false; };
             scroll.destroy();
             html.remove();
         };

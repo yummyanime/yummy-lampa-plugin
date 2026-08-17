@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.5 — 2026-08-17
+
+- Fix Android dashboard focus vanishing for one step on the section rail
+
 ## 0.44.4 — 2026-08-17
 
 - Fix schedule title poster size increased by about 50 percent
