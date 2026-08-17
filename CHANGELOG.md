@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.6 — 2026-08-17
+
+- Fix dashboard library preview contract after section-rail focus navigation change
+
 ## 0.44.5 — 2026-08-17
 
 - Fix Android dashboard focus vanishing for one step on the section rail

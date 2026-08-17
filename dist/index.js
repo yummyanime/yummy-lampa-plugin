@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.5',
+        version: '0.44.6',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -13919,6 +13919,11 @@ function pluginYummyAnime() {
             renderIntroContext = function () {};
             updateEpisodeCountdown = function () {};
             homeCollection = function () { return scroll.render(); };
+            railCollection = function () { return scroll.render(); };
+            railNodes = function () { return $(); };
+            isRailFocus = function () { return false; };
+            focusHomeElement = function () { return false; };
+            focusSectionRail = function () { return false; };
             scroll.destroy();
             html.remove();
         };
