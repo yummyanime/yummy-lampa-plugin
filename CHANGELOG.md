@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.44.7 — 2026-08-18
+
+- Fix schedule dubbing labels to respect enabled playback sources
+- Remove the duplicate YummyAnime API check from Settings
+
 ## 0.44.6 — 2026-08-17
 
 - Fix dashboard library preview contract after section-rail focus navigation change

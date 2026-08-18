@@ -3,6 +3,8 @@
 
     function create(object, deps) {
         var t = deps.t, locale = deps.locale, toCard = deps.toCard;
+        var playbackSourceId = deps.playbackSourceId || function () { return ''; };
+        var isPlaybackSourceEnabled = deps.isPlaybackSourceEnabled || function () { return true; };
         var scroll = new Lampa.Scroll({mask: true, over: true, step: 250});
         scroll.minus();
         var html = $('<div class="yani-schedule"></div>');
@@ -73,6 +75,8 @@
                 var data = window.LampaYaniUiUtils && LampaYaniUiUtils.videoData
                     ? LampaYaniUiUtils.videoData(video)
                     : video && video.data || {};
+                var sourceId = playbackSourceId(Object.assign({}, video || {}, data || {}));
+                if (!isPlaybackSourceEnabled(sourceId)) return;
                 rememberTranslationName(bucket, data.dubbing || data.translation || data.voice || video.dub_title || video.dubbing);
             });
             return {

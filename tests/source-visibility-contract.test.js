@@ -8,6 +8,8 @@ assert.match(ui, /var PLAYBACK_SOURCE_IDS = \['kodik', 'alloha', 'cvh', 'sibnet'
 assert.match(ui, /function isPlaybackSourceEnabled\(sourceId\)/);
 assert.match(ui, /function playbackSourceId\(group\)/);
 assert.match(ui, /yani_display_sources_title/);
+assert.doesNotMatch(ui, /name: 'yani_api_check'/);
+assert.doesNotMatch(ui, /name: 'yani_api_settings_title'/);
 assert.doesNotMatch(ui, /values: \{last: t\('player_last'\), ask: t\('player_ask'\), lampa: t\('watch_internal_lampa'\)/);
 
 ['ru', 'en', 'uk'].forEach((language) => {

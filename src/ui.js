@@ -2733,6 +2733,8 @@
             t: t,
             locale: locale,
             toCard: toCard,
+            playbackSourceId: playbackSourceId,
+            isPlaybackSourceEnabled: isPlaybackSourceEnabled,
             openYummyDetail: openYummyDetail,
             goBack: goBack
         });
@@ -4509,26 +4511,6 @@
                 onChange: openSettingsLogin
             });
         }
-
-        Lampa.SettingsApi.addParam({
-            component: 'yani',
-            param: {name: 'yani_api_settings_title', type: 'title'},
-            field: {name: t('api_settings')}
-        });
-
-        Lampa.SettingsApi.addParam({
-            component: 'yani',
-            param: {name: 'yani_api_check', type: 'button'},
-            field: {name: t('api_check_name'), description: t('api_check_description')},
-            onChange: function () {
-                LampaYaniApi.health().then(function () {
-                    Lampa.Noty.show(t('api_ok'));
-                }).catch(function (error) {
-                    console.error('[YummyAnime]', error);
-                    Lampa.Noty.show(t('api_error'));
-                });
-            }
-        });
 
         Lampa.SettingsApi.addParam({
             component: 'yani',

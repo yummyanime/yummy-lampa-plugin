@@ -8,6 +8,8 @@ assert.match(schedule, /info\.append\(translations\)/);
 assert.doesNotMatch(schedule, /createAvailability/);
 assert.match(schedule, /videosCache = \{\}/);
 assert.match(schedule, /function translationGroupsFromVideos\(videos, episode\)/);
+assert.match(schedule, /playbackSourceId\(Object\.assign\(\{\}, video \|\| \{\}, data \|\| \{\}\)\)/);
+assert.match(schedule, /if \(!isPlaybackSourceEnabled\(sourceId\)\) return/);
 assert.match(schedule, /if \(episode && number && Number\(number\) !== Number\(episode\)\) return/);
 assert.match(schedule, /if \(episode && !number\) return/);
 assert.match(schedule, /LampaYaniApi\.videos\(animeId/);
