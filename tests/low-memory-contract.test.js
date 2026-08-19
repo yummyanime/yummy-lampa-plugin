@@ -23,5 +23,7 @@ assert.doesNotMatch(ui, /function Legacy[A-Z]/, 'dead legacy screen implementati
     assert.doesNotMatch(ui, new RegExp(`function ${name}\\(`), `${name} belongs to the extracted screen module`);
 });
 assert.doesNotMatch(css, /\.view--yummyanime__icon svg\s*\{\s*display:\s*none/, 'YummyAnime button logo must remain visible');
+assert.match(css, /min-width: 3\.72em/, 'YummyAnime Lampa button must be 20% wider than the previous square');
+assert.match(css, /\.full-start__rate \.yani-full-rating-label/, 'native Lampa rating must render YA as brand-colored text');
 
 console.log('low-memory contract tests passed');

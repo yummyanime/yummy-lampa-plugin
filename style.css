@@ -1555,6 +1555,7 @@ body > .yani-skip-prompt {
 .yani-detail__order-item.focus { background: #fff; color: #111; outline: 0.16em solid #ef6470; }
 .yani-detail__order-index { opacity: .65; }
 .yani-detail__order-name { font-weight: 600; }
+.yani-detail__order-rating { flex: none; }
 .yani-detail__order-year, .yani-detail__order-relation { opacity: .7; }
 
 .yani-detail__extra { margin-top: 1.5em; }
@@ -1686,52 +1687,24 @@ body > .yani-skip-prompt {
     background: #fff;
 }
 
-.full-start__button.view--yummyanime {
+.full-start__buttons .full-start__button.view--yummyanime,
+.full-start-new__buttons .full-start__button.view--yummyanime {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    box-sizing: border-box;
+    order: -1;
     background: #ef6470;
     color: #fff;
-    order: -1;
-    min-width: 3.1em;
-    padding: .45em .6em;
-}
-
-.view--yummyanime__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.8em;
-    height: 1.8em;
+    font-size: inherit !important;
+    line-height: inherit !important;
+    min-height: 0 !important;
+    height: auto;
+    max-height: 100%;
+    min-width: 3.72em;
+    padding: 0 0.72em;
     margin: 0;
-}
-
-.view--yummyanime__icon svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-.full-start__rate .yani-full-rating-logo {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.15em;
-    height: 1.15em;
-    margin: 0.12em auto 0;
-    color: #ef6470;
-}
-
-.full-start__rate .yani-full-rating-logo svg {
-    display: block;
-    width: 100%;
-    height: 100%;
-}
-
-/* Native Lampa title card: the YummyAnime action has no text, only its mark. */
-.full-start__button.view--yummyanime {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem !important;
-    line-height: 1 !important;
 }
 
 .view--yummyanime__icon {
@@ -1739,12 +1712,12 @@ body > .yani-skip-prompt {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    width: 2.25rem !important;
-    height: 2.25rem !important;
-    min-width: 2.25rem;
-    min-height: 2.25rem;
-    font-size: 1rem !important;
+    width: 1.2em !important;
+    height: 1.2em !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
     margin: 0 !important;
+    font-size: inherit !important;
     color: #fff;
 }
 
@@ -1752,6 +1725,14 @@ body > .yani-skip-prompt {
     display: block;
     width: 100%;
     height: 100%;
+}
+
+.full-start__rate .yani-full-rating-label {
+    color: #ef6470;
+    font-weight: 700;
+    font-size: 0.85em;
+    letter-spacing: 0.04em;
+    line-height: 1.1;
 }
 
 .yani-schedule__content {
@@ -1881,6 +1862,11 @@ body > .yani-skip-prompt {
     color: inherit;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.yani-schedule__rating {
+    display: inline-flex;
+    margin-top: 0.28em;
 }
 
 .yani-schedule__episode {
@@ -2044,6 +2030,25 @@ body > .yani-skip-prompt {
 .yani-detail__community-title { margin-bottom: .55em; color: #fff; font-size: 1.15em; font-weight: 700; }
 .yani-detail__community-grid { display: flex; flex-wrap: wrap; gap: .45em; }
 .yani-detail__community-item { padding: .45em .7em; border-radius: .45em; background: rgba(255,255,255,.1); color: #d9e7f2; }
+
+.yani-rating-ya {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.28em;
+    color: #ef6470;
+    font-weight: 700;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.yani-rating-ya b {
+    font-size: 0.82em;
+    letter-spacing: 0.04em;
+}
+
+.yani-detail__order-item.focus .yani-rating-ya {
+    color: #ef6470;
+}
 
 .yani-card-ratings {
     position: absolute;

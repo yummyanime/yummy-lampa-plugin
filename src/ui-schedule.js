@@ -42,6 +42,17 @@
             if (count === 1 && aired === 0) return 1;
             return entry && entry.aired ? Math.max(1, aired) : aired + 1;
         }
+        function appendYummyRating(host, card) {
+            var value = window.LampaYaniUiUtils && typeof LampaYaniUiUtils.yummyRatingValue === 'function'
+                ? LampaYaniUiUtils.yummyRatingValue(card)
+                : 0;
+            if (!(value > 0) || !host) return;
+            var text = value.toFixed(1);
+            host.append($('<span class="yani-rating-ya yani-schedule__rating"></span>')
+                .attr({title: 'YummyAnime ' + text, 'aria-label': 'YummyAnime ' + text})
+                .append($('<b></b>').text('YA'))
+                .append(document.createTextNode(text)));
+        }
         function videoEpisodeNumber(video) {
             var raw = video && (video.number || video.index || video.episode || video.ep_title || video.episode_title);
             if (typeof raw === 'number') return raw;
@@ -149,6 +160,7 @@
             var info = $('<div class="yani-schedule__info"></div>'), release = $('<div class="yani-schedule__release"></div>');
             var translations = $('<div class="yani-schedule__translations"></div>').hide();
             info.append($('<div class="yani-schedule__title"></div>').text(card.title));
+            appendYummyRating(info, card);
             info.append($('<div class="yani-schedule__episode"></div>').text(episodeLabel(episodes, entry.aired)));
             info.append(translations);
             release.append($('<div class="yani-schedule__time"></div>').text(timeLabel(releaseDate))); release.append($('<div class="yani-schedule__timezone"></div>').text(t('local_time')));

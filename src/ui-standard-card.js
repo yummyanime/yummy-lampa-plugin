@@ -531,7 +531,7 @@
                     nativeLampaRatings(anime.yani_ratings || []).forEach(function (rating) {
                         var className = 'rate--yummyanime-' + rating.key;
                         if ($('.' + className, render).length) return;
-                        var block = $('<div class="full-start__rate ' + className + '"><div>' + formatRating(rating.value) + '</div><div class="yani-full-rating-logo" title="' + rating.title + '" aria-label="' + rating.title + '">' + yummyRatingLogo() + '</div></div>');
+                        var block = $('<div class="full-start__rate ' + className + '"><div>' + formatRating(rating.value) + '</div><div class="yani-full-rating-label" title="' + rating.title + '" aria-label="' + rating.title + '">YA</div></div>');
                         line.append(block);
                     });
                     addYummyFullButton(render, movie, anime);

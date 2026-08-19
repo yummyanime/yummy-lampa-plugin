@@ -3285,7 +3285,11 @@
     }
 
     function playInternalPlayer(current, playlist) {
-        var started = isDirectVideoUrl(current && current.url) && playInternalDirectVideo(current, playlist);
+        // Lampa's player also auto-plays the next playlist item when a video
+        // ends. If this plugin already owns auto-next, a multi-item playlist
+        // would skip one extra episode.
+        var items = autoNextEnabled() && current ? [current] : playlist;
+        var started = isDirectVideoUrl(current && current.url) && playInternalDirectVideo(current, items);
         if (started) startPlaybackWatcher(playbackContext);
         return started;
     }
@@ -3297,7 +3301,7 @@
     var playbackWatcherGeneration = 0;
     var PLAYER_STARTUP_GRACE_MS = 120000;
     var NEXT_PREFETCH_LEAD = 90;
-    var NEXT_ADVANCE_LEAD = 5;
+    var NEXT_ADVANCE_LEAD = 1;
 
     function skipPreference() {
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_aniskip', 'off') : 'off';
@@ -3647,16 +3651,32 @@
             state.prefetched = true;
             prefetchNextEpisode(context);
         }
-        if (!state.advanced && remaining <= NEXT_ADVANCE_LEAD && !video.paused) {
+        if (!state.advanced && (video.ended || remaining <= NEXT_ADVANCE_LEAD && !video.paused)) {
             state.advanced = true;
             stopPlaybackWatcher();
             advanceToNextEpisode(context);
         }
     }
 
+    function videoIdentity(video) {
+        if (!video) return '';
+        return String(video.video_id || video.id || '') + ':' + String(video.number || video.index || '') + ':' + String(videoSourceUrl(video) || '');
+    }
+
     function nextEpisodeVideo(context) {
         var videos = (context && context.videos) || [];
-        var index = videos.indexOf(context.selected);
+        var selected = context && context.selected;
+        if (!selected || !videos.length) return null;
+        var index = videos.indexOf(selected);
+        if (index < 0) {
+            var selectedId = videoIdentity(selected);
+            for (var i = 0; i < videos.length; i++) {
+                if (videoIdentity(videos[i]) === selectedId) {
+                    index = i;
+                    break;
+                }
+            }
+        }
         if (index < 0 || index + 1 >= videos.length) return null;
         return videos[index + 1];
     }

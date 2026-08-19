@@ -22,5 +22,7 @@ assert.doesNotMatch(schedule, /feedTranslations/);
 assert.match(css, /\.yani-schedule__translations/);
 assert.match(css, /\.yani-schedule__translation-row--voices/);
 assert.match(css, /\.yani-schedule__translation-list span/);
+assert.match(schedule, /appendYummyRating\(info, card\)/);
+assert.match(css, /\.yani-schedule__rating/);
 
 console.log('schedule translation contract checks passed');

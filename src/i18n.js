@@ -106,7 +106,7 @@
     messages.ru.reviews_error = 'Не удалось загрузить отзывы';
     messages.ru.for_you = 'Для вас';
     messages.ru.episode_flow = 'Выход серий';
-    messages.ru.japan_broadcast = 'Эфир в Японии';
+    messages.ru.japan_broadcast = 'Эфир';
     messages.ru.new_translations = 'Новые переводы';
     messages.ru.translations_and_dubs = 'Переводы и озвучки';
     messages.ru.translation_waiting = 'Ожидается перевод';
@@ -199,7 +199,7 @@
     messages.en.reviews_error = 'Failed to load reviews';
     messages.en.for_you = 'For you';
     messages.en.episode_flow = 'Episode releases';
-    messages.en.japan_broadcast = 'Japanese broadcast';
+    messages.en.japan_broadcast = 'Broadcast';
     messages.en.new_translations = 'New translations';
     messages.en.translations_and_dubs = 'Translations and dubs';
     messages.en.translation_waiting = 'Waiting for translation';
@@ -607,7 +607,7 @@
     messages.uk.top_movies = 'Фільми';
     messages.uk.top_ona = 'ONA';
     messages.uk.episode_flow = 'Вихід серій';
-    messages.uk.japan_broadcast = 'Ефір у Японії';
+    messages.uk.japan_broadcast = 'Ефір';
     messages.uk.new_translations = 'Нові переклади';
     messages.uk.translations_and_dubs = 'Переклади та озвучення';
     messages.uk.translation_waiting = 'Очікується переклад';

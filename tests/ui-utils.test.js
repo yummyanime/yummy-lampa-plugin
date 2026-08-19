@@ -175,5 +175,8 @@ assert.strictEqual(utils.posterSources({
 }).full, 'https://img.example/huge.jpg');
 assert.strictEqual(utils.posterUrl('//cdn.example/poster.jpg'), 'https://cdn.example/poster.jpg');
 assert.strictEqual(utils.posterUrl(''), '');
+assert.strictEqual(utils.yummyRatingValue({yani_ratings: [{key: 'yummy', value: 8.6}]}), 8.6);
+assert.strictEqual(utils.yummyRatingValue({yani_rating: 7.1}), 7.1);
+assert.strictEqual(utils.yummyRatingValue({yani_ratings: [{key: 'kp', value: 8}]}), 0);
 
 console.log('ui-utils tests passed');

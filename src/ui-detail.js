@@ -62,6 +62,7 @@
             var row = $('<div class="yani-detail__order-item selector"></div>');
             row.append($('<span class="yani-detail__order-index"></span>').text((index + 1) + '.'));
             row.append($('<span class="yani-detail__order-name"></span>').text(related.title));
+            appendYummyRating(row, related, 'yani-detail__order-rating');
             if (related.release_date) row.append($('<span class="yani-detail__order-year"></span>').text(related.release_date));
             if (relation) row.append($('<span class="yani-detail__order-relation"></span>').text('· ' + relation));
             row.on('hover:focus', function () { row.addClass('focus'); });
@@ -73,6 +74,18 @@
         });
         section.append(list);
         return section;
+    }
+
+    function appendYummyRating(host, card, className) {
+        var value = window.LampaYaniUiUtils && typeof LampaYaniUiUtils.yummyRatingValue === 'function'
+            ? LampaYaniUiUtils.yummyRatingValue(card)
+            : 0;
+        if (!(value > 0) || !host) return;
+        var text = value.toFixed(1);
+        host.append($('<span class="yani-rating-ya ' + (className || '') + '"></span>')
+            .attr({title: 'YummyAnime ' + text, 'aria-label': 'YummyAnime ' + text})
+            .append($('<b></b>').text('YA'))
+            .append(document.createTextNode(text)));
     }
 
     function loadDetailRecommendations(data, container, bindFocus, appendNavigation, deps) {

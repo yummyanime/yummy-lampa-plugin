@@ -19,6 +19,9 @@ assert.match(ui, /function openYummyDetail\(/);
 assert.match(source, /function openStandardLampaCard\(card\)/);
 assert.match(source, /function findStandardLampaCard\(card\)/);
 assert.match(source, /function installFullRating\(\)/);
+assert.match(source, /yani-full-rating-label/, 'native Lampa rating must use YA text, not a logo');
+assert.doesNotMatch(source, /yani-full-rating-logo/, 'native Lampa rating must not render the YummyAnime mark as a tiny logo');
+assert.doesNotMatch(source, /function hideJapanOriginLabels\(/, 'native Lampa cards must keep TMDB country labels');
 assert.match(source, /standardNativeCacheLimit = 60/);
 
 const context = {

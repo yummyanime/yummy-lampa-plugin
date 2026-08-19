@@ -330,6 +330,19 @@
         return language === 'ja' || japaneseOrigin;
     }
 
+    function yummyRatingValue(card) {
+        var ratings = card && card.yani_ratings;
+        if (Array.isArray(ratings)) {
+            for (var i = 0; i < ratings.length; i++) {
+                if (ratings[i] && ratings[i].key === 'yummy' && Number(ratings[i].value) > 0) {
+                    return Number(ratings[i].value);
+                }
+            }
+        }
+        var value = Number(card && (card.yani_rating || card.vote_average) || 0);
+        return value > 0 ? value : 0;
+    }
+
     function yummyTvDetailsUrl(animeId) {
         var id = Number(animeId);
         if (!isFinite(id) || id <= 0) return '';
@@ -586,6 +599,7 @@
         titleTokenJaccard: titleTokenJaccard,
         titleEditSimilarity: titleEditSimilarity,
         isAnimeTmdbCard: isAnimeTmdbCard,
+        yummyRatingValue: yummyRatingValue,
         yummyTvDetailsUrl: yummyTvDetailsUrl,
         internalPlayerItem: internalPlayerItem,
         detailRouteId: detailRouteId,

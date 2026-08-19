@@ -16,6 +16,9 @@ assert.ok(watchPolicy.includes('duration < 60 || position <= 0) return'), 'a sta
 assert.ok(watchPolicy.includes('!video.paused'), 'a paused video must not advance');
 assert.ok(watchPolicy.includes('!state.advanced'), 'an episode must advance at most once');
 assert.ok(/stopPlaybackWatcher\(\);\s+advanceToNextEpisode/.test(watchPolicy.replace(/\r\n/g, '\n')), 'the watcher must stop before handing over to the next episode');
+assert.ok(watchPolicy.includes('video.ended'), 'the next episode must wait until the current one actually ends');
+assert.match(source, /NEXT_ADVANCE_LEAD = 1/, 'auto-advance must not start several seconds before the end');
+assert.match(source, /autoNextEnabled\(\) && current \? \[current\] : playlist/, 'Lampa playlist autoplay must not skip an extra episode while plugin auto-next is on');
 
 const prefetchStart = source.indexOf('function prefetchNextEpisode');
 const prefetchEnd = source.indexOf('function advanceToNextEpisode', prefetchStart);

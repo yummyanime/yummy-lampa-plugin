@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.44.8 — 2026-08-19
+
+- Fix auto-next skipping one extra episode because Lampa playlist and plugin both advanced
+- Fix native Lampa YummyAnime rating to YA text in brand color
+- Fix YummyAnime Lampa button height and increase width by 20 percent
+- Add YA rating to release order and schedule day lists
+- Remove Japan labels from dashboard copy
+
 ## 0.44.7 — 2026-08-18
 
 - Fix schedule dubbing labels to respect enabled playback sources
