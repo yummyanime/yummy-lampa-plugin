@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.13 — 2026-08-19
+
+- Fix schedule posters increased by 20 percent
+
 ## 0.44.12 — 2026-08-19
 
 - Fix schedule YA ratings loaded from title details when schedule data omits them

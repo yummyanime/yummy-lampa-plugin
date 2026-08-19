@@ -23,6 +23,7 @@ assert.doesNotMatch(schedule, /feedTranslations/);
 assert.match(css, /\.yani-schedule__translations/);
 assert.match(css, /\.yani-schedule__translation-row--voices/);
 assert.match(css, /\.yani-schedule__translation-list span/);
+assert.match(css, /\.yani-schedule__poster\s*\{[^}]*width:\s*7\.2em;[^}]*height:\s*9\.9em;/, 'schedule posters must be 20% larger');
 assert.match(schedule, /function loadAnimeRatingCard\(animeId\)/);
 assert.match(schedule, /LampaYaniApi\.detail\(animeId\)/);
 assert.match(schedule, /enrichItemRating\(rating, card\)/);
