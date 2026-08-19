@@ -24,6 +24,8 @@ assert.doesNotMatch(ui, /function Legacy[A-Z]/, 'dead legacy screen implementati
 });
 assert.doesNotMatch(css, /\.view--yummyanime__icon svg\s*\{\s*display:\s*none/, 'YummyAnime button logo must remain visible');
 assert.match(css, /min-width: 3\.72em/, 'YummyAnime Lampa button must be 20% wider than the previous square');
+assert.doesNotMatch(css, /\.full-start__buttons[\s\S]{0,500}min-height:\s*0\s*!important/, 'YummyAnime button must retain Lampa native height');
+assert.doesNotMatch(css, /\.full-start__buttons[\s\S]{0,500}padding:\s*0\s+0\.72em/, 'YummyAnime button must retain Lampa native vertical padding');
 assert.match(css, /\.full-start__rate \.yani-full-rating-label/, 'native Lampa rating must render YA as brand-colored text');
 
 console.log('low-memory contract tests passed');

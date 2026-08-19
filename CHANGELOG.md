@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.9 — 2026-08-19
+
+- Fix YummyAnime Lampa button to retain native height while remaining 20 percent wider
+
 ## 0.44.8 — 2026-08-19
 
 - Fix auto-next skipping one extra episode because Lampa playlist and plugin both advanced

@@ -1692,19 +1692,11 @@ body > .yani-skip-prompt {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    align-self: center;
     box-sizing: border-box;
     order: -1;
     background: #ef6470;
     color: #fff;
-    font-size: inherit !important;
-    line-height: inherit !important;
-    min-height: 0 !important;
-    height: auto;
-    max-height: 100%;
     min-width: 3.72em;
-    padding: 0 0.72em;
-    margin: 0;
 }
 
 .view--yummyanime__icon {
@@ -1712,12 +1704,11 @@ body > .yani-skip-prompt {
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
-    width: 1.2em !important;
-    height: 1.2em !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
+    width: 1.8em !important;
+    height: 1.8em !important;
+    min-width: 1.8em !important;
+    min-height: 1.8em !important;
     margin: 0 !important;
-    font-size: inherit !important;
     color: #fff;
 }
 
