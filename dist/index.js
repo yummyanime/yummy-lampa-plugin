@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.11',
+        version: '0.44.12',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -8097,7 +8097,7 @@ function pluginYummyAnime() {
         scroll.minus();
         var html = $('<div class="yani-schedule"></div>');
         var content = $('<div class="yani-schedule__content"></div>');
-        var last, dayGroups = [], selectedDay = 0, remoteShortcutHandler = null, videosCache = {};
+        var last, dayGroups = [], selectedDay = 0, remoteShortcutHandler = null, videosCache = {}, ratingCache = {};
         var focusScope = LampaYaniNavigation.createScope({
             id: 'schedule:' + String(object && object.url || 'yani/schedule'),
             root: function () { return html; },
@@ -8131,15 +8131,40 @@ function pluginYummyAnime() {
             return entry && entry.aired ? Math.max(1, aired) : aired + 1;
         }
         function appendYummyRating(host, card) {
+            host = host && host.jquery ? host : $(host);
+            if (!host.length || host.find('.yani-schedule__rating').length) return false;
             var value = window.LampaYaniUiUtils && typeof LampaYaniUiUtils.yummyRatingValue === 'function'
                 ? LampaYaniUiUtils.yummyRatingValue(card)
                 : 0;
-            if (!(value > 0) || !host) return;
+            if (!(value > 0)) return false;
             var text = value.toFixed(1);
             host.append($('<span class="yani-rating-ya yani-schedule__rating"></span>')
                 .attr({title: 'YummyAnime ' + text, 'aria-label': 'YummyAnime ' + text})
                 .append($('<b></b>').text('YA'))
                 .append(document.createTextNode(text)));
+            return true;
+        }
+        function loadAnimeRatingCard(animeId) {
+            animeId = String(animeId || '');
+            if (!animeId) return Promise.resolve(null);
+            if (!ratingCache[animeId]) {
+                ratingCache[animeId] = LampaYaniApi.detail(animeId).then(function (payload) {
+                    var item = payload && payload.response !== undefined ? payload.response : payload;
+                    return item && typeof item === 'object' ? toCard(item) : null;
+                }).catch(function () {
+                    return null;
+                });
+            }
+            return ratingCache[animeId];
+        }
+        function enrichItemRating(host, card) {
+            if (appendYummyRating(host, card)) return;
+            var animeId = card && card.yani_id;
+            if (!animeId) return;
+            loadAnimeRatingCard(animeId).then(function (detailed) {
+                if (!detailed || !host[0] || !document.documentElement.contains(host[0])) return;
+                appendYummyRating(host, detailed);
+            });
         }
         function videoEpisodeNumber(video) {
             var raw = video && (video.number || video.index || video.episode || video.ep_title || video.episode_title);
@@ -8247,8 +8272,10 @@ function pluginYummyAnime() {
             LampaYaniMedia.bindPosterFallback(poster, card);
             var info = $('<div class="yani-schedule__info"></div>'), release = $('<div class="yani-schedule__release"></div>');
             var translations = $('<div class="yani-schedule__translations"></div>').hide();
+            var rating = $('<div class="yani-schedule__rating-slot"></div>');
             info.append($('<div class="yani-schedule__title"></div>').text(card.title));
-            appendYummyRating(info, card);
+            info.append(rating);
+            enrichItemRating(rating, card);
             info.append($('<div class="yani-schedule__episode"></div>').text(episodeLabel(episodes, entry.aired)));
             info.append(translations);
             release.append($('<div class="yani-schedule__time"></div>').text(timeLabel(releaseDate))); release.append($('<div class="yani-schedule__timezone"></div>').text(t('local_time')));

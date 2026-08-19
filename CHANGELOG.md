@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.12 — 2026-08-19
+
+- Fix schedule YA ratings loaded from title details when schedule data omits them
+
 ## 0.44.11 — 2026-08-19
 
 - Fix release-order YA ratings aligned to the right edge
