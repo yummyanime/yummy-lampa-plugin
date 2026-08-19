@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.9',
+        version: '0.44.10',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -15510,6 +15510,7 @@ function pluginYummyAnime() {
 
     function playInternalDirectVideo(current, playlist) {
         if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas) return false;
+        var callbackContext = playbackContext;
         var directPlaylist = (playlist || []).filter(function (item) { return isDirectVideoUrl(item.url); }).map(function (item) {
             return LampaYaniUiUtils.internalPlayerItem({
                 title: item.title,
@@ -15538,7 +15539,7 @@ function pluginYummyAnime() {
             if (Lampa.Player.playlist) Lampa.Player.playlist(directPlaylist);
             if (Lampa.Player.callback) {
                 Lampa.Player.callback(function () {
-                    flushPlaybackProgress(true);
+                    flushPlaybackProgress(true, callbackContext);
                     restorePlaybackInteraction();
                 });
             }
@@ -15623,7 +15624,6 @@ function pluginYummyAnime() {
     var playbackWatcherGeneration = 0;
     var PLAYER_STARTUP_GRACE_MS = 120000;
     var NEXT_PREFETCH_LEAD = 90;
-    var NEXT_ADVANCE_LEAD = 1;
 
     function skipPreference() {
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_aniskip', 'off') : 'off';
@@ -15646,18 +15646,33 @@ function pluginYummyAnime() {
     // Lampa's internal player is an HTML5 video element whichever skin is
     // active, and reading it directly avoids depending on player internals that
     // differ between Lampa builds. External players are out of reach by design.
-    function playerVideoElement() {
+    function playerVideoElement(preferred) {
+        if (preferred &&
+            document.documentElement.contains(preferred) &&
+            isFinite(preferred.duration) &&
+            preferred.duration > 0) {
+            return preferred;
+        }
         var selectors = ['.player-video video', '.player video', 'video'];
         for (var i = 0; i < selectors.length; i++) {
-            var element = document.querySelector(selectors[i]);
-            if (element && isFinite(element.duration) && element.duration > 0) return element;
+            var elements = document.querySelectorAll(selectors[i]);
+            for (var j = elements.length - 1; j >= 0; j--) {
+                var element = elements[j];
+                // A finished video from the previous player may remain in the
+                // DOM briefly. Never attach a new episode watcher to it.
+                if (!element.ended && isFinite(element.duration) && element.duration > 0) return element;
+            }
         }
         return null;
     }
 
     function stopPlaybackWatcher() {
         if (!playbackWatcher) return;
-        clearInterval(playbackWatcher.timer);
+        var state = playbackWatcher;
+        clearInterval(state.timer);
+        if (state.video && state.endedHandler && state.video.removeEventListener) {
+            state.video.removeEventListener('ended', state.endedHandler);
+        }
         playbackWatcher = null;
         destroySkipPrompt();
     }
@@ -15690,6 +15705,8 @@ function pluginYummyAnime() {
             lastServerPosition: Number(context.selected && context.selected.watched && context.selected.watched.end_time || 0),
             prefetched: false,
             advanced: false,
+            video: null,
+            endedHandler: null,
             lastSeenAt: Date.now()
         };
         playbackWatcher = state;
@@ -15698,14 +15715,22 @@ function pluginYummyAnime() {
         if (skipMode !== 'off' && initialLength >= 60) loadSkipSegments(generation, context, state, skipMode, initialLength);
     }
 
-    function flushPlaybackProgress(remote) {
+    function flushPlaybackProgress(remote, expectedContext) {
         var state = playbackWatcher;
-        var context = state && state.context || playbackContext;
+        // Replacing a finished video can invoke its old Lampa callback after
+        // the next episode has already created a watcher. That stale callback
+        // must not flush or stop the new episode.
+        if (expectedContext &&
+            expectedContext !== playbackContext &&
+            (!state || state.context !== expectedContext)) {
+            return;
+        }
+        var context = expectedContext || state && state.context || playbackContext;
         if (!context || !context.selected) {
             stopPlaybackWatcher();
             return;
         }
-        var element = playerVideoElement();
+        var element = playerVideoElement(state && state.context === context ? state.video : null);
         var position = element ? Number(element.currentTime || 0) : Number(state && state.lastObservedPosition || context.selected.watched && context.selected.watched.end_time || 0);
         var duration = element ? Number(element.duration || 0) : Number(state && state.lastObservedDuration || context.selected.duration || 0);
         if (position > 0) updatePlaybackProgress(context, position, duration, Boolean(remote));
@@ -15907,20 +15932,42 @@ function pluginYummyAnime() {
     function confirmSkipPrompt() {
         var state = playbackWatcher;
         var segment = skipPromptState.segment;
-        var video = skipPromptState.video || playerVideoElement();
+        var video = skipPromptState.video || playerVideoElement(state && state.video);
         if (!state || !segment || !video) return;
         applySkip(video, segment, state);
     }
 
+    function advancePlaybackWatcher(generation, context, state) {
+        if (generation !== playbackWatcherGeneration || playbackWatcher !== state || !state.autoNext || state.advanced) return;
+        state.advanced = true;
+        stopPlaybackWatcher();
+        advanceToNextEpisode(context);
+    }
+
+    function bindPlaybackVideo(generation, context, state, video) {
+        if (state.video === video) return;
+        if (state.video && state.endedHandler && state.video.removeEventListener) {
+            state.video.removeEventListener('ended', state.endedHandler);
+        }
+        state.video = video;
+        state.endedHandler = function () {
+            advancePlaybackWatcher(generation, context, state);
+        };
+        if (video && video.addEventListener) video.addEventListener('ended', state.endedHandler);
+    }
+
     function watchPlayback(generation, context, state) {
-        if (generation !== playbackWatcherGeneration) return stopPlaybackWatcher();
-        var video = playerVideoElement();
+        // A queued tick from the previous episode must never stop the watcher
+        // that belongs to the newly launched player.
+        if (generation !== playbackWatcherGeneration || playbackWatcher !== state) return;
+        var video = playerVideoElement(state.video);
         if (!video) {
             // The player may still be starting up, so give it a grace period
             // before the watcher gives up on this episode.
             if (Date.now() - state.lastSeenAt > PLAYER_STARTUP_GRACE_MS) stopPlaybackWatcher();
             return;
         }
+        bindPlaybackVideo(generation, context, state, video);
         state.lastSeenAt = Date.now();
         var position = Number(video.currentTime) || 0;
         var duration = Number(video.duration) || 0;
@@ -15973,10 +16020,8 @@ function pluginYummyAnime() {
             state.prefetched = true;
             prefetchNextEpisode(context);
         }
-        if (!state.advanced && (video.ended || remaining <= NEXT_ADVANCE_LEAD && !video.paused)) {
-            state.advanced = true;
-            stopPlaybackWatcher();
-            advanceToNextEpisode(context);
+        if (!state.advanced && video.ended) {
+            advancePlaybackWatcher(generation, context, state);
         }
     }
 

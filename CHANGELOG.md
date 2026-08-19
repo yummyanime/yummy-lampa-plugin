@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.10 — 2026-08-19
+
+- Fix auto-next player cascade by binding each watcher to one video and ignoring stale callbacks
+
 ## 0.44.9 — 2026-08-19
 
 - Fix YummyAnime Lampa button to retain native height while remaining 20 percent wider

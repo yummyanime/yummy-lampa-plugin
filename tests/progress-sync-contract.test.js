@@ -18,8 +18,8 @@ assert.match(ui, /if \(!autoProgressSyncEnabled\(\)\) \{/,
     'manual account synchronization must be shown when automatic sync is disabled');
 assert.match(history, /if \(!autoProgressSyncEnabled\(\) \|\| !video \|\| !video\.video_id \|\| !window\.LampaYaniApi\) return;/,
     'automatic API updates must respect the setting');
-assert.match(ui, /function flushPlaybackProgress\(remote\)/);
-assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true\)/,
+assert.match(ui, /function flushPlaybackProgress\(remote, expectedContext\)/);
+assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/,
     'closing the internal player must flush progress');
 assert.match(history, /context\.card\.yani_resume = \{/);
 assert.match(history, /function refreshVisiblePlaybackProgress\(card\)/);

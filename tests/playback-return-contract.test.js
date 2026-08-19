@@ -31,7 +31,7 @@ assert.match(ui, /externalRestoreState\.controller = origin\.controller/);
 assert.match(ui, /externalRestoreState\.departed/);
 assert.match(ui, /setTimeout\(restoreExternalFocus, 1500\)/);
 assert.match(ui, /if \(!externalRestoreState\.departed && elapsed < 1200\)[\s\S]{0,150}setTimeout\(restoreExternalFocus, 1200 - elapsed\)/);
-assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true\);[\s\S]{0,80}restorePlaybackInteraction\(\)/);
+assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\);[\s\S]{0,80}restorePlaybackInteraction\(\)/);
 assert.match(ui, /param: \{name: 'yani_yummytv_enabled', type: 'trigger', default: false\}/);
 assert.match(ui, /Storage\.get\('yani_yummytv_enabled', false\)/);
 assert.match(sources, /var beginPlaybackNavigation = playbackMenu\.beginPlaybackNavigation|function beginPlaybackNavigation/);
