@@ -62,9 +62,9 @@
             var row = $('<div class="yani-detail__order-item selector"></div>');
             row.append($('<span class="yani-detail__order-index"></span>').text((index + 1) + '.'));
             row.append($('<span class="yani-detail__order-name"></span>').text(related.title));
-            appendYummyRating(row, related, 'yani-detail__order-rating');
             if (related.release_date) row.append($('<span class="yani-detail__order-year"></span>').text(related.release_date));
             if (relation) row.append($('<span class="yani-detail__order-relation"></span>').text('· ' + relation));
+            appendYummyRating(row, related, 'yani-detail__order-rating');
             row.on('hover:focus', function () { row.addClass('focus'); });
             row.on('hover:blur', function () { row.removeClass('focus'); });
             // Viewing-order entries already contain YummyAnime identifiers.

@@ -33,7 +33,7 @@ assert.match(detail, /comp\.destroy[\s\S]{0,150}closePosterViewer\(\)/);
 assert.match(css, /\.yani-detail__poster\.focus/);
 assert.match(css, /\.yani-poster-viewer\s*\{/);
 assert.match(css, /\.yani-poster-viewer__image/);
-assert.match(detail, /appendYummyRating\(row, related/);
-assert.match(css, /\.yani-detail__order-rating/);
+assert.match(detail, /yani-detail__order-relation[\s\S]{0,180}appendYummyRating\(row, related/, 'release-order rating must be the final row item');
+assert.match(css, /\.yani-detail__order-rating\s*\{[^}]*margin-left:\s*auto/, 'release-order rating must align to the right edge');
 
 console.log('detail module contract checks passed');

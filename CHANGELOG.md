@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.11 — 2026-08-19
+
+- Fix release-order YA ratings aligned to the right edge
+
 ## 0.44.10 — 2026-08-19
 
 - Fix auto-next player cascade by binding each watcher to one video and ignoring stale callbacks

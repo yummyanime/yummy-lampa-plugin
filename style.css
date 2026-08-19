@@ -1555,7 +1555,7 @@ body > .yani-skip-prompt {
 .yani-detail__order-item.focus { background: #fff; color: #111; outline: 0.16em solid #ef6470; }
 .yani-detail__order-index { opacity: .65; }
 .yani-detail__order-name { font-weight: 600; }
-.yani-detail__order-rating { flex: none; }
+.yani-detail__order-rating { flex: none; margin-left: auto; padding-left: 0.8em; }
 .yani-detail__order-year, .yani-detail__order-relation { opacity: .7; }
 
 .yani-detail__extra { margin-top: 1.5em; }
