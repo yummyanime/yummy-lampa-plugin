@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.14 — 2026-08-20
+
+- Fix episode numbers normalized across playback, resume history and stream resolvers
+
 ## 0.44.13 — 2026-08-19
 
 - Fix schedule posters increased by 20 percent

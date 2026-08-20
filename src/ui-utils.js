@@ -480,8 +480,7 @@
 
         videos.forEach(function (video, index) {
             video = video || {};
-            var number = video.number !== undefined && video.number !== null && video.number !== '' ? String(video.number) :
-                video.index !== undefined && video.index !== null && video.index !== '' ? String(video.index) : 'video:' + String(video.video_id || video.id || index);
+            var number = window.LampaYaniEpisode.valueOf(video) || 'video:' + String(video.video_id || video.id || index);
             var episode = grouped[number] || (grouped[number] = {durations: [], watched: false});
             var duration = positiveNumber(video.duration);
             // YummyAnime video durations are seconds. Ignore implausibly short
@@ -492,7 +491,7 @@
         });
 
         if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null && positiveNumber(localPlayback.time) > 0) {
-            var localNumber = String(localPlayback.number || 'local');
+            var localNumber = window.LampaYaniEpisode.normalize(localPlayback.number) || 'local';
             var localEpisode = grouped[localNumber] || (grouped[localNumber] = {durations: [], watched: false});
             localEpisode.watched = true;
             var localDuration = positiveNumber(localPlayback.duration);

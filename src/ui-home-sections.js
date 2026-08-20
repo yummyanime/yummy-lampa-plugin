@@ -38,7 +38,7 @@
             return {
                 anime_id: animeId,
                 video_id: item.video_id || item.videoId || item.video && item.video.id || '',
-                number: String(item.episode || screenshot.episode || item.number || watched.episode || ''),
+                number: window.LampaYaniEpisode.normalize(item.episode || screenshot.episode || item.number || watched.episode || ''),
                 episode_title: item.ep_title || item.episode_title || screenshot.title || '',
                 title: item.title || item.anime_title || anime.title || '',
                 poster: historyPoster(item.poster) || historyPoster(screenshot.poster) || historyPoster(anime.poster) || historyPoster(screenshot),
@@ -59,7 +59,7 @@
             return {
                 anime_id: item.anime_id || id,
                 video_id: item.video_id || '',
-                number: String(item.number || item.episode || ''),
+                number: window.LampaYaniEpisode.normalize(item.number || item.episode || ''),
                 episode_title: item.episode_title || '',
                 title: item.title || item.card && item.card.title || '',
                 poster: historyPoster(item.poster || item.card && item.card.poster),
@@ -77,7 +77,7 @@
 
     function historyEntryKey(entry) {
         if (entry.video_id) return 'video:' + String(entry.video_id);
-        return 'anime:' + String(entry.anime_id) + ':episode:' + String(entry.number || '');
+        return 'anime:' + String(entry.anime_id) + ':episode:' + window.LampaYaniEpisode.key(entry.number);
     }
 
     function mergeHistory(localSaved, remoteEntries) {
@@ -179,7 +179,7 @@
             var current = history[id];
             if (!shouldReplaceLocal(current, entry)) return;
             history[id] = {
-                number: String(entry.number || current && current.number || ''),
+                number: window.LampaYaniEpisode.normalize(entry.number || current && current.number || ''),
                 video_id: entry.video_id || current && current.video_id || '',
                 time: Number(entry.time || 0),
                 duration: Math.max(0, Number(entry.duration || current && current.duration || 0)),
@@ -204,7 +204,7 @@
     function attachHistoryEntry(card, entry) {
         card.yani_id = card.yani_id || Number(entry.anime_id) || entry.anime_id;
         card.yani_resume = {
-            number: String(entry.number || ''),
+            number: window.LampaYaniEpisode.normalize(entry.number),
             video_id: entry.video_id || '',
             time: Number(entry.time || 0),
             duration: Number(entry.duration || 0),

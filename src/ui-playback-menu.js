@@ -342,16 +342,17 @@
                         })) return true;
                         return playerMatchesPreference(voice.group, playback.player);
                     })[0];
-                    var resumeVideo = resumeVoice && resumeVoice.group.videos.filter(function (video) {
+                    var resumePlaylist = resumeVoice && uniqueEpisodes(resumeVoice.group.videos);
+                    var resumeVideo = resumePlaylist && resumePlaylist.filter(function (video) {
                         if (playback.video_id && String(video.video_id || video.id || '') === String(playback.video_id)) return true;
-                        return String(video.number || video.index || '') === String(playback.number || '');
+                        return window.LampaYaniEpisode.same(window.LampaYaniEpisode.valueOf(video), playback.number);
                     })[0];
                     if (resumeVideo) {
                         resumeVideo.watched = resumeVideo.watched || {};
                         resumeVideo.watched.end_time = Math.max(Number(resumeVideo.watched.end_time || 0), Number(playback.time || 0));
                         if (!resumeVideo.duration && playback.duration) resumeVideo.duration = Number(playback.duration);
                         rememberPlayer(resumeVoice.group);
-                        return launchVideo(card, resumeVoice.group, resumeVoice.group.videos, resumeVideo);
+                        return launchVideo(card, resumeVoice.group, resumePlaylist, resumeVideo);
                     }
                 }
 
@@ -380,6 +381,16 @@
             });
         }
 
+        function uniqueEpisodes(videos) {
+            var seen = {};
+            return videos.filter(function (video, index) {
+                var key = window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(video)) || 'video:' + String(video.video_id || video.id || index);
+                if (seen[key]) return false;
+                seen[key] = true;
+                return true;
+            });
+        }
+
         function chooseEpisode(card, group) {
             var videos = group.videos.slice().sort(function (a, b) {
                 if (!allohaIframeEnabled()) {
@@ -387,11 +398,12 @@
                     var playableB = videoPlaybackPriority(b, group);
                     if (playableA !== playableB) return playableB - playableA;
                 }
-                var numberA = parseFloat(a.number);
-                var numberB = parseFloat(b.number);
+                var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
+                var numberB = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(b));
                 if (isFinite(numberA) && isFinite(numberB)) return numberA - numberB;
                 return Number(a.index || 0) - Number(b.index || 0);
             });
+            videos = uniqueEpisodes(videos);
             var episodes = videos.map(function (video) {
                 return {title: episodeOptionTitle(card, video), video: video};
             });

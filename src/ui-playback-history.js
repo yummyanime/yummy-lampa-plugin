@@ -56,7 +56,7 @@
                 ? window.LampaYaniUiUtils.videoData(video)
                 : {};
             var saved = history[String(card.yani_id)] = {
-                number: String(video.number || video.index || ''),
+                number: window.LampaYaniEpisode.valueOf(video),
                 video_id: video.video_id || '',
                 time: Number(video.watched && video.watched.end_time || 0),
                 duration: Math.max(0, Number(video.duration || 0)),
@@ -116,7 +116,7 @@
                 entries.push({
                     anime_id: card.yani_id,
                     video_id: video.video_id || video.id || '',
-                    number: String(video.number || video.index || ''),
+                    number: window.LampaYaniEpisode.valueOf(video),
                     title: card.title || '',
                     poster: card.poster || card.img || '',
                     player: String(videoData.player || ''),

@@ -200,8 +200,8 @@
     }
 
     function chooseEpisode(items, selected, hints) {
-        var number = Number(firstValue([selected && selected.number, selected && selected.episode, selected && selected.index, hints && hints.episode]));
-        return items.filter(function (item) { return Number(item.episode || item.e || 0) === number; })[0] || items[0];
+        var number = window.LampaYaniEpisode.normalize(firstValue([selected && selected.number, selected && selected.episode, selected && selected.index, hints && hints.episode]));
+        return items.filter(function (item) { return window.LampaYaniEpisode.same(item.episode || item.e, number); })[0] || items[0];
     }
 
     function directResult(item, base) {

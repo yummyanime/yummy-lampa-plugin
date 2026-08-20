@@ -49,6 +49,7 @@ function createWindowContext() {
 
 const context = createWindowContext();
 vm.runInNewContext(fs.readFileSync('src/config.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
 vm.runInNewContext(fs.readFileSync('src/api.js', 'utf8'), context);
 vm.runInNewContext(fs.readFileSync('src/ui-home-sections.js', 'utf8'), context);
 vm.runInNewContext(fs.readFileSync('src/ui-notifications.js', 'utf8'), context);

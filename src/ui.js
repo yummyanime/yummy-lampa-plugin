@@ -1308,7 +1308,7 @@
                         });
                         var card = toCard(source);
                         card.yani_resume = {
-                            number: String(entry.episode || ''),
+                            number: window.LampaYaniEpisode.normalize(entry.episode),
                             video_id: entry.video_id || '',
                             time: Number(entry.time || 0),
                             duration: Number(entry.duration || 0),
@@ -2948,8 +2948,8 @@
             var titles = {};
             if (Array.isArray(items)) {
                 items.forEach(function (item) {
-                    var number = Number(item.episodeNumber || item.episode || item.number);
-                    if (number > 0 && item.title) titles[number] = item.title;
+                    var number = window.LampaYaniEpisode.key(item.episodeNumber || item.episode || item.number);
+                    if (number && item.title) titles[number] = item.title;
                 });
             }
             entry.titles = titles;
@@ -2965,7 +2965,7 @@
         if (!group || !titles) return;
         group.episodeTitlesLoaded = true;
         (group.videos || []).forEach(function (video) {
-            var number = Number(video.number || video.index);
+            var number = window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(video));
             if (titles[number]) video.yani_episode_title = titles[number];
         });
     }
@@ -3705,7 +3705,7 @@
 
     function videoIdentity(video) {
         if (!video) return '';
-        return String(video.video_id || video.id || '') + ':' + String(video.number || video.index || '') + ':' + String(videoSourceUrl(video) || '');
+        return String(video.video_id || video.id || '') + ':' + window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(video)) + ':' + String(videoSourceUrl(video) || '');
     }
 
     function nextEpisodeVideo(context) {
@@ -3819,7 +3819,7 @@
     }
 
     function episodeOptionTitle(card, video) {
-        var number = String(video.number || video.index || '?');
+        var number = window.LampaYaniEpisode.valueOf(video) || '?';
         var parts = [t('episode') + ' ' + number];
         var quality = videoQualityLabel(video);
         if (quality) parts.push(quality);
@@ -3827,7 +3827,7 @@
         if (Number(video.duration) > 0) parts.push(Math.max(1, Math.round(Number(video.duration) / 60)) + ' ' + t('minutes_short'));
         if (Number(video.views) > 0) parts.push(formatCompactNumber(video.views) + ' ' + t('views_short'));
         var playback = getPlayback(card && card.yani_id);
-        return (playback && playback.number === number ? '▶ ' : '') + parts.join(' · ');
+        return (playback && window.LampaYaniEpisode.same(playback.number, number) ? '▶ ' : '') + parts.join(' · ');
     }
 
     function formatCompactNumber(value) {

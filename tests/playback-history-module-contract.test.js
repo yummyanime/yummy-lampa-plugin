@@ -61,6 +61,7 @@ const context = {
     HTMLElement: function () {}
 };
 context.window.LampaYani = {};
+vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
 vm.runInNewContext(source, context);
 
 const api = context.window.LampaYaniPlaybackHistory.create({

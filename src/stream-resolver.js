@@ -349,7 +349,7 @@
         if (hit) return Promise.resolve(hit);
         var params = queryParams(fullUrl);
         var animeId = params.anime_id;
-        var episode = Number(params.episode || 1);
+        var episode = window.LampaYaniEpisode.normalize(params.episode || 1);
         var dubbingCode = String(params.dubbing_code || '').toLowerCase();
         if (!animeId) return Promise.reject(new Error('CVH anime id not found'));
 
@@ -361,7 +361,7 @@
         var playlistUrl = 'https://plapi.cdnvideohub.com/api/v1/player/sv/playlist?pub=745&id=' + encodeURIComponent(animeId) + '&aggr=mali';
         return requestJson(playlistUrl, {headers: headers}).then(function (playlist) {
             var candidates = (playlist && Array.isArray(playlist.items) ? playlist.items : []).filter(function (item) {
-                return Number(item && item.episode) === episode;
+                return window.LampaYaniEpisode.same(item && item.episode, episode);
             });
             var selected = candidates.filter(function (item) {
                 return String(item && item.voiceStudio || '').toLowerCase() === dubbingCode;

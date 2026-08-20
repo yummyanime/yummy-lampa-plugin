@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.13',
+        version: '0.44.14',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -1621,6 +1621,59 @@ function pluginYummyAnime() {
 (function (window) {
     'use strict';
 
+    function rawValue(value) {
+        return value === undefined || value === null ? '' : String(value).trim();
+    }
+
+    // Different video sources may identify the same episode as `01` and `1`.
+    // Strip leading zeroes only from purely numeric values so labels such as
+    // `OVA 1` and `Special 01` keep their original meaning.
+    function normalize(value) {
+        var text = rawValue(value);
+        if (!/^\d+$/.test(text)) return text;
+        return text.replace(/^0+(?=\d)/, '');
+    }
+
+    function valueOf(item) {
+        item = item || {};
+        var values = [item.number, item.episode, item.index];
+        for (var index = 0; index < values.length; index++) {
+            if (values[index] !== undefined && values[index] !== null && values[index] !== '') {
+                return normalize(values[index]);
+            }
+        }
+        return '';
+    }
+
+    function key(value) {
+        return normalize(value).toLowerCase();
+    }
+
+    function same(left, right) {
+        var leftKey = key(left);
+        var rightKey = key(right);
+        return leftKey !== '' && leftKey === rightKey;
+    }
+
+    function number(value) {
+        var normalized = normalize(value).replace(',', '.');
+        if (!/^\d+(?:\.\d+)?$/.test(normalized)) return NaN;
+        return Number(normalized);
+    }
+
+    window.LampaYani = window.LampaYani || {};
+    window.LampaYani.Episode = window.LampaYaniEpisode = {
+        normalize: normalize,
+        valueOf: valueOf,
+        key: key,
+        same: same,
+        number: number
+    };
+}(window));
+
+(function (window) {
+    'use strict';
+
     var CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
     var QUALITY_ORDER = [240, 360, 480, 720, 1080];
     var HLS_QUALITY_MANIFEST_PATTERN = /\/(\d+)\.mp4:hls:manifest\.m3u8(?=$|[?#])/i;
@@ -1969,7 +2022,7 @@ function pluginYummyAnime() {
         if (hit) return Promise.resolve(hit);
         var params = queryParams(fullUrl);
         var animeId = params.anime_id;
-        var episode = Number(params.episode || 1);
+        var episode = window.LampaYaniEpisode.normalize(params.episode || 1);
         var dubbingCode = String(params.dubbing_code || '').toLowerCase();
         if (!animeId) return Promise.reject(new Error('CVH anime id not found'));
 
@@ -1981,7 +2034,7 @@ function pluginYummyAnime() {
         var playlistUrl = 'https://plapi.cdnvideohub.com/api/v1/player/sv/playlist?pub=745&id=' + encodeURIComponent(animeId) + '&aggr=mali';
         return requestJson(playlistUrl, {headers: headers}).then(function (playlist) {
             var candidates = (playlist && Array.isArray(playlist.items) ? playlist.items : []).filter(function (item) {
-                return Number(item && item.episode) === episode;
+                return window.LampaYaniEpisode.same(item && item.episode, episode);
             });
             var selected = candidates.filter(function (item) {
                 return String(item && item.voiceStudio || '').toLowerCase() === dubbingCode;
@@ -2873,8 +2926,7 @@ function pluginYummyAnime() {
 
         videos.forEach(function (video, index) {
             video = video || {};
-            var number = video.number !== undefined && video.number !== null && video.number !== '' ? String(video.number) :
-                video.index !== undefined && video.index !== null && video.index !== '' ? String(video.index) : 'video:' + String(video.video_id || video.id || index);
+            var number = window.LampaYaniEpisode.valueOf(video) || 'video:' + String(video.video_id || video.id || index);
             var episode = grouped[number] || (grouped[number] = {durations: [], watched: false});
             var duration = positiveNumber(video.duration);
             // YummyAnime video durations are seconds. Ignore implausibly short
@@ -2885,7 +2937,7 @@ function pluginYummyAnime() {
         });
 
         if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null && positiveNumber(localPlayback.time) > 0) {
-            var localNumber = String(localPlayback.number || 'local');
+            var localNumber = window.LampaYaniEpisode.normalize(localPlayback.number) || 'local';
             var localEpisode = grouped[localNumber] || (grouped[localNumber] = {durations: [], watched: false});
             localEpisode.watched = true;
             var localDuration = positiveNumber(localPlayback.duration);
@@ -3682,8 +3734,8 @@ function pluginYummyAnime() {
     }
 
     function chooseEpisode(items, selected, hints) {
-        var number = Number(firstValue([selected && selected.number, selected && selected.episode, selected && selected.index, hints && hints.episode]));
-        return items.filter(function (item) { return Number(item.episode || item.e || 0) === number; })[0] || items[0];
+        var number = window.LampaYaniEpisode.normalize(firstValue([selected && selected.number, selected && selected.episode, selected && selected.index, hints && hints.episode]));
+        return items.filter(function (item) { return window.LampaYaniEpisode.same(item.episode || item.e, number); })[0] || items[0];
     }
 
     function directResult(item, base) {
@@ -6489,7 +6541,7 @@ function pluginYummyAnime() {
                 ? window.LampaYaniUiUtils.videoData(video)
                 : {};
             var saved = history[String(card.yani_id)] = {
-                number: String(video.number || video.index || ''),
+                number: window.LampaYaniEpisode.valueOf(video),
                 video_id: video.video_id || '',
                 time: Number(video.watched && video.watched.end_time || 0),
                 duration: Math.max(0, Number(video.duration || 0)),
@@ -6549,7 +6601,7 @@ function pluginYummyAnime() {
                 entries.push({
                     anime_id: card.yani_id,
                     video_id: video.video_id || video.id || '',
-                    number: String(video.number || video.index || ''),
+                    number: window.LampaYaniEpisode.valueOf(video),
                     title: card.title || '',
                     poster: card.poster || card.img || '',
                     player: String(videoData.player || ''),
@@ -7075,16 +7127,17 @@ function pluginYummyAnime() {
                         })) return true;
                         return playerMatchesPreference(voice.group, playback.player);
                     })[0];
-                    var resumeVideo = resumeVoice && resumeVoice.group.videos.filter(function (video) {
+                    var resumePlaylist = resumeVoice && uniqueEpisodes(resumeVoice.group.videos);
+                    var resumeVideo = resumePlaylist && resumePlaylist.filter(function (video) {
                         if (playback.video_id && String(video.video_id || video.id || '') === String(playback.video_id)) return true;
-                        return String(video.number || video.index || '') === String(playback.number || '');
+                        return window.LampaYaniEpisode.same(window.LampaYaniEpisode.valueOf(video), playback.number);
                     })[0];
                     if (resumeVideo) {
                         resumeVideo.watched = resumeVideo.watched || {};
                         resumeVideo.watched.end_time = Math.max(Number(resumeVideo.watched.end_time || 0), Number(playback.time || 0));
                         if (!resumeVideo.duration && playback.duration) resumeVideo.duration = Number(playback.duration);
                         rememberPlayer(resumeVoice.group);
-                        return launchVideo(card, resumeVoice.group, resumeVoice.group.videos, resumeVideo);
+                        return launchVideo(card, resumeVoice.group, resumePlaylist, resumeVideo);
                     }
                 }
 
@@ -7113,6 +7166,16 @@ function pluginYummyAnime() {
             });
         }
 
+        function uniqueEpisodes(videos) {
+            var seen = {};
+            return videos.filter(function (video, index) {
+                var key = window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(video)) || 'video:' + String(video.video_id || video.id || index);
+                if (seen[key]) return false;
+                seen[key] = true;
+                return true;
+            });
+        }
+
         function chooseEpisode(card, group) {
             var videos = group.videos.slice().sort(function (a, b) {
                 if (!allohaIframeEnabled()) {
@@ -7120,11 +7183,12 @@ function pluginYummyAnime() {
                     var playableB = videoPlaybackPriority(b, group);
                     if (playableA !== playableB) return playableB - playableA;
                 }
-                var numberA = parseFloat(a.number);
-                var numberB = parseFloat(b.number);
+                var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
+                var numberB = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(b));
                 if (isFinite(numberA) && isFinite(numberB)) return numberA - numberB;
                 return Number(a.index || 0) - Number(b.index || 0);
             });
+            videos = uniqueEpisodes(videos);
             var episodes = videos.map(function (video) {
                 return {title: episodeOptionTitle(card, video), video: video};
             });
@@ -9790,7 +9854,7 @@ function pluginYummyAnime() {
             return {
                 anime_id: animeId,
                 video_id: item.video_id || item.videoId || item.video && item.video.id || '',
-                number: String(item.episode || screenshot.episode || item.number || watched.episode || ''),
+                number: window.LampaYaniEpisode.normalize(item.episode || screenshot.episode || item.number || watched.episode || ''),
                 episode_title: item.ep_title || item.episode_title || screenshot.title || '',
                 title: item.title || item.anime_title || anime.title || '',
                 poster: historyPoster(item.poster) || historyPoster(screenshot.poster) || historyPoster(anime.poster) || historyPoster(screenshot),
@@ -9811,7 +9875,7 @@ function pluginYummyAnime() {
             return {
                 anime_id: item.anime_id || id,
                 video_id: item.video_id || '',
-                number: String(item.number || item.episode || ''),
+                number: window.LampaYaniEpisode.normalize(item.number || item.episode || ''),
                 episode_title: item.episode_title || '',
                 title: item.title || item.card && item.card.title || '',
                 poster: historyPoster(item.poster || item.card && item.card.poster),
@@ -9829,7 +9893,7 @@ function pluginYummyAnime() {
 
     function historyEntryKey(entry) {
         if (entry.video_id) return 'video:' + String(entry.video_id);
-        return 'anime:' + String(entry.anime_id) + ':episode:' + String(entry.number || '');
+        return 'anime:' + String(entry.anime_id) + ':episode:' + window.LampaYaniEpisode.key(entry.number);
     }
 
     function mergeHistory(localSaved, remoteEntries) {
@@ -9931,7 +9995,7 @@ function pluginYummyAnime() {
             var current = history[id];
             if (!shouldReplaceLocal(current, entry)) return;
             history[id] = {
-                number: String(entry.number || current && current.number || ''),
+                number: window.LampaYaniEpisode.normalize(entry.number || current && current.number || ''),
                 video_id: entry.video_id || current && current.video_id || '',
                 time: Number(entry.time || 0),
                 duration: Math.max(0, Number(entry.duration || current && current.duration || 0)),
@@ -9956,7 +10020,7 @@ function pluginYummyAnime() {
     function attachHistoryEntry(card, entry) {
         card.yani_id = card.yani_id || Number(entry.anime_id) || entry.anime_id;
         card.yani_resume = {
-            number: String(entry.number || ''),
+            number: window.LampaYaniEpisode.normalize(entry.number),
             video_id: entry.video_id || '',
             time: Number(entry.time || 0),
             duration: Number(entry.duration || 0),
@@ -13657,7 +13721,7 @@ function pluginYummyAnime() {
                         });
                         var card = toCard(source);
                         card.yani_resume = {
-                            number: String(entry.episode || ''),
+                            number: window.LampaYaniEpisode.normalize(entry.episode),
                             video_id: entry.video_id || '',
                             time: Number(entry.time || 0),
                             duration: Number(entry.duration || 0),
@@ -15297,8 +15361,8 @@ function pluginYummyAnime() {
             var titles = {};
             if (Array.isArray(items)) {
                 items.forEach(function (item) {
-                    var number = Number(item.episodeNumber || item.episode || item.number);
-                    if (number > 0 && item.title) titles[number] = item.title;
+                    var number = window.LampaYaniEpisode.key(item.episodeNumber || item.episode || item.number);
+                    if (number && item.title) titles[number] = item.title;
                 });
             }
             entry.titles = titles;
@@ -15314,7 +15378,7 @@ function pluginYummyAnime() {
         if (!group || !titles) return;
         group.episodeTitlesLoaded = true;
         (group.videos || []).forEach(function (video) {
-            var number = Number(video.number || video.index);
+            var number = window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(video));
             if (titles[number]) video.yani_episode_title = titles[number];
         });
     }
@@ -16054,7 +16118,7 @@ function pluginYummyAnime() {
 
     function videoIdentity(video) {
         if (!video) return '';
-        return String(video.video_id || video.id || '') + ':' + String(video.number || video.index || '') + ':' + String(videoSourceUrl(video) || '');
+        return String(video.video_id || video.id || '') + ':' + window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(video)) + ':' + String(videoSourceUrl(video) || '');
     }
 
     function nextEpisodeVideo(context) {
@@ -16168,7 +16232,7 @@ function pluginYummyAnime() {
     }
 
     function episodeOptionTitle(card, video) {
-        var number = String(video.number || video.index || '?');
+        var number = window.LampaYaniEpisode.valueOf(video) || '?';
         var parts = [t('episode') + ' ' + number];
         var quality = videoQualityLabel(video);
         if (quality) parts.push(quality);
@@ -16176,7 +16240,7 @@ function pluginYummyAnime() {
         if (Number(video.duration) > 0) parts.push(Math.max(1, Math.round(Number(video.duration) / 60)) + ' ' + t('minutes_short'));
         if (Number(video.views) > 0) parts.push(formatCompactNumber(video.views) + ' ' + t('views_short'));
         var playback = getPlayback(card && card.yani_id);
-        return (playback && playback.number === number ? '▶ ' : '') + parts.join(' · ');
+        return (playback && window.LampaYaniEpisode.same(playback.number, number) ? '▶ ' : '') + parts.join(' · ');
     }
 
     function formatCompactNumber(value) {

@@ -10,6 +10,7 @@ const menuSource = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
 const sectionsSource = fs.readFileSync('src/ui-home-sections.js', 'utf8');
 const context = {window: {}};
 
+vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
 vm.runInNewContext(sectionsSource, context);
 const history = context.window.LampaYaniHomeSections;
 

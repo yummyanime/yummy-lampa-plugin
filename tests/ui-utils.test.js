@@ -3,6 +3,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 const context = {window: {}, URL};
+vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
 vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), context);
 const utils = context.window.LampaYaniUiUtils;
 
