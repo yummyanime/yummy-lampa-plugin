@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.44.15 — 2026-08-21
+
+- Add offline-first cache for collections, genres and schedule
+- Fix focus and scroll restoration after returning from nested pages
+
 ## 0.44.14 — 2026-08-20
 
 - Fix episode numbers normalized across playback, resume history and stream resolvers

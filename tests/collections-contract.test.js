@@ -36,7 +36,7 @@ assert.match(collections, /slice\(0, 10\)/);
 assert.match(collections, /yani-collections-hub/);
 assert.match(collections, /yani-collection-view/);
 assert.match(collections, /comp\.nextPageReuest/);
-assert.match(collections, /var control = \{timeout: 8000, retry: false\}/);
+assert.match(collections, /var control = \{timeout: 8000, retry: false, cacheFirst: true, forceRefresh: forceRefresh === true\}/);
 assert.match(collections, /Promise\.all\(\[/);
 assert.match(collections, /deps\.detail\(object\.collectionId, limit, 0\)/);
 assert.match(collections, /deps\.error\(deps\.t\('collection_load_error'\)\)/);

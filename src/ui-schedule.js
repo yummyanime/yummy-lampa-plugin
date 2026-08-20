@@ -370,25 +370,25 @@
                 document.addEventListener('keydown', remoteShortcutHandler, true);
             }
         }
-        function load() {
+        function load(forceRefresh) {
             content.empty();
             state.show('loading', {skeleton: 'rows'});
             ensureMounted();
             last = state.focus(scroll.render()) || last;
-            LampaYaniApi.schedule({}).then(function (payload) {
+            LampaYaniApi.schedule({forceRefresh: forceRefresh === true}).then(function (payload) {
                 var items = LampaYaniApi.normalize(payload);
                 content.empty();
                 if (!items.length) {
                     state.show('empty', {
                         title: t('no_releases'),
                         hint: t('section_state_empty_hint'),
-                        onRetry: load
+                        onRetry: function () { load(true); }
                     });
                     last = state.focus(scroll.render()) || last;
                     return;
                 }
                 if (LampaYaniSectionState.fromCache(payload)) {
-                    state.show('cached', {compact: true, onRetry: load});
+                    state.show('cached', {compact: true, onRetry: function () { load(true); }});
                 } else {
                     state.clear();
                 }
@@ -400,7 +400,7 @@
                 content.empty();
                 state.show('offline', {
                     title: t('schedule_load_error'),
-                    onRetry: load
+                    onRetry: function () { load(true); }
                 });
                 last = state.focus(scroll.render()) || last;
             });

@@ -64,6 +64,16 @@
         return Boolean(payload && payload.__yaniFromCache);
     }
 
+    function readCache(key) {
+        if (!window.Lampa || !Lampa.Storage) return null;
+        try {
+            var cached = JSON.parse(Lampa.Storage.get(key, 'null'));
+            return cached && typeof cached.time === 'number' && cached.data !== undefined ? cached : null;
+        } catch (ignore) {
+            return null;
+        }
+    }
+
     function rememberCacheKey(key) {
         if (!window.Lampa || !Lampa.Storage) return;
         var indexKey = 'lampa_yummyanime_cache_index';
@@ -91,6 +101,14 @@
         var cacheKey = 'lampa_yummyanime_cache_' + apiLanguage + '_' + path;
         var cacheTtl = options.cacheTtl || config.cacheTtl || 300000;
         var method = options.method || 'GET';
+
+        // Stable public sections are cache-first: revisiting them should not
+        // wait for the network. Expired data is still kept as an offline
+        // fallback while a normal request tries to refresh it.
+        var cached = method === 'GET' && options.cache !== false ? readCache(cacheKey) : null;
+        if (options.cacheFirst && !options.forceRefresh && cached && Date.now() - cached.time < cacheTtl) {
+            return Promise.resolve(cached.data);
+        }
 
         var applicationToken = config.applicationToken ? config.applicationToken() : config.applicationHeader;
         if (applicationToken) headers['X-Application'] = applicationToken;
@@ -120,12 +138,8 @@
             return payload;
         }).catch(function (error) {
             if (method === 'GET' && options.cache !== false && window.Lampa && Lampa.Storage) {
-                try {
-                    var cached = JSON.parse(Lampa.Storage.get(cacheKey, 'null'));
-                    if (cached && (options.staleFallback || Date.now() - cached.time < cacheTtl)) {
-                        return markFromCache(cached.data);
-                    }
-                } catch (ignore) {}
+                cached = cached || readCache(cacheKey);
+                if (cached && (options.staleFallback || Date.now() - cached.time < cacheTtl)) return markFromCache(cached.data);
             }
             throw error;
         });
@@ -196,17 +210,23 @@
             if (Array.isArray(response)) return response;
             return response && response.genres || [];
         },
-        genres: function () {
+        genres: function (control) {
+            control = control || {};
             return request('/anime/genres', {
                 cacheTtl: 24 * 60 * 60 * 1000,
-                staleFallback: true
+                cacheFirst: true,
+                staleFallback: true,
+                forceRefresh: control.forceRefresh,
+                signal: control.signal
             });
         },
         genre: function (id, control) {
             control = control || {};
             return request('/anime/genres/' + encodeURIComponent(id), {
                 cacheTtl: 24 * 60 * 60 * 1000,
+                cacheFirst: true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal
             });
         },
@@ -214,7 +234,9 @@
             control = control || {};
             return request('/anime/schedule', {
                 cacheTtl: 60 * 60 * 1000,
+                cacheFirst: true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal
             });
         },
@@ -223,7 +245,9 @@
             return request('/feed', {
                 auth: true,
                 cacheTtl: 5 * 60 * 1000,
+                cacheFirst: control.cacheFirst === true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry
@@ -234,7 +258,9 @@
             return request('/collection?limit=' + encodeURIComponent(limit || 20) + '&offset=' + encodeURIComponent(offset || 0), {
                 auth: true,
                 cacheTtl: 10 * 60 * 1000,
+                cacheFirst: true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry
@@ -246,7 +272,9 @@
             return request('/collection/' + encodeURIComponent(id) + query, {
                 auth: true,
                 cacheTtl: 10 * 60 * 1000,
+                cacheFirst: true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry

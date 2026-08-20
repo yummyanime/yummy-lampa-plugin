@@ -4,6 +4,7 @@
     var scopeStates = {};
     var scopeOrder = [];
     var MAX_SCOPES = 32;
+    var SCOPED_ROOT = '[data-yani-navigation-scope]';
 
     function live(element) {
         return Boolean(element && document.documentElement.contains(element));
@@ -30,6 +31,15 @@
             var value = element.getAttribute && element.getAttribute(attributes[i]);
             if (value) return attributes[i] + ':' + value;
         }
+        var data = element.card_data || $(element).data('card');
+        if (data && typeof data === 'object') {
+            var cardKeys = ['yani_id', 'yani_collection_id', 'yani_genre_id', 'id'];
+            for (var c = 0; c < cardKeys.length; c++) {
+                if (data[cardKeys[c]] !== undefined && data[cardKeys[c]] !== null && data[cardKeys[c]] !== '') {
+                    return 'card:' + cardKeys[c] + ':' + String(data[cardKeys[c]]);
+                }
+            }
+        }
         var collection = root && root.find ? root.find('.selector') : $();
         var index = collection.index(element);
         return index >= 0 ? 'index:' + index : '';
@@ -38,6 +48,17 @@
     function elementByKey(key, root) {
         if (!key || !root || !root.find) return null;
         if (key.indexOf('index:') === 0) return root.find('.selector').eq(Number(key.slice(6)))[0] || null;
+        if (key.indexOf('card:') === 0) {
+            var parts = key.split(':');
+            var cardKey = parts[1];
+            var cardValue = parts.slice(2).join(':');
+            var cardFound = null;
+            root.find('.selector').each(function () {
+                var data = this.card_data || $(this).data('card');
+                if (!cardFound && data && String(data[cardKey]) === cardValue) cardFound = this;
+            });
+            return cardFound;
+        }
         var separator = key.indexOf(':');
         if (separator < 1) return null;
         var attribute = key.slice(0, separator);
@@ -119,6 +140,7 @@
         function bind(container) {
             var host = container && container.jquery ? container : root();
             if (!host || !host.length) return;
+            root().attr('data-yani-navigation-scope', id);
             host.off('hover:focus' + namespace).on('hover:focus' + namespace, options.selector || '.selector', function (event) {
                 var element = remember(event.currentTarget || this);
                 if (element && options.scroll && options.scroll.update) options.scroll.update($(element), true);
@@ -151,10 +173,10 @@
         var collection = snapshot.collection;
         if (state && !element) element = state.last;
         if (!live(element) && state && snapshot.scope) {
-            var roots = $('.yani-home, .yani-detail, .yani-account, .yani-schedule, .yani-catalog-view, .yani-user-lists-view');
+            var roots = $(SCOPED_ROOT + '[data-yani-navigation-scope="' + String(snapshot.scope).replace(/"/g, '\\"') + '"]');
             element = elementByKey(state.key || snapshot.key, roots);
         }
-        if (!collection || !collection.length || !live(collection[0])) collection = element ? $(element).closest('.scroll, .yani-detail, .yani-home, .yani-account, .yani-schedule, .yani-catalog-view, .yani-user-lists-view') : null;
+        if (!collection || !collection.length || !live(collection[0])) collection = element ? $(element).closest('.scroll, ' + SCOPED_ROOT) : null;
         var controller = snapshot.controller && snapshot.controller !== 'select' && snapshot.controller !== 'input' ? snapshot.controller : 'content';
         if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
         if (collection && collection.length && Lampa.Controller && Lampa.Controller.collectionSet) Lampa.Controller.collectionSet(collection);
@@ -167,12 +189,15 @@
     }
 
     function captureSnapshot() {
-        var element = document.querySelector('.yani-home .selector.focus, .yani-detail .selector.focus, .yani-account .selector.focus, .yani-schedule .selector.focus, .yani-catalog-view .selector.focus, .yani-user-lists-view .selector.focus') ||
+        var element = document.querySelector(SCOPED_ROOT + ' .selector.focus') ||
             document.querySelector('.selector.focus') ||
-            document.querySelector('.yani-home .selector, .yani-detail .selector, .yani-account .selector, .yani-schedule .selector, .yani-catalog-view .selector, .yani-user-lists-view .selector') ||
+            document.querySelector(SCOPED_ROOT + ' .selector') ||
             document.querySelector('.selector');
-        var collection = element ? $(element).closest('.scroll, .yani-detail, .yani-home, .yani-account, .yani-schedule, .yani-catalog-view, .yani-user-lists-view') : null;
-        return {controller: 'content', element: element || null, collection: collection && collection.length ? collection : null, key: elementKey(element, collection)};
+        var scopeRoot = element ? $(element).closest(SCOPED_ROOT) : $();
+        var scope = scopeRoot.attr('data-yani-navigation-scope') || '';
+        var collection = element ? $(element).closest('.scroll, ' + SCOPED_ROOT) : null;
+        var state = scope && scopeStates[scope];
+        return {scope: scope, controller: 'content', element: element || null, collection: collection && collection.length ? collection : null, key: state && state.key || elementKey(element, scopeRoot.length ? scopeRoot : collection)};
     }
 
     function attachComponent(component, options) {

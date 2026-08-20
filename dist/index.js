@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.14',
+        version: '0.44.15',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -1227,6 +1227,16 @@ function pluginYummyAnime() {
         return Boolean(payload && payload.__yaniFromCache);
     }
 
+    function readCache(key) {
+        if (!window.Lampa || !Lampa.Storage) return null;
+        try {
+            var cached = JSON.parse(Lampa.Storage.get(key, 'null'));
+            return cached && typeof cached.time === 'number' && cached.data !== undefined ? cached : null;
+        } catch (ignore) {
+            return null;
+        }
+    }
+
     function rememberCacheKey(key) {
         if (!window.Lampa || !Lampa.Storage) return;
         var indexKey = 'lampa_yummyanime_cache_index';
@@ -1254,6 +1264,14 @@ function pluginYummyAnime() {
         var cacheKey = 'lampa_yummyanime_cache_' + apiLanguage + '_' + path;
         var cacheTtl = options.cacheTtl || config.cacheTtl || 300000;
         var method = options.method || 'GET';
+
+        // Stable public sections are cache-first: revisiting them should not
+        // wait for the network. Expired data is still kept as an offline
+        // fallback while a normal request tries to refresh it.
+        var cached = method === 'GET' && options.cache !== false ? readCache(cacheKey) : null;
+        if (options.cacheFirst && !options.forceRefresh && cached && Date.now() - cached.time < cacheTtl) {
+            return Promise.resolve(cached.data);
+        }
 
         var applicationToken = config.applicationToken ? config.applicationToken() : config.applicationHeader;
         if (applicationToken) headers['X-Application'] = applicationToken;
@@ -1283,12 +1301,8 @@ function pluginYummyAnime() {
             return payload;
         }).catch(function (error) {
             if (method === 'GET' && options.cache !== false && window.Lampa && Lampa.Storage) {
-                try {
-                    var cached = JSON.parse(Lampa.Storage.get(cacheKey, 'null'));
-                    if (cached && (options.staleFallback || Date.now() - cached.time < cacheTtl)) {
-                        return markFromCache(cached.data);
-                    }
-                } catch (ignore) {}
+                cached = cached || readCache(cacheKey);
+                if (cached && (options.staleFallback || Date.now() - cached.time < cacheTtl)) return markFromCache(cached.data);
             }
             throw error;
         });
@@ -1359,17 +1373,23 @@ function pluginYummyAnime() {
             if (Array.isArray(response)) return response;
             return response && response.genres || [];
         },
-        genres: function () {
+        genres: function (control) {
+            control = control || {};
             return request('/anime/genres', {
                 cacheTtl: 24 * 60 * 60 * 1000,
-                staleFallback: true
+                cacheFirst: true,
+                staleFallback: true,
+                forceRefresh: control.forceRefresh,
+                signal: control.signal
             });
         },
         genre: function (id, control) {
             control = control || {};
             return request('/anime/genres/' + encodeURIComponent(id), {
                 cacheTtl: 24 * 60 * 60 * 1000,
+                cacheFirst: true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal
             });
         },
@@ -1377,7 +1397,9 @@ function pluginYummyAnime() {
             control = control || {};
             return request('/anime/schedule', {
                 cacheTtl: 60 * 60 * 1000,
+                cacheFirst: true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal
             });
         },
@@ -1386,7 +1408,9 @@ function pluginYummyAnime() {
             return request('/feed', {
                 auth: true,
                 cacheTtl: 5 * 60 * 1000,
+                cacheFirst: control.cacheFirst === true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry
@@ -1397,7 +1421,9 @@ function pluginYummyAnime() {
             return request('/collection?limit=' + encodeURIComponent(limit || 20) + '&offset=' + encodeURIComponent(offset || 0), {
                 auth: true,
                 cacheTtl: 10 * 60 * 1000,
+                cacheFirst: true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry
@@ -1409,7 +1435,9 @@ function pluginYummyAnime() {
             return request('/collection/' + encodeURIComponent(id) + query, {
                 auth: true,
                 cacheTtl: 10 * 60 * 1000,
+                cacheFirst: true,
                 staleFallback: true,
+                forceRefresh: control.forceRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry
@@ -4024,6 +4052,7 @@ function pluginYummyAnime() {
     var scopeStates = {};
     var scopeOrder = [];
     var MAX_SCOPES = 32;
+    var SCOPED_ROOT = '[data-yani-navigation-scope]';
 
     function live(element) {
         return Boolean(element && document.documentElement.contains(element));
@@ -4050,6 +4079,15 @@ function pluginYummyAnime() {
             var value = element.getAttribute && element.getAttribute(attributes[i]);
             if (value) return attributes[i] + ':' + value;
         }
+        var data = element.card_data || $(element).data('card');
+        if (data && typeof data === 'object') {
+            var cardKeys = ['yani_id', 'yani_collection_id', 'yani_genre_id', 'id'];
+            for (var c = 0; c < cardKeys.length; c++) {
+                if (data[cardKeys[c]] !== undefined && data[cardKeys[c]] !== null && data[cardKeys[c]] !== '') {
+                    return 'card:' + cardKeys[c] + ':' + String(data[cardKeys[c]]);
+                }
+            }
+        }
         var collection = root && root.find ? root.find('.selector') : $();
         var index = collection.index(element);
         return index >= 0 ? 'index:' + index : '';
@@ -4058,6 +4096,17 @@ function pluginYummyAnime() {
     function elementByKey(key, root) {
         if (!key || !root || !root.find) return null;
         if (key.indexOf('index:') === 0) return root.find('.selector').eq(Number(key.slice(6)))[0] || null;
+        if (key.indexOf('card:') === 0) {
+            var parts = key.split(':');
+            var cardKey = parts[1];
+            var cardValue = parts.slice(2).join(':');
+            var cardFound = null;
+            root.find('.selector').each(function () {
+                var data = this.card_data || $(this).data('card');
+                if (!cardFound && data && String(data[cardKey]) === cardValue) cardFound = this;
+            });
+            return cardFound;
+        }
         var separator = key.indexOf(':');
         if (separator < 1) return null;
         var attribute = key.slice(0, separator);
@@ -4139,6 +4188,7 @@ function pluginYummyAnime() {
         function bind(container) {
             var host = container && container.jquery ? container : root();
             if (!host || !host.length) return;
+            root().attr('data-yani-navigation-scope', id);
             host.off('hover:focus' + namespace).on('hover:focus' + namespace, options.selector || '.selector', function (event) {
                 var element = remember(event.currentTarget || this);
                 if (element && options.scroll && options.scroll.update) options.scroll.update($(element), true);
@@ -4171,10 +4221,10 @@ function pluginYummyAnime() {
         var collection = snapshot.collection;
         if (state && !element) element = state.last;
         if (!live(element) && state && snapshot.scope) {
-            var roots = $('.yani-home, .yani-detail, .yani-account, .yani-schedule, .yani-catalog-view, .yani-user-lists-view');
+            var roots = $(SCOPED_ROOT + '[data-yani-navigation-scope="' + String(snapshot.scope).replace(/"/g, '\\"') + '"]');
             element = elementByKey(state.key || snapshot.key, roots);
         }
-        if (!collection || !collection.length || !live(collection[0])) collection = element ? $(element).closest('.scroll, .yani-detail, .yani-home, .yani-account, .yani-schedule, .yani-catalog-view, .yani-user-lists-view') : null;
+        if (!collection || !collection.length || !live(collection[0])) collection = element ? $(element).closest('.scroll, ' + SCOPED_ROOT) : null;
         var controller = snapshot.controller && snapshot.controller !== 'select' && snapshot.controller !== 'input' ? snapshot.controller : 'content';
         if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
         if (collection && collection.length && Lampa.Controller && Lampa.Controller.collectionSet) Lampa.Controller.collectionSet(collection);
@@ -4187,12 +4237,15 @@ function pluginYummyAnime() {
     }
 
     function captureSnapshot() {
-        var element = document.querySelector('.yani-home .selector.focus, .yani-detail .selector.focus, .yani-account .selector.focus, .yani-schedule .selector.focus, .yani-catalog-view .selector.focus, .yani-user-lists-view .selector.focus') ||
+        var element = document.querySelector(SCOPED_ROOT + ' .selector.focus') ||
             document.querySelector('.selector.focus') ||
-            document.querySelector('.yani-home .selector, .yani-detail .selector, .yani-account .selector, .yani-schedule .selector, .yani-catalog-view .selector, .yani-user-lists-view .selector') ||
+            document.querySelector(SCOPED_ROOT + ' .selector') ||
             document.querySelector('.selector');
-        var collection = element ? $(element).closest('.scroll, .yani-detail, .yani-home, .yani-account, .yani-schedule, .yani-catalog-view, .yani-user-lists-view') : null;
-        return {controller: 'content', element: element || null, collection: collection && collection.length ? collection : null, key: elementKey(element, collection)};
+        var scopeRoot = element ? $(element).closest(SCOPED_ROOT) : $();
+        var scope = scopeRoot.attr('data-yani-navigation-scope') || '';
+        var collection = element ? $(element).closest('.scroll, ' + SCOPED_ROOT) : null;
+        var state = scope && scopeStates[scope];
+        return {scope: scope, controller: 'content', element: element || null, collection: collection && collection.length ? collection : null, key: state && state.key || elementKey(element, scopeRoot.length ? scopeRoot : collection)};
     }
 
     function attachComponent(component, options) {
@@ -8522,25 +8575,25 @@ function pluginYummyAnime() {
                 document.addEventListener('keydown', remoteShortcutHandler, true);
             }
         }
-        function load() {
+        function load(forceRefresh) {
             content.empty();
             state.show('loading', {skeleton: 'rows'});
             ensureMounted();
             last = state.focus(scroll.render()) || last;
-            LampaYaniApi.schedule({}).then(function (payload) {
+            LampaYaniApi.schedule({forceRefresh: forceRefresh === true}).then(function (payload) {
                 var items = LampaYaniApi.normalize(payload);
                 content.empty();
                 if (!items.length) {
                     state.show('empty', {
                         title: t('no_releases'),
                         hint: t('section_state_empty_hint'),
-                        onRetry: load
+                        onRetry: function () { load(true); }
                     });
                     last = state.focus(scroll.render()) || last;
                     return;
                 }
                 if (LampaYaniSectionState.fromCache(payload)) {
-                    state.show('cached', {compact: true, onRetry: load});
+                    state.show('cached', {compact: true, onRetry: function () { load(true); }});
                 } else {
                     state.clear();
                 }
@@ -8552,7 +8605,7 @@ function pluginYummyAnime() {
                 content.empty();
                 state.show('offline', {
                     title: t('schedule_load_error'),
-                    onRetry: load
+                    onRetry: function () { load(true); }
                 });
                 last = state.focus(scroll.render()) || last;
             });
@@ -10912,6 +10965,13 @@ function pluginYummyAnime() {
         var catalogDone = false;
         var catalogCards = [];
         var destroyed = false;
+        var focusScope = LampaYaniNavigation.createScope({
+            id: 'collections:' + String(object && object.url || 'yani/collections'),
+            root: function () { return comp.render ? comp.render() : $(); },
+            collection: function () { return comp.scroll && comp.scroll.render ? comp.scroll.render() : comp.render(); },
+            scroll: comp.scroll,
+            selector: '.card.selector'
+        });
 
         function uniqueCards(items) {
             return (items || []).map(function (collection) {
@@ -10940,14 +11000,15 @@ function pluginYummyAnime() {
             if (self.activity && self.activity.loader) self.activity.loader(false);
             if (self.render) self.render().addClass('yani-tile-catalog yani-collections-tile-catalog');
             bindVisibleCollectionTiles(self, catalogCards);
+            focusScope.bind(self.render());
         }
 
-        comp.create = function () {
+        comp.create = function (forceRefresh) {
             var self = this;
             var activityView = this.activity.render && this.activity.render(true);
             if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            var control = {timeout: 8000, retry: false};
+            var control = {timeout: 8000, retry: false, cacheFirst: true, forceRefresh: forceRefresh === true};
             Promise.all([
                 deps.feed(control).catch(function (error) { return {__error: error}; }),
                 deps.load(limit, 0, control).catch(function (error) { return {__error: error}; })
@@ -10969,7 +11030,7 @@ function pluginYummyAnime() {
                 var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
                 states.offline({
                     title: deps.t('collections_load_error'),
-                    onRetry: function () { self.create(); }
+                    onRetry: function () { self.create(true); }
                 });
                 self.activity.toggle();
                 states.focus();
@@ -11011,8 +11072,16 @@ function pluginYummyAnime() {
         comp.nextPageRequest = comp.nextPageReuest;
         comp.cardRender = function (first, second, third) { bindCollectionCard(first, second, third, deps); };
         var originalCatalogDestroy = comp.destroy;
+        var originalCatalogStart = comp.start;
+        comp.start = function () {
+            var result = originalCatalogStart && originalCatalogStart.apply(this, arguments);
+            focusScope.bind(comp.render());
+            setTimeout(function () { focusScope.restore(comp.last, true); }, 0);
+            return result;
+        };
         comp.destroy = function () {
             destroyed = true;
+            focusScope.destroy();
             if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
         };
         return comp;
@@ -11025,6 +11094,13 @@ function pluginYummyAnime() {
         var maxPages = 1000;
         var seen = {};
         var destroyed = false;
+        var focusScope = LampaYaniNavigation.createScope({
+            id: 'collection:' + String(object && (object.collectionId || object.url) || 'detail'),
+            root: function () { return comp.render ? comp.render() : $(); },
+            collection: function () { return comp.scroll && comp.scroll.render ? comp.scroll.render() : comp.render(); },
+            scroll: comp.scroll,
+            selector: '.card.selector'
+        });
 
         function detailCards(collection) {
             return (Array.isArray(collection.animes) ? collection.animes : []).map(deps.toCard).filter(function (card) {
@@ -11047,6 +11123,7 @@ function pluginYummyAnime() {
                 self.build({results: cards, total_pages: maxPages, title: collection.title || deps.t('collection')});
                 if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-collection-view');
+                focusScope.bind(self.render());
                 if (!cards.length) deps.error(deps.t('collection_empty'));
             }).catch(function (error) {
                 if (destroyed) return;
@@ -11071,8 +11148,16 @@ function pluginYummyAnime() {
         comp.nextPageRequest = comp.nextPageReuest;
         comp.cardRender = deps.cardRender;
         var originalDetailDestroy = comp.destroy;
+        var originalDetailStart = comp.start;
+        comp.start = function () {
+            var result = originalDetailStart && originalDetailStart.apply(this, arguments);
+            focusScope.bind(comp.render());
+            setTimeout(function () { focusScope.restore(comp.last, true); }, 0);
+            return result;
+        };
         comp.destroy = function () {
             destroyed = true;
+            focusScope.destroy();
             if (originalDetailDestroy) originalDetailDestroy.apply(this, arguments);
         };
         return comp;
@@ -12886,7 +12971,11 @@ function pluginYummyAnime() {
         comp.create = function () {
             var self = this;
             this.activity.loader(true);
-            LampaYaniApi.catalog(baseParams)
+            LampaYaniApi.catalog(baseParams, object.genre_context ? {
+                cacheFirst: true,
+                staleFallback: true,
+                cacheTtl: 15 * 60 * 1000
+            } : {})
                 .then(function (payload) {
                     if (destroyed) return;
                     var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
@@ -12914,7 +13003,11 @@ function pluginYummyAnime() {
             }
             requestedOffsets[params.offset] = true;
 
-            LampaYaniApi.catalog(params).then(function (payload) {
+            LampaYaniApi.catalog(params, object.genre_context ? {
+                cacheFirst: true,
+                staleFallback: true,
+                cacheTtl: 15 * 60 * 1000
+            } : {}).then(function (payload) {
                 if (destroyed) return reject(new Error('YummyAnime catalog was closed'));
                 var raw = annotateGenreTop(LampaYaniApi.normalize(payload), params.offset);
                 var results = mapUniqueCards(raw, seen);
@@ -14324,6 +14417,13 @@ function pluginYummyAnime() {
         var comp = new Lampa.InteractionCategory(object);
         var genreCards = [];
         var destroyed = false;
+        var focusScope = LampaYaniNavigation.createScope({
+            id: 'genres:' + String(object && object.url || 'yani/genres'),
+            root: function () { return comp.render ? comp.render() : $(); },
+            collection: function () { return comp.scroll && comp.scroll.render ? comp.scroll.render() : comp.render(); },
+            scroll: comp.scroll,
+            selector: '.card.selector'
+        });
 
         comp.create = function () {
             var self = this;
@@ -14335,6 +14435,7 @@ function pluginYummyAnime() {
                 if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-tile-catalog yani-genres-tile-catalog');
                 bindGenreTiles(self, genreCards);
+                focusScope.bind(self.render());
                 if (!genreCards.length) Lampa.Noty.show(t('genres_empty'));
             }).catch(function (error) {
                 if (destroyed) return;
@@ -14365,8 +14466,16 @@ function pluginYummyAnime() {
         };
 
         var originalGenresDestroy = comp.destroy;
+        var originalGenresStart = comp.start;
+        comp.start = function () {
+            var result = originalGenresStart && originalGenresStart.apply(this, arguments);
+            focusScope.bind(comp.render());
+            setTimeout(function () { focusScope.restore(comp.last, true); }, 0);
+            return result;
+        };
         comp.destroy = function () {
             destroyed = true;
+            focusScope.destroy();
             if (originalGenresDestroy) originalGenresDestroy.apply(this, arguments);
         };
 
@@ -16347,6 +16456,7 @@ function pluginYummyAnime() {
                         var id = genreValue(genre);
                         return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}, {
                             cacheTtl: GENRE_HUB_TTL,
+                            cacheFirst: true,
                             staleFallback: true
                         }).then(function (payload) {
                             var items = LampaYaniApi.normalize(payload).slice(0, 10);

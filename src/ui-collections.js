@@ -309,6 +309,13 @@
         var catalogDone = false;
         var catalogCards = [];
         var destroyed = false;
+        var focusScope = LampaYaniNavigation.createScope({
+            id: 'collections:' + String(object && object.url || 'yani/collections'),
+            root: function () { return comp.render ? comp.render() : $(); },
+            collection: function () { return comp.scroll && comp.scroll.render ? comp.scroll.render() : comp.render(); },
+            scroll: comp.scroll,
+            selector: '.card.selector'
+        });
 
         function uniqueCards(items) {
             return (items || []).map(function (collection) {
@@ -337,14 +344,15 @@
             if (self.activity && self.activity.loader) self.activity.loader(false);
             if (self.render) self.render().addClass('yani-tile-catalog yani-collections-tile-catalog');
             bindVisibleCollectionTiles(self, catalogCards);
+            focusScope.bind(self.render());
         }
 
-        comp.create = function () {
+        comp.create = function (forceRefresh) {
             var self = this;
             var activityView = this.activity.render && this.activity.render(true);
             if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
-            var control = {timeout: 8000, retry: false};
+            var control = {timeout: 8000, retry: false, cacheFirst: true, forceRefresh: forceRefresh === true};
             Promise.all([
                 deps.feed(control).catch(function (error) { return {__error: error}; }),
                 deps.load(limit, 0, control).catch(function (error) { return {__error: error}; })
@@ -366,7 +374,7 @@
                 var states = LampaYaniSectionState.forActivity(self.activity, {t: deps.t});
                 states.offline({
                     title: deps.t('collections_load_error'),
-                    onRetry: function () { self.create(); }
+                    onRetry: function () { self.create(true); }
                 });
                 self.activity.toggle();
                 states.focus();
@@ -408,8 +416,16 @@
         comp.nextPageRequest = comp.nextPageReuest;
         comp.cardRender = function (first, second, third) { bindCollectionCard(first, second, third, deps); };
         var originalCatalogDestroy = comp.destroy;
+        var originalCatalogStart = comp.start;
+        comp.start = function () {
+            var result = originalCatalogStart && originalCatalogStart.apply(this, arguments);
+            focusScope.bind(comp.render());
+            setTimeout(function () { focusScope.restore(comp.last, true); }, 0);
+            return result;
+        };
         comp.destroy = function () {
             destroyed = true;
+            focusScope.destroy();
             if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
         };
         return comp;
@@ -422,6 +438,13 @@
         var maxPages = 1000;
         var seen = {};
         var destroyed = false;
+        var focusScope = LampaYaniNavigation.createScope({
+            id: 'collection:' + String(object && (object.collectionId || object.url) || 'detail'),
+            root: function () { return comp.render ? comp.render() : $(); },
+            collection: function () { return comp.scroll && comp.scroll.render ? comp.scroll.render() : comp.render(); },
+            scroll: comp.scroll,
+            selector: '.card.selector'
+        });
 
         function detailCards(collection) {
             return (Array.isArray(collection.animes) ? collection.animes : []).map(deps.toCard).filter(function (card) {
@@ -444,6 +467,7 @@
                 self.build({results: cards, total_pages: maxPages, title: collection.title || deps.t('collection')});
                 if (self.activity && self.activity.loader) self.activity.loader(false);
                 if (self.render) self.render().addClass('yani-collection-view');
+                focusScope.bind(self.render());
                 if (!cards.length) deps.error(deps.t('collection_empty'));
             }).catch(function (error) {
                 if (destroyed) return;
@@ -468,8 +492,16 @@
         comp.nextPageRequest = comp.nextPageReuest;
         comp.cardRender = deps.cardRender;
         var originalDetailDestroy = comp.destroy;
+        var originalDetailStart = comp.start;
+        comp.start = function () {
+            var result = originalDetailStart && originalDetailStart.apply(this, arguments);
+            focusScope.bind(comp.render());
+            setTimeout(function () { focusScope.restore(comp.last, true); }, 0);
+            return result;
+        };
         comp.destroy = function () {
             destroyed = true;
+            focusScope.destroy();
             if (originalDetailDestroy) originalDetailDestroy.apply(this, arguments);
         };
         return comp;

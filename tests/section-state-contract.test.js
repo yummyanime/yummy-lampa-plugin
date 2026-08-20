@@ -27,7 +27,7 @@ assert.match(i18n, /messages\.ru\.section_state_cached/);
 assert.match(i18n, /messages\.en\.section_retry/);
 assert.match(i18n, /messages\.uk\.section_state_offline/);
 assert.match(schedule, /LampaYaniSectionState\.create/);
-assert.match(schedule, /onRetry: load/);
+assert.match(schedule, /onRetry: function \(\) \{ load\(true\); \}/);
 assert.match(notifications, /offlineState/);
 assert.match(releases, /LampaYaniSectionState\.forActivity/);
 assert.match(translations, /states\.empty\(/);
