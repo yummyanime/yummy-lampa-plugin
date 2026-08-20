@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.16 — 2026-08-21
+
+- Fix collections to render from the first available cached source
+
 ## 0.44.15 — 2026-08-21
 
 - Add offline-first cache for collections, genres and schedule

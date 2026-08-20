@@ -349,25 +349,15 @@
 
         comp.create = function (forceRefresh) {
             var self = this;
+            var completed = 0;
+            var rendered = false;
+            var lastError = null;
             var activityView = this.activity.render && this.activity.render(true);
             if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
             var control = {timeout: 8000, retry: false, cacheFirst: true, forceRefresh: forceRefresh === true};
-            Promise.all([
-                deps.feed(control).catch(function (error) { return {__error: error}; }),
-                deps.load(limit, 0, control).catch(function (error) { return {__error: error}; })
-            ]).then(function (payloads) {
-                if (destroyed) return;
-                var feedResponse = responseValue(payloads[0]) || {};
-                var feedItems = Array.isArray(feedResponse.collections) ? feedResponse.collections : [];
-                var catalogItems = payloads[1] && payloads[1].__error ? [] : collectionItems(payloads[1]);
-                var items = feedItems.length ? feedItems : catalogItems;
-                if (!items.length) throw payloads[1].__error || payloads[0].__error || new Error('Collections are empty');
-                requestedOffsets[0] = true;
-                nextCatalogOffset = catalogItems.length;
-                catalogDone = catalogItems.length > 0 && catalogItems.length < limit;
-                buildInitial(self, items);
-            }).catch(function (error) {
+
+            function failInitial(error) {
                 if (destroyed) return;
                 console.error('[YummyAnime Collections]', error);
                 if (self.activity && self.activity.loader) self.activity.loader(false);
@@ -378,6 +368,37 @@
                 });
                 self.activity.toggle();
                 states.focus();
+            }
+
+            function settleInitial(items, error) {
+                if (destroyed) return;
+                completed++;
+                if (error) lastError = error;
+                if (!rendered && items && items.length) {
+                    rendered = true;
+                    buildInitial(self, items);
+                }
+                if (completed === 2 && !rendered) failInitial(lastError || new Error('Collections are empty'));
+            }
+
+            // Do not make a cached feed wait for the catalog request (or vice
+            // versa). The first useful source paints the screen; the catalog
+            // response may arrive later and only updates pagination metadata.
+            requestedOffsets[0] = true;
+            nextCatalogOffset = limit;
+            deps.feed(control).then(function (payload) {
+                var response = responseValue(payload) || {};
+                settleInitial(Array.isArray(response.collections) ? response.collections : [], null);
+            }).catch(function (error) {
+                settleInitial([], error);
+            });
+            deps.load(limit, 0, control).then(function (payload) {
+                var items = collectionItems(payload);
+                nextCatalogOffset = items.length;
+                catalogDone = items.length < limit;
+                settleInitial(items, null);
+            }).catch(function (error) {
+                settleInitial([], error);
             });
         };
 
