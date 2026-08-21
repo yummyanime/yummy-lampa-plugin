@@ -9,7 +9,7 @@
         scroll.minus();
         var html = $('<div class="yani-schedule"></div>');
         var content = $('<div class="yani-schedule__content"></div>');
-        var last, dayGroups = [], selectedDay = 0, remoteShortcutHandler = null, videosCache = {}, ratingCache = {};
+        var last, dayGroups = [], selectedDay = 0, remoteShortcutHandler = null, cacheUpdateHandler = null, pendingPayload = null, destroyed = false, videosCache = {}, ratingCache = {};
         var focusScope = LampaYaniNavigation.createScope({
             id: 'schedule:' + String(object && object.url || 'yani/schedule'),
             root: function () { return html; },
@@ -369,6 +369,46 @@
                 remoteShortcutHandler = handleRemoteShortcut;
                 document.addEventListener('keydown', remoteShortcutHandler, true);
             }
+            if (!cacheUpdateHandler) {
+                cacheUpdateHandler = function (event) {
+                    var detail = event && event.detail || {};
+                    if (destroyed || detail.path !== '/anime/schedule' || !detail.payload) return;
+                    if (!html.is(':visible')) {
+                        pendingPayload = detail.payload;
+                        return;
+                    }
+                    applyPayload(detail.payload, true);
+                };
+                document.addEventListener('yani:cache-updated', cacheUpdateHandler);
+            }
+        }
+        function applyPayload(payload, background) {
+            var items = LampaYaniApi.normalize(payload);
+            if (background && !items.length) return;
+            if (background && focusScope && focusScope.remember) focusScope.remember(last);
+            content.empty();
+            if (!items.length) {
+                state.show('empty', {
+                    title: t('no_releases'),
+                    hint: t('section_state_empty_hint'),
+                    onRetry: function () { load(true); }
+                });
+                last = state.focus(scroll.render()) || last;
+                return;
+            }
+            if (!background && LampaYaniSectionState.fromCache(payload)) {
+                state.show('cached', {compact: true, onRetry: function () { load(true); }});
+            } else {
+                state.clear();
+            }
+            render(items);
+            var fallback = dayChipNodes().filter('.selected').first()[0] || content.find('.selector').first()[0] || last;
+            if (background) {
+                last = focusScope.restore(fallback, true) || fallback;
+            } else {
+                last = fallback;
+                refreshFocus(last);
+            }
         }
         function load(forceRefresh) {
             content.empty();
@@ -376,25 +416,7 @@
             ensureMounted();
             last = state.focus(scroll.render()) || last;
             LampaYaniApi.schedule({forceRefresh: forceRefresh === true}).then(function (payload) {
-                var items = LampaYaniApi.normalize(payload);
-                content.empty();
-                if (!items.length) {
-                    state.show('empty', {
-                        title: t('no_releases'),
-                        hint: t('section_state_empty_hint'),
-                        onRetry: function () { load(true); }
-                    });
-                    last = state.focus(scroll.render()) || last;
-                    return;
-                }
-                if (LampaYaniSectionState.fromCache(payload)) {
-                    state.show('cached', {compact: true, onRetry: function () { load(true); }});
-                } else {
-                    state.clear();
-                }
-                render(items);
-                last = dayChipNodes().filter('.selected').first()[0] || content.find('.selector').first()[0] || last;
-                refreshFocus(last);
+                applyPayload(payload, false);
             }).catch(function (error) {
                 console.error('[YummyAnime]', error);
                 content.empty();
@@ -414,6 +436,11 @@
             start: function () {
                 Lampa.Controller.add('content', {
                     toggle: function () {
+                        if (pendingPayload) {
+                            var payload = pendingPayload;
+                            pendingPayload = null;
+                            applyPayload(payload, true);
+                        }
                         var restored = focusScope.restore(last, false);
                         if (restored) last = restored;
                     },
@@ -458,8 +485,12 @@
             },
             render: function (js) { return js ? html[0] : html; },
             destroy: function () {
+                destroyed = true;
                 if (remoteShortcutHandler) document.removeEventListener('keydown', remoteShortcutHandler, true);
                 remoteShortcutHandler = null;
+                if (cacheUpdateHandler) document.removeEventListener('yani:cache-updated', cacheUpdateHandler);
+                cacheUpdateHandler = null;
+                pendingPayload = null;
                 focusScope.destroy();
                 scroll.destroy();
                 html.remove();

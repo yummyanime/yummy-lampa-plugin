@@ -3,6 +3,7 @@
 
     var config = window.LampaYaniConfig;
     var pendingRequests = {};
+    var pendingRefreshes = {};
 
     function sleep(milliseconds) {
         return new Promise(function (resolve) { setTimeout(resolve, milliseconds); });
@@ -88,6 +89,45 @@
         Lampa.Storage.set(indexKey, JSON.stringify(keys));
     }
 
+    function payloadChanged(previous, current) {
+        try {
+            return JSON.stringify(previous) !== JSON.stringify(current);
+        } catch (ignore) {
+            return true;
+        }
+    }
+
+    function emitCacheUpdate(path, payload, language) {
+        if (typeof document === 'undefined' || !document.dispatchEvent) return;
+        var detail = {path: path, payload: payload, language: language};
+        var event;
+        if (typeof CustomEvent === 'function') {
+            event = new CustomEvent('yani:cache-updated', {detail: detail});
+        } else if (document.createEvent) {
+            event = document.createEvent('CustomEvent');
+            event.initCustomEvent('yani:cache-updated', false, false, detail);
+        }
+        if (event) document.dispatchEvent(event);
+    }
+
+    function refreshCacheInBackground(path, options, cached, language) {
+        var key = [language, path, options.auth ? 'auth' : 'public', options.token ? 'token' : ''].join('|');
+        if (pendingRefreshes[key]) return;
+        var refreshOptions = Object.assign({}, options, {
+            cacheFirst: false,
+            forceRefresh: true,
+            backgroundRefresh: false,
+            authRefreshChecked: true
+        });
+        pendingRefreshes[key] = request(path, refreshOptions).then(function (payload) {
+            if (payloadChanged(cached.data, payload)) emitCacheUpdate(path, payload, language);
+        }).catch(function () {
+            // Cached content remains usable when a silent refresh fails.
+        }).then(function () {
+            delete pendingRefreshes[key];
+        });
+    }
+
     function request(path, options) {
         options = options || {};
         if (options.auth && !options.authRefreshChecked && window.LampaYaniAuth && LampaYaniAuth.token() && LampaYaniAuth.refreshIfNeeded) {
@@ -107,6 +147,7 @@
         // fallback while a normal request tries to refresh it.
         var cached = method === 'GET' && options.cache !== false ? readCache(cacheKey) : null;
         if (options.cacheFirst && !options.forceRefresh && cached && Date.now() - cached.time < cacheTtl) {
+            if (options.backgroundRefresh !== false) refreshCacheInBackground(path, options, cached, apiLanguage);
             return Promise.resolve(cached.data);
         }
 
@@ -217,6 +258,7 @@
                 cacheFirst: true,
                 staleFallback: true,
                 forceRefresh: control.forceRefresh,
+                backgroundRefresh: control.backgroundRefresh,
                 signal: control.signal
             });
         },
@@ -227,6 +269,7 @@
                 cacheFirst: true,
                 staleFallback: true,
                 forceRefresh: control.forceRefresh,
+                backgroundRefresh: control.backgroundRefresh,
                 signal: control.signal
             });
         },
@@ -237,6 +280,7 @@
                 cacheFirst: true,
                 staleFallback: true,
                 forceRefresh: control.forceRefresh,
+                backgroundRefresh: control.backgroundRefresh,
                 signal: control.signal
             });
         },
@@ -248,6 +292,7 @@
                 cacheFirst: control.cacheFirst === true,
                 staleFallback: true,
                 forceRefresh: control.forceRefresh,
+                backgroundRefresh: control.backgroundRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry
@@ -261,6 +306,7 @@
                 cacheFirst: true,
                 staleFallback: true,
                 forceRefresh: control.forceRefresh,
+                backgroundRefresh: control.backgroundRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry
@@ -275,6 +321,7 @@
                 cacheFirst: true,
                 staleFallback: true,
                 forceRefresh: control.forceRefresh,
+                backgroundRefresh: control.backgroundRefresh,
                 signal: control.signal,
                 timeout: control.timeout,
                 retry: control.retry

@@ -2,7 +2,7 @@
 
 Extension for Lampa powered by the YummyAnime API.
 
-Current version: `0.44.16`
+Current version: `0.44.17`
 
 See the [changelog](CHANGELOG.md) and [documentation](docs/README.en.md).
 

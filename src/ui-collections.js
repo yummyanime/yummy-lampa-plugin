@@ -309,6 +309,8 @@
         var catalogDone = false;
         var catalogCards = [];
         var destroyed = false;
+        var renderedSourcePath = '';
+        var cacheUpdateHandler = null;
         var focusScope = LampaYaniNavigation.createScope({
             id: 'collections:' + String(object && object.url || 'yani/collections'),
             root: function () { return comp.render ? comp.render() : $(); },
@@ -347,6 +349,24 @@
             focusScope.bind(self.render());
         }
 
+        function patchVisibleCollections(self, items) {
+            var freshCards = (items || []).map(collectionCard);
+            var byId = {};
+            freshCards.forEach(function (card) { byId[String(card.yani_collection_id)] = card; });
+            $(self.render()).find('.card').each(function () {
+                var current = this.card_data;
+                var fresh = current && current.yani_collection_id !== undefined ? byId[String(current.yani_collection_id)] : null;
+                if (!fresh) return;
+                this.card_data = fresh;
+                var node = $(this);
+                node.find('.card__title').first().text(fresh.title || '');
+                var copy = node.find('.yani-collection-tile-card__copy').first();
+                copy.find('strong').text(fresh.title || '');
+                copy.find('span').text(fresh.yani_collection_count ? fresh.yani_collection_count + ' ' + deps.t('anime_count') : '');
+                if (window.LampaYaniMedia) LampaYaniMedia.attachPosterFallback(this, fresh);
+            });
+        }
+
         comp.create = function (forceRefresh) {
             var self = this;
             var completed = 0;
@@ -356,6 +376,18 @@
             if (activityView) $(activityView).find('.yani-section-state-host').remove();
             this.activity.loader(true);
             var control = {timeout: 8000, retry: false, cacheFirst: true, forceRefresh: forceRefresh === true};
+            if (!cacheUpdateHandler) {
+                cacheUpdateHandler = function (event) {
+                    var detail = event && event.detail || {};
+                    if (destroyed || !renderedSourcePath || detail.path !== renderedSourcePath || !detail.payload) return;
+                    var response = responseValue(detail.payload) || {};
+                    var items = renderedSourcePath === '/feed' && Array.isArray(response.collections)
+                        ? response.collections
+                        : collectionItems(detail.payload);
+                    if (items.length) patchVisibleCollections(self, items);
+                };
+                document.addEventListener('yani:cache-updated', cacheUpdateHandler);
+            }
 
             function failInitial(error) {
                 if (destroyed) return;
@@ -370,12 +402,13 @@
                 states.focus();
             }
 
-            function settleInitial(items, error) {
+            function settleInitial(items, error, sourcePath) {
                 if (destroyed) return;
                 completed++;
                 if (error) lastError = error;
                 if (!rendered && items && items.length) {
                     rendered = true;
+                    renderedSourcePath = sourcePath || '';
                     buildInitial(self, items);
                 }
                 if (completed === 2 && !rendered) failInitial(lastError || new Error('Collections are empty'));
@@ -388,17 +421,17 @@
             nextCatalogOffset = limit;
             deps.feed(control).then(function (payload) {
                 var response = responseValue(payload) || {};
-                settleInitial(Array.isArray(response.collections) ? response.collections : [], null);
+                settleInitial(Array.isArray(response.collections) ? response.collections : [], null, '/feed');
             }).catch(function (error) {
-                settleInitial([], error);
+                settleInitial([], error, '/feed');
             });
             deps.load(limit, 0, control).then(function (payload) {
                 var items = collectionItems(payload);
                 nextCatalogOffset = items.length;
                 catalogDone = items.length < limit;
-                settleInitial(items, null);
+                settleInitial(items, null, '/collection?limit=' + limit + '&offset=0');
             }).catch(function (error) {
-                settleInitial([], error);
+                settleInitial([], error, '/collection?limit=' + limit + '&offset=0');
             });
         };
 
@@ -446,6 +479,8 @@
         };
         comp.destroy = function () {
             destroyed = true;
+            if (cacheUpdateHandler) document.removeEventListener('yani:cache-updated', cacheUpdateHandler);
+            cacheUpdateHandler = null;
             focusScope.destroy();
             if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
         };

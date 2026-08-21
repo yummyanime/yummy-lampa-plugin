@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.44.17 — 2026-08-21
+
+- Add silent background refresh for fresh offline caches
+- Fix live schedule updates while preserving focus and scroll
+
 ## 0.44.16 — 2026-08-21
 
 - Fix collections to render from the first available cached source

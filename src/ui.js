@@ -1919,6 +1919,7 @@
         var comp = new Lampa.InteractionCategory(object);
         var genreCards = [];
         var destroyed = false;
+        var cacheUpdateHandler = null;
         var focusScope = LampaYaniNavigation.createScope({
             id: 'genres:' + String(object && object.url || 'yani/genres'),
             root: function () { return comp.render ? comp.render() : $(); },
@@ -1930,6 +1931,30 @@
         comp.create = function () {
             var self = this;
             this.activity.loader(true);
+            if (!cacheUpdateHandler) {
+                cacheUpdateHandler = function (event) {
+                    var detail = event && event.detail || {};
+                    if (destroyed || detail.path !== '/anime/genres' || !detail.payload) return;
+                    var genres = LampaYaniApi.normalizeGenres(detail.payload).filter(function (genre) {
+                        return genreTitle(genre) && genreValue(genre) !== null;
+                    });
+                    if (!genres.length) return;
+                    genreList = genres;
+                    genreListAt = Date.now();
+                    genreCards = genreTilesRow(genres).results;
+                    var byId = {};
+                    genreCards.forEach(function (card) { byId[String(genreValue(card.yani_genre))] = card; });
+                    $(self.render()).find('.card').each(function () {
+                        var current = this.card_data;
+                        var fresh = current && current.yani_genre ? byId[String(genreValue(current.yani_genre))] : null;
+                        if (!fresh) return;
+                        this.card_data = fresh;
+                        $(this).find('.card__title').first().text(fresh.title || '');
+                        if (window.LampaYaniMedia) LampaYaniMedia.attachPosterFallback(this, fresh);
+                    });
+                };
+                document.addEventListener('yani:cache-updated', cacheUpdateHandler);
+            }
             loadGenreList().then(function (genres) {
                 if (destroyed) return;
                 genreCards = genreTilesRow(genres).results;
@@ -1977,6 +2002,8 @@
         };
         comp.destroy = function () {
             destroyed = true;
+            if (cacheUpdateHandler) document.removeEventListener('yani:cache-updated', cacheUpdateHandler);
+            cacheUpdateHandler = null;
             focusScope.destroy();
             if (originalGenresDestroy) originalGenresDestroy.apply(this, arguments);
         };
@@ -3886,7 +3913,10 @@
     var GENRE_HUB_CONCURRENCY = 8;
 
     function loadGenreList() {
-        if (genreList && Date.now() - genreListAt < GENRE_HUB_TTL) return Promise.resolve(genreList);
+        if (genreList && Date.now() - genreListAt < GENRE_HUB_TTL) {
+            LampaYaniApi.genres().catch(function () {});
+            return Promise.resolve(genreList);
+        }
         if (genreListRequest) return genreListRequest;
         genreListRequest = LampaYaniApi.genres().then(function (payload) {
             var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
