@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.20 — 2026-08-23
+
+- Remove the temporary player resource probe now that the decoder leak is fixed
+
 ## 0.44.19 — 2026-08-23
 
 - Fix the automatic episode switch stranding a video decoder per advance by closing the running player first

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.17',
+        version: '0.44.20',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -15985,6 +15985,9 @@ function pluginYummyAnime() {
     var playbackWatcherGeneration = 0;
     var PLAYER_STARTUP_GRACE_MS = 120000;
     var NEXT_PREFETCH_LEAD = 90;
+    // Long enough for Lampa to finish tearing the closed player down before the
+    // next episode opens, short enough not to read as a pause between episodes.
+    var PLAYER_CLOSE_SETTLE_MS = 400;
 
     function skipPreference() {
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_aniskip', 'off') : 'off';
@@ -16433,11 +16436,33 @@ function pluginYummyAnime() {
         });
     }
 
+    // Handing the running player to Lampa's own teardown before starting the
+    // next episode. Playing on top of it instead leaves the previous <video>
+    // and its MediaSource alive, because Lampa only releases the player it
+    // considers current — so every automatic advance stranded one more hardware
+    // decoder, and after eight to ten of them the renderer died. Measured: each
+    // advance added one live video and one live MediaSource, none of which were
+    // ever closed, while a manual launch released both every time.
+    function closeInternalPlayer() {
+        try {
+            if (Lampa.Player && Lampa.Player.close) Lampa.Player.close();
+        } catch (error) {
+            console.warn('[YummyAnime] Could not close the player before advancing', error);
+        }
+    }
+
     function advanceToNextEpisode(context) {
         var next = nextEpisodeVideo(context);
         if (!next) return;
         Lampa.Noty.show(t('auto_next_starting') + ' ' + (next.number || next.index || ''));
-        launchVideo(context.card, context.group, context.videos, next, {autoAdvance: true});
+        // Bumping the return session first: closing the player schedules a
+        // focus restore back to the detail page, which must not fire while the
+        // next episode is opening.
+        beginPlaybackNavigation();
+        closeInternalPlayer();
+        setTimeout(function () {
+            launchVideo(context.card, context.group, context.videos, next, {autoAdvance: true});
+        }, PLAYER_CLOSE_SETTLE_MS);
     }
 
     function externalPlayablePlaylist(playlist) {
