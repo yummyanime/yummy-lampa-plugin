@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.2 — 2026-08-23
+
+- Fix a finished episode dropping its whole title from Continue Watching instead of advancing to the next one | Add episode counts resolved from the title so the queue knows when a title is actually over
+
 ## 0.45.1 — 2026-08-23
 
 - Fix one shared 95 percent rule for a finished episode across the detail summary, watched reach and Continue Watching

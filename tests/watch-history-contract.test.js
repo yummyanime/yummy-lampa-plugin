@@ -110,9 +110,32 @@ const continuing = history.continueWatchingEntries([
     {anime_id: 77, video_id: 7701, number: '1', time: 1390, duration: 1440, updated_at: 30},
     {anime_id: 88, video_id: 8801, number: '2', time: 0, duration: 0, updated_at: 40}
 ]);
-assert.strictEqual(continuing.length, 2, 'continue watching keeps one unfinished entry per title');
+// The queue holds titles, not episodes. Finishing episode 5 of 12 means the
+// viewer is ready for episode 6, so the title stays and moves forward; it only
+// leaves once its last released episode has been watched.
+assert.strictEqual(continuing.length, 3, 'continue watching keeps one entry per title');
 assert.strictEqual(continuing[0].anime_id, 88, 'a selected but not started episode remains a continue target');
-assert.strictEqual(continuing[1].video_id, 4208, 'the latest unfinished episode wins for a title');
+// Ordered by recency, so the advanced title sits between the two others.
+assert.strictEqual(continuing[1].anime_id, 77, 'a finished episode advances its title instead of dropping it');
+assert.strictEqual(continuing[1].number, '2', 'the advanced title points at the next episode');
+assert.strictEqual(continuing[1].resume_next, true, 'the advanced entry is marked as a fresh episode');
+assert.strictEqual(continuing[2].video_id, 4208, 'the latest unfinished episode wins for a title');
+
+// With the episode count known, the last one ends the title for good.
+assert.strictEqual(
+    history.continueWatchingEntries([
+        {anime_id: 77, video_id: 7701, number: '12', time: 1390, duration: 1440, updated_at: 30}
+    ], {}, {'77': 12}).length,
+    0,
+    'a title whose last released episode is watched leaves the queue'
+);
+assert.strictEqual(
+    history.continueWatchingEntries([
+        {anime_id: 55, video_id: 5501, number: '1', time: 1390, duration: 1440, updated_at: 30}
+    ], {}, {'55': 1}).length,
+    0,
+    'a single-episode title does not offer a second episode'
+);
 assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 1390, duration: 1440}), false, 'nearly completed episodes are hidden');
 assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 1080, duration: 1440}), true, '75 percent remains resumable');
 assert.strictEqual(history.isContinueEntry({anime_id: 77, video_id: 7701, time: 0, duration: 1440}), true, 'a just-started episode remains resumable');

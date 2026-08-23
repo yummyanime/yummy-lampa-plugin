@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.45.1',
+        version: '0.45.2',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -10272,9 +10272,13 @@ function pluginYummyAnime() {
         var key = animeKey(entry);
         var watched = Math.max(reach[key] || 0, episodeNumber(entry));
         var ceiling = ceilings[key] || 0;
-        if (!watched || !ceiling) return null;
+        if (!watched) return null;
         var next = watched + 1;
-        if (next > ceiling) return null;
+        // Only a known last episode ends a title. When the episode count is
+        // unknown the title stays in the queue pointing at the next episode:
+        // offering one that turns out not to exist merely opens the episode
+        // list, while dropping the title loses it with no way to notice.
+        if (ceiling && next > ceiling) return null;
         return Object.assign({}, entry, {
             number: String(next),
             video_id: '',
@@ -10286,10 +10290,16 @@ function pluginYummyAnime() {
         });
     }
 
-    function continueWatchingEntries(entries, excludedAnimeIds) {
+    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings) {
         excludedAnimeIds = excludedAnimeIds || {};
         var reach = maxWatchedEpisodes(entries);
         var ceilings = episodeCeilings(entries);
+        // Counts resolved from the title cards win: history entries only carry
+        // one if they were written by a recent version of the plugin.
+        Object.keys(knownCeilings || {}).forEach(function (key) {
+            var value = Number(knownCeilings[key] || 0);
+            if (value > 0) ceilings[key] = value;
+        });
         function allowed(entry) {
             return !excludedAnimeIds[animeKey(entry)];
         }
@@ -10299,25 +10309,27 @@ function pluginYummyAnime() {
             return Object.assign({}, entry, {max_episode: Math.max(reach[key], episodeNumber(entry))});
         }
 
-        var queue = [];
-        var claimed = {};
-        latestEntriesByAnime(entries, isContinueEntry).filter(allowed).forEach(function (entry) {
-            claimed[animeKey(entry)] = true;
-            queue.push(annotate(entry));
-        });
-        latestEntriesByAnime(entries, isFinishedEpisode).filter(allowed).forEach(function (entry) {
-            if (claimed[animeKey(entry)]) return;
-            var next = nextEpisodeEntry(entry, reach, ceilings);
-            if (!next) return;
-            claimed[animeKey(entry)] = true;
-            queue.push(next);
-        });
+        // The queue holds titles, not episodes. Finishing an episode advances a
+        // title to the next one; it removes the title only when that episode
+        // was the last one released. Anything else would drop a title after
+        // episode 5 of 12 simply because episode 5 was watched to the end.
+        var queue = latestEntriesByAnime(entries).filter(allowed).map(function (entry) {
+            var annotated = annotate(entry);
+            if (!isFinishedEpisode(entry)) return annotated;
+            return nextEpisodeEntry(annotated, reach, ceilings);
+        }).filter(Boolean);
         queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
         if (queue.length) return queue;
         // The dashboard advertises the last watched title. Keep that title in
-        // the queue when the 95% / completed-list filters would otherwise
-        // leave Continue Watching empty.
-        return latestEntriesByAnime(entries).slice(0, 1).map(annotate);
+        // the queue when the completed-list filter would otherwise leave
+        // Continue Watching empty — but never resurrect a title whose last
+        // released episode is already watched: there is nothing to continue.
+        return latestEntriesByAnime(entries).slice(0, 1).filter(function (entry) {
+            if (!isFinishedEpisode(entry)) return true;
+            var key = animeKey(entry);
+            var ceiling = ceilings[key] || 0;
+            return !ceiling || Math.max(reach[key] || 0, episodeNumber(entry)) + 1 <= ceiling;
+        }).map(annotate);
     }
 
     function hasClockTimestamp(value) {
@@ -10437,6 +10449,37 @@ function pluginYummyAnime() {
             return Promise.all(entries.map(function (entry) { return historyCard(entry, deps); }));
         }
 
+        /**
+         * How many episodes each finished title has released, asked of the title
+         * itself. Without this the queue only knows a count for titles opened
+         * since the count started being stored, which is almost none of them —
+         * and an unknown count is what decides between "offer episode 6" and
+         * "this title is over".
+         */
+        function resolveCeilings(entries) {
+            if (!continueMode || !deps.detail) return Promise.resolve({});
+            var wanted = {};
+            (entries || []).forEach(function (entry) {
+                if (!isFinishedEpisode(entry)) return;
+                var key = String(entry.anime_id || entry.animeId || '');
+                if (key) wanted[key] = true;
+            });
+            var ids = Object.keys(wanted);
+            if (!ids.length) return Promise.resolve({});
+            return Promise.all(ids.map(function (id) {
+                return deps.detail(id).then(function (payload) {
+                    var value = payload && payload.response ? payload.response : payload;
+                    var episodes = value && (value.episodes || {}) || {};
+                    var count = Number(episodes.aired || episodes.released || episodes.count || episodes.total || 0);
+                    return {id: id, count: count > 0 ? count : 0};
+                }).catch(function () { return {id: id, count: 0}; });
+            })).then(function (results) {
+                var ceilings = {};
+                results.forEach(function (result) { if (result.count) ceilings[result.id] = result.count; });
+                return ceilings;
+            });
+        }
+
         comp.create = function () {
             var self = this;
             var local = deps.history();
@@ -10454,8 +10497,10 @@ function pluginYummyAnime() {
                 hasMore = !continueMode && deps.authorized() && !page.failed && page.count >= limit;
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
                 var entries = mergeHistory(deps.history() || local, page.entries);
-                if (continueMode) entries = continueWatchingEntries(entries, result[1]);
-                return cardsFor(uniqueEntries(entries));
+                if (!continueMode) return cardsFor(uniqueEntries(entries));
+                return resolveCeilings(entries).then(function (ceilings) {
+                    return cardsFor(uniqueEntries(continueWatchingEntries(entries, result[1], ceilings)));
+                });
             }).then(function (cards) {
                 var totalPages = hasMore ? 2 : 1;
                 self.build({results: cards.filter(Boolean), total_pages: totalPages, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
