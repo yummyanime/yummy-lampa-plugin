@@ -17514,44 +17514,27 @@ function pluginYummyAnime() {
 
 }(window));
 
-    if (window.Lampa && Lampa.Manifest && window.LampaYaniConfig) {
-        Lampa.Manifest.plugins = {
-            type: 'other',
-            version: LampaYaniConfig.version,
-            name: 'YummyAnime',
-            author: 'YummyAnime',
-            description: 'YummyAnime catalog, ratings, lists and account integration',
-            component: 'yani_home'
-        };
-    }
-    try {
-        window.LampaYani.register();
-    } catch (error) {
-        console.error('[YummyAnime] Plugin initialization failed', error);
-    }
-}
-
-if (!window.plugin_yummy_anime_ready) pluginYummyAnime();
-
-(function () {
+(function (window) {
     'use strict';
 
-    // Диагностика утечки плеера в Лампе.
+    // Temporary diagnostic for the renderer crash that appears after roughly
+    // eight to ten playback launches in one session. It only counts things and
+    // never changes playback; remove it once the leak is identified.
     //
-    // Ставится как обычный плагин рядом с основным, ничего не меняет и ничего
-    // никуда не отправляет. Раз в 15 секунд и при каждом запуске плеера
-    // показывает счётчики, по которым видно, что именно не освобождается:
+    // The counters separate the possible causes:
     //
-    //   V  — сколько <video> в документе (в скобках — сколько из них
-    //        уже оторваны от DOM, то есть должны были быть убраны);
-    //   MS — сколько живых MediaSource: именно они держат аппаратные
-    //        декодеры, и именно их нехватка роняет рендерер в «кашу»;
-    //   OU — сколько blob-ссылок создано и не освобождено;
-    //   IF — сколько <iframe>;
-    //   JS — размер JS-кучи, если браузер его отдаёт.
+    //   N  — how many times a video element started playing;
+    //   V  — how many <video> elements exist, and in brackets how many of them
+    //        are already detached from the DOM and should have been released;
+    //   MS — live MediaSource objects out of the total ever created. These hold
+    //        the hardware decoders, and running out of them is what turns the
+    //        screen into noise;
+    //   OU — object URLs created and never revoked;
+    //   IF — iframe count;
+    //   JS — heap size, when the engine reports one.
     //
-    // Если между сериями растёт MS или V — утечка подтверждена, и видно какая.
-    // Если всё стоит на месте, а растёт только JS — причина в другом.
+    // A count that grows per launch names the leak. Everything staying flat
+    // while playback still dies means the cause is outside the plugin.
 
     if (window.yani_leak_probe_ready) return;
     window.yani_leak_probe_ready = true;
@@ -17598,7 +17581,7 @@ if (!window.plugin_yummy_anime_ready) pluginYummyAnime();
             if (!this.__yaniCounted) {
                 this.__yaniCounted = true;
                 playCount += 1;
-                setTimeout(function () { report('запуск'); }, 1500);
+                setTimeout(function () { report('launch'); }, 1500);
             }
             return play.apply(this, arguments);
         };
@@ -17659,13 +17642,32 @@ if (!window.plugin_yummy_anime_ready) pluginYummyAnime();
     hookMediaSource();
     hookObjectUrls();
     hookPlay();
-    setInterval(function () { report('тик'); }, 15000);
-    report('старт');
+    setInterval(function () { report('tick'); }, 15000);
+    report('start');
 
-    // Полная история замеров: window.yaniLeakProbe.dump()
-    window.yaniLeakProbe = {
+    window.LampaYani = window.LampaYani || {};
+    window.LampaYani.LeakProbe = window.yaniLeakProbe = {
         snapshot: snapshot,
         history: function () { return history.slice(); },
         dump: function () { return JSON.stringify(history, null, 1); }
     };
-}());
+}(window));
+
+    if (window.Lampa && Lampa.Manifest && window.LampaYaniConfig) {
+        Lampa.Manifest.plugins = {
+            type: 'other',
+            version: LampaYaniConfig.version,
+            name: 'YummyAnime',
+            author: 'YummyAnime',
+            description: 'YummyAnime catalog, ratings, lists and account integration',
+            component: 'yani_home'
+        };
+    }
+    try {
+        window.LampaYani.register();
+    } catch (error) {
+        console.error('[YummyAnime] Plugin initialization failed', error);
+    }
+}
+
+if (!window.plugin_yummy_anime_ready) pluginYummyAnime();
