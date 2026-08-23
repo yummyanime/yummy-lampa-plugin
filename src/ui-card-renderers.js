@@ -465,7 +465,12 @@
                 var badge = $('<div class="yani-card-rating yani-card-rating--' + rating.key + '"></div>');
                 badge.attr('title', (rating.title || rating.key) + ' ' + formatRating(rating.value));
                 badge.append(createRatingLogo(rating, 'yani-card-rating__logo'));
-                badge.append($('<span class="yani-card-rating__value"></span>').text(formatRating(rating.value)));
+                var value = $('<span class="yani-card-rating__value"></span>').text(formatRating(rating.value));
+                var tier = rating.key === 'yummy' && window.LampaYaniUiUtils && window.LampaYaniUiUtils.ratingTier
+                    ? window.LampaYaniUiUtils.ratingTier(rating.value)
+                    : '';
+                if (tier) value.addClass('yani-card-rating__value--' + tier);
+                badge.append(value);
                 block.append(badge);
             });
             view.append(block);

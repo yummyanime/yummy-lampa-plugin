@@ -153,7 +153,12 @@
                 item.attr('title', label);
                 item.attr('aria-label', label);
                 item.append(createRatingLogo(rating, 'yani-ratings__logo'));
-                item.append($('<span class="yani-ratings__value"></span>').text(formatRating(rating.value)));
+                var value = $('<span class="yani-ratings__value"></span>').text(formatRating(rating.value));
+                var tier = rating.key === 'yummy' && window.LampaYaniUiUtils && window.LampaYaniUiUtils.ratingTier
+                    ? window.LampaYaniUiUtils.ratingTier(rating.value)
+                    : '';
+                if (tier) value.addClass('yani-ratings__value--' + tier);
+                item.append(value);
                 if (rating.key === 'yummy' && votes) {
                     item.append($('<span class="yani-ratings__votes"></span>').text(votes + ' ' + t('ratings_count')));
                 }

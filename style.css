@@ -2249,6 +2249,24 @@ body > .yani-skip-prompt {
     line-height: 1;
 }
 
+/* YummyAnime score bands: below 5 red, 5 to 7 amber, 7 and up green. Only the
+   YummyAnime rating is banded - it is the one this plugin owns, and colouring
+   every source would turn the row into a traffic light. */
+.yani-ratings__value--low,
+.yani-card-rating__value--low {
+    color: #F66;
+}
+
+.yani-ratings__value--mid,
+.yani-card-rating__value--mid {
+    color: #F2B800;
+}
+
+.yani-ratings__value--high,
+.yani-card-rating__value--high {
+    color: #3CCE7B;
+}
+
 .yani-ratings__votes {
     margin-left: 0.1em;
     color: rgba(255, 255, 255, 0.58);

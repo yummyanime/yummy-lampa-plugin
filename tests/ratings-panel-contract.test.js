@@ -74,4 +74,24 @@ assert.strictEqual(visible[1].key, 'shikimori');
 assert.strictEqual(visible[2].key, 'anidub');
 assert.deepStrictEqual(api.visibleCardRatings([{key: 'kp', value: 0}]), []);
 
+
+// A score should read at a glance from across the room, so the YummyAnime
+// rating is banded by colour. Only that one: colouring every source would turn
+// the row into a traffic light.
+const utilsSource = fs.readFileSync('src/ui-utils.js', 'utf8');
+assert.match(utilsSource, /function ratingTier\(value\)/, 'the band rule must live in one place');
+assert.match(css, /\.yani-ratings__value--low[\s\S]{0,80}#F66/, 'below 5 is red');
+assert.match(css, /\.yani-ratings__value--mid[\s\S]{0,80}#F2B800/, '5 to 7 is amber');
+assert.match(css, /\.yani-ratings__value--high[\s\S]{0,80}#3CCE7B/, '7 and up is green');
+
+const ratingCtx = {window: {}, console};
+vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), ratingCtx);
+vm.runInNewContext(utilsSource, ratingCtx);
+const tier = ratingCtx.window.LampaYaniUiUtils.ratingTier;
+assert.strictEqual(tier(0), '', 'an absent score gets no colour');
+assert.strictEqual(tier(4.9), 'low');
+assert.strictEqual(tier(5), 'mid', 'the band boundary belongs to the higher band');
+assert.strictEqual(tier(6.9), 'mid');
+assert.strictEqual(tier(7), 'high');
+assert.strictEqual(tier(10), 'high');
 console.log('unified ratings panel contract checks passed');

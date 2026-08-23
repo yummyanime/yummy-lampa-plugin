@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.6 — 2026-08-23
+
+- Add colour bands to the YummyAnime score so it reads at a glance
+
 ## 0.45.5 — 2026-08-23
 
 - Add coverage proving account watch history alone fills Continue Watching 

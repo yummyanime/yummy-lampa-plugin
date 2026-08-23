@@ -462,6 +462,16 @@
         return kept.join(', ') + suffix;
     }
 
+    // Rating bands, so a score reads at a glance instead of being parsed digit
+    // by digit from across the room.
+    function ratingTier(value) {
+        var score = Number(value);
+        if (!isFinite(score) || score <= 0) return '';
+        if (score < 5) return 'low';
+        if (score < 7) return 'mid';
+        return 'high';
+    }
+
     // An episode counts as finished at 95% of its length: the tail is credits,
     // and nobody sits through them. This is the single definition of "watched"
     // — the detail summary, the furthest-episode reach and the Continue
@@ -625,6 +635,7 @@
         compactWatchedEpisodeLabel: compactWatchedEpisodeLabel,
         detailEpisodeStats: detailEpisodeStats,
         isEpisodeFinished: isEpisodeFinished,
+        ratingTier: ratingTier,
         EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
         mediaTypeInfo: mediaTypeInfo,
         translationKind: translationKind,
