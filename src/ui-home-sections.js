@@ -217,6 +217,15 @@
         });
     }
 
+    // Why a title is or is not in the queue is impossible to see from the
+    // outside: three different filters can remove it. The counts are kept so
+    // the section can report them instead of leaving it to guesswork.
+    var lastContinueStats = null;
+
+    function continueStats() {
+        return lastContinueStats;
+    }
+
     function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings) {
         excludedAnimeIds = excludedAnimeIds || {};
         var reach = maxWatchedEpisodes(entries);
@@ -240,11 +249,34 @@
         // title to the next one; it removes the title only when that episode
         // was the last one released. Anything else would drop a title after
         // episode 5 of 12 simply because episode 5 was watched to the end.
-        var queue = latestEntriesByAnime(entries).filter(allowed).map(function (entry) {
+        var titles = latestEntriesByAnime(entries);
+        var stats = {
+            records: (entries || []).length,
+            titles: titles.length,
+            excluded: 0,
+            finished_title: 0,
+            advanced: 0,
+            resumed: 0,
+            no_target: 0
+        };
+        (entries || []).forEach(function (entry) { if (!hasResumeTarget(entry)) stats.no_target += 1; });
+
+        var queue = titles.filter(function (entry) {
+            if (allowed(entry)) return true;
+            stats.excluded += 1;
+            return false;
+        }).map(function (entry) {
             var annotated = annotate(entry);
-            if (!isFinishedEpisode(entry)) return annotated;
-            return nextEpisodeEntry(annotated, reach, ceilings);
+            if (!isFinishedEpisode(entry)) {
+                stats.resumed += 1;
+                return annotated;
+            }
+            var next = nextEpisodeEntry(annotated, reach, ceilings);
+            if (next) stats.advanced += 1;
+            else stats.finished_title += 1;
+            return next;
         }).filter(Boolean);
+        lastContinueStats = stats;
         queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
         if (queue.length) return queue;
         // The dashboard advertises the last watched title. Keep that title in
@@ -376,6 +408,23 @@
             return Promise.all(entries.map(function (entry) { return historyCard(entry, deps); }));
         }
 
+        // A queue shorter than the history is the expected outcome of three
+        // filters, but from the outside it just looks like records went
+        // missing. Say where they went.
+        function reportContinueStats(page) {
+            var stats = continueStats();
+            if (!stats) return;
+            var line = 'API ' + ((page && page.entries && page.entries.length) || 0) +
+                ' · записей ' + stats.records +
+                ' · тайтлов ' + stats.titles +
+                ' · в очереди ' + (stats.resumed + stats.advanced) +
+                ' (продолжить ' + stats.resumed + ', следующая ' + stats.advanced + ')' +
+                ' · списки −' + stats.excluded +
+                ' · завершено −' + stats.finished_title;
+            console.log('[YummyAnime Continue] ' + line);
+            if (window.Lampa && Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(line);
+        }
+
         /**
          * How many episodes each finished title has released, asked of the title
          * itself. Without this the queue only knows a count for titles opened
@@ -415,18 +464,15 @@
                 console.warn('[YummyAnime History] Server history is unavailable', error);
                 return {entries: [], count: 0, failed: true};
             });
-            var exclusions = continueMode && deps.fetchExcluded ? deps.fetchExcluded().catch(function (error) {
-                console.warn('[YummyAnime Continue Watching] User-list filter is unavailable', error);
-                return {};
-            }) : Promise.resolve({});
-            Promise.all([remote, exclusions]).then(function (result) {
-                var page = result[0];
+            Promise.resolve(remote).then(function (page) {
                 hasMore = !continueMode && deps.authorized() && !page.failed && page.count >= limit;
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
                 var entries = mergeHistory(deps.history() || local, page.entries);
                 if (!continueMode) return cardsFor(uniqueEntries(entries));
                 return resolveCeilings(entries).then(function (ceilings) {
-                    return cardsFor(uniqueEntries(continueWatchingEntries(entries, result[1], ceilings)));
+                    var queue = continueWatchingEntries(entries, {}, ceilings);
+                    reportContinueStats(page);
+                    return cardsFor(uniqueEntries(queue));
                 });
             }).then(function (cards) {
                 var totalPages = hasMore ? 2 : 1;
@@ -475,6 +521,7 @@
         historyEntryKey: historyEntryKey,
         isContinueEntry: isContinueEntry,
         continueWatchingEntries: continueWatchingEntries,
+        continueStats: continueStats,
         importRemoteIntoLocal: importRemoteIntoLocal,
         shouldReplaceLocal: shouldReplaceLocal
     };

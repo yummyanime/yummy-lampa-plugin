@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.45.4 — 2026-08-23
+
+- Remove the user-list filter from Continue Watching so only a watched last episode ends a title
+
+## 0.45.3 — 2026-08-23
+
+- Add a Continue Watching breakdown reporting how many records came from the account and which filter removed each title
+
 ## 0.45.2 — 2026-08-23
 
 - Fix a finished episode dropping its whole title from Continue Watching instead of advancing to the next one | Add episode counts resolved from the title so the queue knows when a title is actually over

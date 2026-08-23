@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.45.2',
+        version: '0.45.4',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -10290,6 +10290,15 @@ function pluginYummyAnime() {
         });
     }
 
+    // Why a title is or is not in the queue is impossible to see from the
+    // outside: three different filters can remove it. The counts are kept so
+    // the section can report them instead of leaving it to guesswork.
+    var lastContinueStats = null;
+
+    function continueStats() {
+        return lastContinueStats;
+    }
+
     function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings) {
         excludedAnimeIds = excludedAnimeIds || {};
         var reach = maxWatchedEpisodes(entries);
@@ -10313,11 +10322,34 @@ function pluginYummyAnime() {
         // title to the next one; it removes the title only when that episode
         // was the last one released. Anything else would drop a title after
         // episode 5 of 12 simply because episode 5 was watched to the end.
-        var queue = latestEntriesByAnime(entries).filter(allowed).map(function (entry) {
+        var titles = latestEntriesByAnime(entries);
+        var stats = {
+            records: (entries || []).length,
+            titles: titles.length,
+            excluded: 0,
+            finished_title: 0,
+            advanced: 0,
+            resumed: 0,
+            no_target: 0
+        };
+        (entries || []).forEach(function (entry) { if (!hasResumeTarget(entry)) stats.no_target += 1; });
+
+        var queue = titles.filter(function (entry) {
+            if (allowed(entry)) return true;
+            stats.excluded += 1;
+            return false;
+        }).map(function (entry) {
             var annotated = annotate(entry);
-            if (!isFinishedEpisode(entry)) return annotated;
-            return nextEpisodeEntry(annotated, reach, ceilings);
+            if (!isFinishedEpisode(entry)) {
+                stats.resumed += 1;
+                return annotated;
+            }
+            var next = nextEpisodeEntry(annotated, reach, ceilings);
+            if (next) stats.advanced += 1;
+            else stats.finished_title += 1;
+            return next;
         }).filter(Boolean);
+        lastContinueStats = stats;
         queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
         if (queue.length) return queue;
         // The dashboard advertises the last watched title. Keep that title in
@@ -10449,6 +10481,23 @@ function pluginYummyAnime() {
             return Promise.all(entries.map(function (entry) { return historyCard(entry, deps); }));
         }
 
+        // A queue shorter than the history is the expected outcome of three
+        // filters, but from the outside it just looks like records went
+        // missing. Say where they went.
+        function reportContinueStats(page) {
+            var stats = continueStats();
+            if (!stats) return;
+            var line = 'API ' + ((page && page.entries && page.entries.length) || 0) +
+                ' · записей ' + stats.records +
+                ' · тайтлов ' + stats.titles +
+                ' · в очереди ' + (stats.resumed + stats.advanced) +
+                ' (продолжить ' + stats.resumed + ', следующая ' + stats.advanced + ')' +
+                ' · списки −' + stats.excluded +
+                ' · завершено −' + stats.finished_title;
+            console.log('[YummyAnime Continue] ' + line);
+            if (window.Lampa && Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(line);
+        }
+
         /**
          * How many episodes each finished title has released, asked of the title
          * itself. Without this the queue only knows a count for titles opened
@@ -10488,18 +10537,15 @@ function pluginYummyAnime() {
                 console.warn('[YummyAnime History] Server history is unavailable', error);
                 return {entries: [], count: 0, failed: true};
             });
-            var exclusions = continueMode && deps.fetchExcluded ? deps.fetchExcluded().catch(function (error) {
-                console.warn('[YummyAnime Continue Watching] User-list filter is unavailable', error);
-                return {};
-            }) : Promise.resolve({});
-            Promise.all([remote, exclusions]).then(function (result) {
-                var page = result[0];
+            Promise.resolve(remote).then(function (page) {
                 hasMore = !continueMode && deps.authorized() && !page.failed && page.count >= limit;
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
                 var entries = mergeHistory(deps.history() || local, page.entries);
                 if (!continueMode) return cardsFor(uniqueEntries(entries));
                 return resolveCeilings(entries).then(function (ceilings) {
-                    return cardsFor(uniqueEntries(continueWatchingEntries(entries, result[1], ceilings)));
+                    var queue = continueWatchingEntries(entries, {}, ceilings);
+                    reportContinueStats(page);
+                    return cardsFor(uniqueEntries(queue));
                 });
             }).then(function (cards) {
                 var totalPages = hasMore ? 2 : 1;
@@ -10548,6 +10594,7 @@ function pluginYummyAnime() {
         historyEntryKey: historyEntryKey,
         isContinueEntry: isContinueEntry,
         continueWatchingEntries: continueWatchingEntries,
+        continueStats: continueStats,
         importRemoteIntoLocal: importRemoteIntoLocal,
         shouldReplaceLocal: shouldReplaceLocal
     };
@@ -14284,19 +14331,21 @@ function pluginYummyAnime() {
             var personalStats = readHomeListCounts(account && account.user_id);
             renderPersonal(personalStats);
 
-            function applyPlaybackSnapshot(remoteEntries, excludedAnimeIds) {
+            // A title leaves Continue Watching when its last released episode
+            // has been watched — not because of which user list it sits in.
+            function applyPlaybackSnapshot(remoteEntries) {
                 if (destroyed) return;
                 if (remoteEntries && remoteEntries.length) importRemoteEntries(remoteEntries);
                 localHistory = playbackHistory();
                 var merged = LampaYaniHomeSections.mergeHistory(localHistory, remoteEntries || []);
-                continuing = LampaYaniHomeSections.continueWatchingEntries(merged, excludedAnimeIds || {});
+                continuing = LampaYaniHomeSections.continueWatchingEntries(merged, {});
                 renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
                 renderPersonal(personalStats);
             }
 
             var playbackUserKey = account && (account.user_id || account.login) || '';
             var playbackCache = readHomePlaybackSnapshot(playbackUserKey);
-            if (playbackCache.available) applyPlaybackSnapshot(playbackCache.entries, playbackCache.excluded);
+            if (playbackCache.available) applyPlaybackSnapshot(playbackCache.entries);
             var playbackNeedsRefresh = Boolean(LampaYaniAuth.token() && playbackUserKey && !playbackCache.fresh);
             var listNeedsRefresh = Boolean(LampaYaniAuth.token() && Number(account && account.user_id || 0) && !homeListCountsFresh(account.user_id) && (homeButtons.user_lists || homeButtons.updates));
             var libraryRefreshPending = (playbackNeedsRefresh ? 1 : 0) + (listNeedsRefresh ? 1 : 0);
@@ -14326,16 +14375,12 @@ function pluginYummyAnime() {
                     LampaYaniApi.watchHistory(30, 0, control).then(LampaYaniHomeSections.normalizeRemoteHistory).catch(function (error) {
                         if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Server playback history is unavailable', error);
                         return null;
-                    }),
-                    loadContinueWatchingExclusions(control).catch(function (error) {
-                        if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Playback exclusions are unavailable', error);
-                        return playbackCache.excluded || {};
                     })
                 ]).then(function (result) {
                     if (destroyed) return;
                     if (result[0] !== null) {
-                        cacheHomePlaybackSnapshot(playbackUserKey, result[0], result[1]);
-                        applyPlaybackSnapshot(result[0], result[1]);
+                        cacheHomePlaybackSnapshot(playbackUserKey, result[0]);
+                        applyPlaybackSnapshot(result[0]);
                     }
                     finishLibraryRefresh(result[0] === null);
                 });
@@ -14957,67 +15002,8 @@ function pluginYummyAnime() {
             detail: LampaYaniApi.detail,
             authorized: function () { return Boolean(LampaYaniAuth.token()); },
             fetchRemote: LampaYaniApi.watchHistory,
-            fetchExcluded: loadContinueWatchingExclusions,
             importRemote: importRemoteEntries,
             historyCardRender: bindHistoryCardRender
-        });
-    }
-
-    function loadContinueWatchingExclusions(control) {
-        control = control || {};
-        if (!LampaYaniAuth.token()) return Promise.resolve({});
-        var account = LampaYaniAuth.get();
-
-        function withUserId() {
-            var storedId = Number(account && account.user_id || 0);
-            if (storedId) return Promise.resolve(storedId);
-            return LampaYaniApi.profile(control).then(function (payload) {
-                var profile = payload && payload.response ? payload.response : payload;
-                var userId = Number(profile && (profile.id || profile.user_id || profile.user && profile.user.id) || 0);
-                if (!userId) throw new Error('YummyAnime profile id is missing');
-                LampaYaniAuth.save({
-                    token: LampaYaniAuth.token(),
-                    login: account && account.login,
-                    display_name: account && account.display_name,
-                    user_id: userId
-                });
-                return userId;
-            });
-        }
-
-        function cacheKey(userId) { return 'yani_continue_excluded_' + userId; }
-        function readCache(userId) {
-            try {
-                var cached = Lampa.Storage.get(cacheKey(userId), '{}');
-                if (typeof cached === 'string') cached = JSON.parse(cached || '{}');
-                return {
-                    ids: cached && cached.ids || {},
-                    fresh: Boolean(cached && cached.updated_at && Date.now() - Number(cached.updated_at) < 300000)
-                };
-            } catch (error) { return {ids: {}, fresh: false}; }
-        }
-
-        return withUserId().then(function (userId) {
-            var cached = readCache(userId);
-            if (cached.fresh) return cached.ids;
-            return LampaYaniApi.userLists(userId, control).then(normalizeUserList).then(function (items) {
-                var excluded = {};
-                [2, 3].forEach(function (listId) {
-                    filterAccountListItems({id: listId}, items).forEach(function (item) {
-                        var animeId = item && (item.anime_id || item.id || item.yani_id);
-                        if (animeId) excluded[String(animeId)] = true;
-                    });
-                });
-                try {
-                    Lampa.Storage.set(cacheKey(userId), JSON.stringify({updated_at: Date.now(), ids: excluded}));
-                } catch (error) {
-                    console.warn('[YummyAnime Continue Watching] Could not cache exclusions', error);
-                }
-                return excluded;
-            }).catch(function (error) {
-                if (Object.keys(cached.ids).length) return cached.ids;
-                throw error;
-            });
         });
     }
 
@@ -15343,29 +15329,27 @@ function pluginYummyAnime() {
     var homePlaybackCacheLifetime = 300000;
 
     function readHomePlaybackSnapshot(userKey) {
-        if (!userKey || !Lampa.Storage || !Lampa.Storage.get) return {available: false, fresh: false, entries: [], excluded: {}};
+        if (!userKey || !Lampa.Storage || !Lampa.Storage.get) return {available: false, fresh: false, entries: []};
         try {
             var cached = Lampa.Storage.get(homePlaybackCacheKey, '{}');
             if (typeof cached === 'string') cached = JSON.parse(cached || '{}');
             if (String(cached && cached.user_key || '') !== String(userKey) || !Array.isArray(cached.entries)) {
-                return {available: false, fresh: false, entries: [], excluded: {}};
+                return {available: false, fresh: false, entries: []};
             }
             return {
                 available: true,
                 fresh: Boolean(cached.updated_at && Date.now() - Number(cached.updated_at) < homePlaybackCacheLifetime),
-                entries: cached.entries,
-                excluded: cached.excluded && typeof cached.excluded === 'object' ? cached.excluded : {}
+                entries: cached.entries
             };
-        } catch (error) { return {available: false, fresh: false, entries: [], excluded: {}}; }
+        } catch (error) { return {available: false, fresh: false, entries: []}; }
     }
 
-    function cacheHomePlaybackSnapshot(userKey, entries, excluded) {
+    function cacheHomePlaybackSnapshot(userKey, entries) {
         if (!userKey || !Lampa.Storage || !Lampa.Storage.set) return;
         Lampa.Storage.set(homePlaybackCacheKey, JSON.stringify({
             user_key: String(userKey),
             updated_at: Date.now(),
-            entries: Array.isArray(entries) ? entries.slice(0, 100) : [],
-            excluded: excluded || {}
+            entries: Array.isArray(entries) ? entries.slice(0, 100) : []
         }));
     }
 

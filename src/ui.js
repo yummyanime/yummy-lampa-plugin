@@ -1378,19 +1378,21 @@
             var personalStats = readHomeListCounts(account && account.user_id);
             renderPersonal(personalStats);
 
-            function applyPlaybackSnapshot(remoteEntries, excludedAnimeIds) {
+            // A title leaves Continue Watching when its last released episode
+            // has been watched — not because of which user list it sits in.
+            function applyPlaybackSnapshot(remoteEntries) {
                 if (destroyed) return;
                 if (remoteEntries && remoteEntries.length) importRemoteEntries(remoteEntries);
                 localHistory = playbackHistory();
                 var merged = LampaYaniHomeSections.mergeHistory(localHistory, remoteEntries || []);
-                continuing = LampaYaniHomeSections.continueWatchingEntries(merged, excludedAnimeIds || {});
+                continuing = LampaYaniHomeSections.continueWatchingEntries(merged, {});
                 renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
                 renderPersonal(personalStats);
             }
 
             var playbackUserKey = account && (account.user_id || account.login) || '';
             var playbackCache = readHomePlaybackSnapshot(playbackUserKey);
-            if (playbackCache.available) applyPlaybackSnapshot(playbackCache.entries, playbackCache.excluded);
+            if (playbackCache.available) applyPlaybackSnapshot(playbackCache.entries);
             var playbackNeedsRefresh = Boolean(LampaYaniAuth.token() && playbackUserKey && !playbackCache.fresh);
             var listNeedsRefresh = Boolean(LampaYaniAuth.token() && Number(account && account.user_id || 0) && !homeListCountsFresh(account.user_id) && (homeButtons.user_lists || homeButtons.updates));
             var libraryRefreshPending = (playbackNeedsRefresh ? 1 : 0) + (listNeedsRefresh ? 1 : 0);
@@ -1420,16 +1422,12 @@
                     LampaYaniApi.watchHistory(30, 0, control).then(LampaYaniHomeSections.normalizeRemoteHistory).catch(function (error) {
                         if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Server playback history is unavailable', error);
                         return null;
-                    }),
-                    loadContinueWatchingExclusions(control).catch(function (error) {
-                        if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Playback exclusions are unavailable', error);
-                        return playbackCache.excluded || {};
                     })
                 ]).then(function (result) {
                     if (destroyed) return;
                     if (result[0] !== null) {
-                        cacheHomePlaybackSnapshot(playbackUserKey, result[0], result[1]);
-                        applyPlaybackSnapshot(result[0], result[1]);
+                        cacheHomePlaybackSnapshot(playbackUserKey, result[0]);
+                        applyPlaybackSnapshot(result[0]);
                     }
                     finishLibraryRefresh(result[0] === null);
                 });
@@ -2051,67 +2049,8 @@
             detail: LampaYaniApi.detail,
             authorized: function () { return Boolean(LampaYaniAuth.token()); },
             fetchRemote: LampaYaniApi.watchHistory,
-            fetchExcluded: loadContinueWatchingExclusions,
             importRemote: importRemoteEntries,
             historyCardRender: bindHistoryCardRender
-        });
-    }
-
-    function loadContinueWatchingExclusions(control) {
-        control = control || {};
-        if (!LampaYaniAuth.token()) return Promise.resolve({});
-        var account = LampaYaniAuth.get();
-
-        function withUserId() {
-            var storedId = Number(account && account.user_id || 0);
-            if (storedId) return Promise.resolve(storedId);
-            return LampaYaniApi.profile(control).then(function (payload) {
-                var profile = payload && payload.response ? payload.response : payload;
-                var userId = Number(profile && (profile.id || profile.user_id || profile.user && profile.user.id) || 0);
-                if (!userId) throw new Error('YummyAnime profile id is missing');
-                LampaYaniAuth.save({
-                    token: LampaYaniAuth.token(),
-                    login: account && account.login,
-                    display_name: account && account.display_name,
-                    user_id: userId
-                });
-                return userId;
-            });
-        }
-
-        function cacheKey(userId) { return 'yani_continue_excluded_' + userId; }
-        function readCache(userId) {
-            try {
-                var cached = Lampa.Storage.get(cacheKey(userId), '{}');
-                if (typeof cached === 'string') cached = JSON.parse(cached || '{}');
-                return {
-                    ids: cached && cached.ids || {},
-                    fresh: Boolean(cached && cached.updated_at && Date.now() - Number(cached.updated_at) < 300000)
-                };
-            } catch (error) { return {ids: {}, fresh: false}; }
-        }
-
-        return withUserId().then(function (userId) {
-            var cached = readCache(userId);
-            if (cached.fresh) return cached.ids;
-            return LampaYaniApi.userLists(userId, control).then(normalizeUserList).then(function (items) {
-                var excluded = {};
-                [2, 3].forEach(function (listId) {
-                    filterAccountListItems({id: listId}, items).forEach(function (item) {
-                        var animeId = item && (item.anime_id || item.id || item.yani_id);
-                        if (animeId) excluded[String(animeId)] = true;
-                    });
-                });
-                try {
-                    Lampa.Storage.set(cacheKey(userId), JSON.stringify({updated_at: Date.now(), ids: excluded}));
-                } catch (error) {
-                    console.warn('[YummyAnime Continue Watching] Could not cache exclusions', error);
-                }
-                return excluded;
-            }).catch(function (error) {
-                if (Object.keys(cached.ids).length) return cached.ids;
-                throw error;
-            });
         });
     }
 
@@ -2437,29 +2376,27 @@
     var homePlaybackCacheLifetime = 300000;
 
     function readHomePlaybackSnapshot(userKey) {
-        if (!userKey || !Lampa.Storage || !Lampa.Storage.get) return {available: false, fresh: false, entries: [], excluded: {}};
+        if (!userKey || !Lampa.Storage || !Lampa.Storage.get) return {available: false, fresh: false, entries: []};
         try {
             var cached = Lampa.Storage.get(homePlaybackCacheKey, '{}');
             if (typeof cached === 'string') cached = JSON.parse(cached || '{}');
             if (String(cached && cached.user_key || '') !== String(userKey) || !Array.isArray(cached.entries)) {
-                return {available: false, fresh: false, entries: [], excluded: {}};
+                return {available: false, fresh: false, entries: []};
             }
             return {
                 available: true,
                 fresh: Boolean(cached.updated_at && Date.now() - Number(cached.updated_at) < homePlaybackCacheLifetime),
-                entries: cached.entries,
-                excluded: cached.excluded && typeof cached.excluded === 'object' ? cached.excluded : {}
+                entries: cached.entries
             };
-        } catch (error) { return {available: false, fresh: false, entries: [], excluded: {}}; }
+        } catch (error) { return {available: false, fresh: false, entries: []}; }
     }
 
-    function cacheHomePlaybackSnapshot(userKey, entries, excluded) {
+    function cacheHomePlaybackSnapshot(userKey, entries) {
         if (!userKey || !Lampa.Storage || !Lampa.Storage.set) return;
         Lampa.Storage.set(homePlaybackCacheKey, JSON.stringify({
             user_key: String(userKey),
             updated_at: Date.now(),
-            entries: Array.isArray(entries) ? entries.slice(0, 100) : [],
-            excluded: excluded || {}
+            entries: Array.isArray(entries) ? entries.slice(0, 100) : []
         }));
     }
 
