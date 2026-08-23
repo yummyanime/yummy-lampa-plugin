@@ -391,8 +391,14 @@
             progress = Math.max(0, Math.min(1, progress));
             var episode = playback.number || card.yani_watched_episodes || '';
             if (!episode && !(progress > 0)) return null;
+            var reached = Math.max(0, Number(playback.max_episode || 0));
             return {
                 episode: episode,
+                // How far the viewer got overall, shown next to the episode the
+                // queue is offering. Without it a card reading "episode 5" is
+                // ambiguous: resumed halfway, or waiting to be started?
+                reached: reached > Number(episode || 0) ? reached : 0,
+                next: Boolean(playback.resume_next),
                 percent: progress > 0 ? Math.round(progress * 100) : 0,
                 progress: progress
             };
@@ -410,8 +416,9 @@
             }
             existing.remove();
             var parts = [];
-            if (state.episode) parts.push(t('episode') + ' ' + state.episode);
+            if (state.episode) parts.push((state.next ? '▶ ' : '') + t('episode') + ' ' + state.episode);
             if (state.percent) parts.push(state.percent + '%');
+            else if (state.reached) parts.push(t('episodes_watched') + ' ' + state.reached);
             view.append($('<span class="yani-card-playback"></span>').text(parts.join(' · ')));
             if (state.progress > 0) {
                 view.append($('<span class="yani-card-playback-progress"><span></span></span>')

@@ -152,6 +152,7 @@
     var importRemoteEntries = playbackHistoryApi.importRemoteEntries;
     var importVideosProgress = playbackHistoryApi.importVideosProgress;
     var pullRemoteProgress = playbackHistoryApi.pullRemoteProgress;
+    var ensureRemoteHistory = playbackHistoryApi.ensureRemoteHistory;
     var autoProgressSyncEnabled = playbackHistoryApi.autoProgressSyncEnabled;
     var syncServerProgress = playbackHistoryApi.syncServerProgress;
     var renderHistoryProgress = playbackHistoryApi.renderHistoryProgress;
@@ -316,6 +317,11 @@
                 settingsReady = true;
                 try {
                     addSettings();
+                    // The account's watch history is shared between devices, so
+                    // pull it before anything draws progress from the local
+                    // copy — otherwise the TV keeps showing what the phone
+                    // already finished.
+                    ensureRemoteHistory();
                     registerOnlineSource();
                     registerSearchSource();
                 } catch (settingsError) {
@@ -2319,7 +2325,7 @@
             t: t,
             input: showYummyInput,
             goBack: goBack,
-            onAuthorized: function () { pullRemoteProgress(100).catch(function () {}); }
+            onAuthorized: function () { ensureRemoteHistory(true).catch(function () {}); }
         });
     }
 
@@ -3193,6 +3199,11 @@
         if (!url || !Lampa.Activity || !Lampa.Activity.push) return false;
         try {
             rememberPlayback(card, group, selected);
+            // The embedded site player is still a watch, so the account has to
+            // learn about it like it does for the internal and external ones.
+            // Only the start can be reported: the page plays inside an iframe
+            // this plugin cannot read a position from.
+            syncServerProgress(selected);
             // Activity owns the back stack for the embedded page and will
             // restart the detail controller itself.
             clearPlaybackReturn();

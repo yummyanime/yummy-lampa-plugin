@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.45.1 — 2026-08-23
+
+- Fix one shared 95 percent rule for a finished episode across the detail summary, watched reach and Continue Watching
+
+## 0.45.0 — 2026-08-23
+
+- Fix Continue Watching dropping a title after an episode finishes instead of offering the next one 
+- Add the furthest watched episode to history entries and cards 
+- Add an account history pull at startup so devices share progress 
+- Add account reporting for the embedded site player
+
 ## 0.44.20 — 2026-08-23
 
 - Remove the temporary player resource probe now that the decoder leak is fixed

@@ -22,7 +22,11 @@ assert.match(source, /syncVideoWatches\(videos\)/);
 assert.match(source, /function importRemoteEntries/);
 assert.match(source, /function pullRemoteProgress/);
 assert.match(source, /watchHistory\(limit \|\| 100, 0\)/);
-assert.match(ui, /onAuthorized: function \(\) \{ pullRemoteProgress/);
+// Signing in must refresh from the account immediately: the point of signing
+// in is to see what the other devices already watched.
+assert.match(ui, /onAuthorized: function \(\) \{ ensureRemoteHistory\(true\)/);
+assert.match(source, /function ensureRemoteHistory\(force\)/, 'the shared account history must have a single pull entry point');
+assert.match(ui, /ensureRemoteHistory\(\);/, 'the account history must be pulled when the plugin starts');
 
 const storage = {};
 const context = {

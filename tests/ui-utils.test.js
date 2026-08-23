@@ -111,10 +111,10 @@ const episodeStats = utils.detailEpisodeStats({
     yani_episodes: {count: 12, aired: 8},
     yani_seasons_count: 2
 }, [
-    {number: '1', duration: 1440, watched: {end_time: 300}},
+    {number: '1', duration: 1440, watched: {end_time: 1400}},
     {number: '1', duration: 1500, watched: null},
     {number: '2', duration: 1380, watched: null}
-], {number: '2', time: 90, duration: 1380});
+], {number: '2', time: 1350, duration: 1380});
 assert.strictEqual(episodeStats.seasons, 2);
 assert.strictEqual(episodeStats.total, 12);
 assert.strictEqual(episodeStats.aired, 8);
@@ -127,11 +127,25 @@ assert.strictEqual(utils.detailEpisodeStats({season: 3, episodes: {count: 1}}, [
 
 const sparseWatched = utils.detailEpisodeStats({}, [
     {number: '10', duration: 1440, watched: {end_time: 1400}},
-    {number: '13', duration: 1380, watched: {end_time: 1300}}
+    {number: '13', duration: 1380, watched: {end_time: 1330}}
 ], null);
 assert.strictEqual(sparseWatched.watched, 2);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(sparseWatched.watchedNumbers)), [10, 13]);
 assert.strictEqual(sparseWatched.watchedLabel, '10, 13', 'sparse watched episodes must show numbers, not a sequential count');
+
+// An episode counts as watched only past 95% of its length: the tail is
+// credits. A few minutes in is a resume point, not a watch, and treating it as
+// one would advance the Continue Watching queue past an unseen episode.
+const barelyStarted = utils.detailEpisodeStats({}, [
+    {number: '4', duration: 1440, watched: {end_time: 300}},
+    {number: '5', duration: 1440, watched: {end_time: 1370}}
+], null);
+assert.strictEqual(barelyStarted.watched, 1, '21% of an episode is not a watch');
+assert.deepStrictEqual(JSON.parse(JSON.stringify(barelyStarted.watchedNumbers)), [5]);
+assert.strictEqual(utils.isEpisodeFinished(1370, 1440), true);
+assert.strictEqual(utils.isEpisodeFinished(300, 1440), false);
+assert.strictEqual(utils.isEpisodeFinished(300, 0), false, 'an unknown duration cannot prove a watch');
+assert.strictEqual(utils.isEpisodeFinished(0, 1440, {completed: true}), true, 'an explicit completion flag wins');
 
 const hundredWatched = [];
 for (let episode = 1; episode <= 100; episode++) {

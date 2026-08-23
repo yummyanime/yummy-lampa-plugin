@@ -68,6 +68,8 @@
                 voice: String(item.voice || ''),
                 time: Math.max(0, Number(item.time || 0)),
                 duration: Math.max(0, Number(item.duration || 0)),
+                max_episode: Math.max(0, Number(item.max_episode || 0)),
+                episodes_aired: Math.max(0, Number(item.episodes_aired || 0)),
                 updated_at: historyTimestamp(item.updated_at),
                 card: item.card || null,
                 remote: false
@@ -94,6 +96,10 @@
             merged[key] = Object.assign({}, older, newer, {
                 time: Number(newer.time || older.time || 0),
                 duration: Number(newer.duration || older.duration || 0),
+                // Reach and episode count are facts about the title, not about
+                // one record of it, so the better-informed side always wins.
+                max_episode: Math.max(Number(newer.max_episode || 0), Number(older.max_episode || 0)),
+                episodes_aired: Math.max(Number(newer.episodes_aired || 0), Number(older.episodes_aired || 0)),
                 title: newer.title || older.title || '',
                 poster: newer.poster || older.poster || '',
                 screenshot: newer.screenshot || older.screenshot || '',
@@ -109,7 +115,12 @@
         return Boolean(entry && (entry.video_id || entry.number) && (entry.anime_id || entry.animeId));
     }
 
+    // One shared definition of "watched" for the whole plugin, see ui-utils.
     function isFinishedEpisode(entry) {
+        var utils = window.LampaYaniUiUtils;
+        if (utils && utils.isEpisodeFinished) {
+            return utils.isEpisodeFinished(entry && entry.time, entry && entry.duration, entry);
+        }
         var position = Math.max(0, Number(entry && entry.time || 0));
         var duration = Math.max(0, Number(entry && entry.duration || 0));
         return duration > 0 && position / duration >= 0.95;
@@ -134,16 +145,106 @@
         });
     }
 
+    function animeKey(entry) {
+        return String(entry && (entry.anime_id || entry.animeId) || '');
+    }
+
+    function episodeNumber(entry) {
+        var number = Number(window.LampaYaniEpisode.normalize(entry && entry.number) || 0);
+        return number > 0 ? number : 0;
+    }
+
+    /**
+     * The furthest episode actually reached per title, across every local and
+     * remote record of it. Rewatching an early episode must not drag the queue
+     * backwards, so this is a maximum rather than the latest record.
+     */
+    function maxWatchedEpisodes(entries) {
+        var reach = {};
+        (entries || []).forEach(function (entry) {
+            var key = animeKey(entry);
+            if (!key) return;
+            // Only a finished episode moves the reach forward. Counting a few
+            // seconds of an episode as watched would advance the queue past an
+            // episode the viewer never actually saw.
+            if (!isFinishedEpisode(entry)) return;
+            var number = episodeNumber(entry);
+            if (number > (reach[key] || 0)) reach[key] = number;
+        });
+        return reach;
+    }
+
+    // How many episodes each title has released. Like the reach above, this is
+    // a fact about the title rather than about one record, so it is collected
+    // across every entry: only some of them carry it.
+    function episodeCeilings(entries) {
+        var ceilings = {};
+        (entries || []).forEach(function (entry) {
+            var key = animeKey(entry);
+            if (!key) return;
+            var value = Number(entry.episodes_aired || entry.episodes_total || 0);
+            if (isFinite(value) && value > (ceilings[key] || 0)) ceilings[key] = value;
+        });
+        return ceilings;
+    }
+
+    /**
+     * A finished episode used to drop its title out of Continue Watching
+     * entirely, even though the viewer had simply reached the end of one
+     * episode and the next one was waiting. Point the entry at that next
+     * episode instead — but only when the title is known to have one, so the
+     * queue never offers an episode that has not aired.
+     */
+    function nextEpisodeEntry(entry, reach, ceilings) {
+        var key = animeKey(entry);
+        var watched = Math.max(reach[key] || 0, episodeNumber(entry));
+        var ceiling = ceilings[key] || 0;
+        if (!watched || !ceiling) return null;
+        var next = watched + 1;
+        if (next > ceiling) return null;
+        return Object.assign({}, entry, {
+            number: String(next),
+            video_id: '',
+            episode_title: '',
+            time: 0,
+            duration: 0,
+            max_episode: watched,
+            resume_next: true
+        });
+    }
+
     function continueWatchingEntries(entries, excludedAnimeIds) {
         excludedAnimeIds = excludedAnimeIds || {};
-        var continuing = latestEntriesByAnime(entries, isContinueEntry).filter(function (entry) {
-            return !excludedAnimeIds[String(entry.anime_id || entry.animeId || '')];
+        var reach = maxWatchedEpisodes(entries);
+        var ceilings = episodeCeilings(entries);
+        function allowed(entry) {
+            return !excludedAnimeIds[animeKey(entry)];
+        }
+        function annotate(entry) {
+            var key = animeKey(entry);
+            if (!entry || !key || !reach[key]) return entry;
+            return Object.assign({}, entry, {max_episode: Math.max(reach[key], episodeNumber(entry))});
+        }
+
+        var queue = [];
+        var claimed = {};
+        latestEntriesByAnime(entries, isContinueEntry).filter(allowed).forEach(function (entry) {
+            claimed[animeKey(entry)] = true;
+            queue.push(annotate(entry));
         });
-        if (continuing.length) return continuing;
+        latestEntriesByAnime(entries, isFinishedEpisode).filter(allowed).forEach(function (entry) {
+            if (claimed[animeKey(entry)]) return;
+            var next = nextEpisodeEntry(entry, reach, ceilings);
+            if (!next) return;
+            claimed[animeKey(entry)] = true;
+            queue.push(next);
+        });
+        queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
+        if (queue.length) return queue;
         // The dashboard advertises the last watched title. Keep that title in
         // the queue when the 95% / completed-list filters would otherwise
         // leave Continue Watching empty.
-        return latestEntriesByAnime(entries).slice(0, 1);
+        return latestEntriesByAnime(entries).slice(0, 1).map(annotate);
     }
 
     function hasClockTimestamp(value) {
@@ -212,6 +313,8 @@
             voice: entry.voice || '',
             updated_at: Number(entry.updated_at || 0)
         };
+        card.yani_resume.max_episode = Math.max(0, Number(entry.max_episode || 0));
+        card.yani_resume.resume_next = Boolean(entry.resume_next);
         card.yani_history_entry = entry;
         return card;
     }

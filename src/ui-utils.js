@@ -462,6 +462,23 @@
         return kept.join(', ') + suffix;
     }
 
+    // An episode counts as finished at 95% of its length: the tail is credits,
+    // and nobody sits through them. This is the single definition of "watched"
+    // — the detail summary, the furthest-episode reach and the Continue
+    // Watching queue all have to agree, or the same episode reads as watched in
+    // one place and unwatched in another.
+    var EPISODE_FINISHED_RATIO = 0.95;
+
+    function isEpisodeFinished(position, duration, flags) {
+        if (flags && (flags.completed || flags.finished)) return true;
+        position = positiveNumber(position);
+        duration = positiveNumber(duration);
+        // Without a duration there is nothing to measure against, and counting
+        // any stray second as a full watch is how a title silently disappears
+        // from the queue.
+        return duration > 0 && position / duration >= EPISODE_FINISHED_RATIO;
+    }
+
     function detailEpisodeStats(item, videos, localPlayback) {
         item = item || {};
         videos = Array.isArray(videos) ? videos : [];
@@ -487,10 +504,12 @@
             // and long values before calculating one representative duration
             // per episode, so duplicate dubbings do not skew the average.
             if (duration >= 60 && duration <= 4 * 60 * 60) episode.durations.push(duration);
-            if (positiveNumber(video.watched && video.watched.end_time) > 0) episode.watched = true;
+            var watched = video.watched || {};
+            if (isEpisodeFinished(watched.end_time, video.duration, watched)) episode.watched = true;
         });
 
-        if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null && positiveNumber(localPlayback.time) > 0) {
+        if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null &&
+            isEpisodeFinished(localPlayback.time, localPlayback.duration, localPlayback)) {
             var localNumber = window.LampaYaniEpisode.normalize(localPlayback.number) || 'local';
             var localEpisode = grouped[localNumber] || (grouped[localNumber] = {durations: [], watched: false});
             localEpisode.watched = true;
@@ -605,6 +624,8 @@
         formatWatchedEpisodeNumbers: formatWatchedEpisodeNumbers,
         compactWatchedEpisodeLabel: compactWatchedEpisodeLabel,
         detailEpisodeStats: detailEpisodeStats,
+        isEpisodeFinished: isEpisodeFinished,
+        EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
         mediaTypeInfo: mediaTypeInfo,
         translationKind: translationKind,
         translationLabel: translationLabel

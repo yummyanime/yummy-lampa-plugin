@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.20',
+        version: '0.45.1',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -2983,6 +2983,23 @@ function pluginYummyAnime() {
         return kept.join(', ') + suffix;
     }
 
+    // An episode counts as finished at 95% of its length: the tail is credits,
+    // and nobody sits through them. This is the single definition of "watched"
+    // — the detail summary, the furthest-episode reach and the Continue
+    // Watching queue all have to agree, or the same episode reads as watched in
+    // one place and unwatched in another.
+    var EPISODE_FINISHED_RATIO = 0.95;
+
+    function isEpisodeFinished(position, duration, flags) {
+        if (flags && (flags.completed || flags.finished)) return true;
+        position = positiveNumber(position);
+        duration = positiveNumber(duration);
+        // Without a duration there is nothing to measure against, and counting
+        // any stray second as a full watch is how a title silently disappears
+        // from the queue.
+        return duration > 0 && position / duration >= EPISODE_FINISHED_RATIO;
+    }
+
     function detailEpisodeStats(item, videos, localPlayback) {
         item = item || {};
         videos = Array.isArray(videos) ? videos : [];
@@ -3008,10 +3025,12 @@ function pluginYummyAnime() {
             // and long values before calculating one representative duration
             // per episode, so duplicate dubbings do not skew the average.
             if (duration >= 60 && duration <= 4 * 60 * 60) episode.durations.push(duration);
-            if (positiveNumber(video.watched && video.watched.end_time) > 0) episode.watched = true;
+            var watched = video.watched || {};
+            if (isEpisodeFinished(watched.end_time, video.duration, watched)) episode.watched = true;
         });
 
-        if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null && positiveNumber(localPlayback.time) > 0) {
+        if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null &&
+            isEpisodeFinished(localPlayback.time, localPlayback.duration, localPlayback)) {
             var localNumber = window.LampaYaniEpisode.normalize(localPlayback.number) || 'local';
             var localEpisode = grouped[localNumber] || (grouped[localNumber] = {durations: [], watched: false});
             localEpisode.watched = true;
@@ -3126,6 +3145,8 @@ function pluginYummyAnime() {
         formatWatchedEpisodeNumbers: formatWatchedEpisodeNumbers,
         compactWatchedEpisodeLabel: compactWatchedEpisodeLabel,
         detailEpisodeStats: detailEpisodeStats,
+        isEpisodeFinished: isEpisodeFinished,
+        EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
         mediaTypeInfo: mediaTypeInfo,
         translationKind: translationKind,
         translationLabel: translationLabel
@@ -6055,8 +6076,14 @@ function pluginYummyAnime() {
             progress = Math.max(0, Math.min(1, progress));
             var episode = playback.number || card.yani_watched_episodes || '';
             if (!episode && !(progress > 0)) return null;
+            var reached = Math.max(0, Number(playback.max_episode || 0));
             return {
                 episode: episode,
+                // How far the viewer got overall, shown next to the episode the
+                // queue is offering. Without it a card reading "episode 5" is
+                // ambiguous: resumed halfway, or waiting to be started?
+                reached: reached > Number(episode || 0) ? reached : 0,
+                next: Boolean(playback.resume_next),
                 percent: progress > 0 ? Math.round(progress * 100) : 0,
                 progress: progress
             };
@@ -6074,8 +6101,9 @@ function pluginYummyAnime() {
             }
             existing.remove();
             var parts = [];
-            if (state.episode) parts.push(t('episode') + ' ' + state.episode);
+            if (state.episode) parts.push((state.next ? '▶ ' : '') + t('episode') + ' ' + state.episode);
             if (state.percent) parts.push(state.percent + '%');
+            else if (state.reached) parts.push(t('episodes_watched') + ' ' + state.reached);
             view.append($('<span class="yani-card-playback"></span>').text(parts.join(' · ')));
             if (state.progress > 0) {
                 view.append($('<span class="yani-card-playback-progress"><span></span></span>')
@@ -6634,14 +6662,42 @@ function pluginYummyAnime() {
             return playbackHistory()[String(animeId)] || null;
         }
 
+        function positiveNumber(value) {
+            var number = Number(value);
+            return isFinite(number) && number > 0 ? number : 0;
+        }
+
+        function episodeFinished(position, duration, flags) {
+            var utils = window.LampaYaniUiUtils;
+            if (utils && utils.isEpisodeFinished) return utils.isEpisodeFinished(position, duration, flags);
+            return positiveNumber(duration) > 0 && positiveNumber(position) / positiveNumber(duration) >= 0.95;
+        }
+
+        // How many episodes the title has released. Continue Watching needs a
+        // ceiling before it may offer the episode after the one just finished,
+        // so it never points at an episode that does not exist yet.
+        function episodeCeiling(card) {
+            var episodes = card && (card.yani_episodes || card.episodes) || {};
+            return positiveNumber(episodes.aired || episodes.released) ||
+                positiveNumber(episodes.count || episodes.total) ||
+                positiveNumber(card && (card.episodes_aired || card.episodes_count));
+        }
+
         function rememberPlayback(card, group, video) {
             if (!window.Lampa || !window.Lampa.Storage || !card || !card.yani_id) return null;
             var history = playbackHistory();
+            var previous = history[String(card.yani_id)] || null;
             var videoData = window.LampaYaniUiUtils && window.LampaYaniUiUtils.videoData
                 ? window.LampaYaniUiUtils.videoData(video)
                 : {};
+            var number = window.LampaYaniEpisode.valueOf(video);
             var saved = history[String(card.yani_id)] = {
-                number: window.LampaYaniEpisode.valueOf(video),
+                number: number,
+                // The furthest episode ever reached for this title, which is not
+                // the same as the last one opened: rewatching episode 2 must not
+                // move the queue back from episode 9.
+                max_episode: Math.max(positiveNumber(number), positiveNumber(previous && previous.max_episode)),
+                episodes_aired: episodeCeiling(card) || positiveNumber(previous && previous.episodes_aired),
                 video_id: video.video_id || '',
                 time: Number(video.watched && video.watched.end_time || 0),
                 duration: Math.max(0, Number(video.duration || 0)),
@@ -6711,7 +6767,35 @@ function pluginYummyAnime() {
                     updated_at: Number(watched.updated_at || watched.date || 0)
                 });
             });
-            return importRemoteEntries(entries);
+            var result = importRemoteEntries(entries);
+            recordEpisodeReach(card, videos, entries);
+            return result;
+        }
+
+        // The episode list is the most complete view of a title there is: it
+        // states every episode the account has watched and how many exist. Both
+        // are kept on the local entry so Continue Watching can offer the next
+        // episode without loading the title again.
+        function recordEpisodeReach(card, videos, watchedEntries) {
+            if (!card || !card.yani_id) return;
+            var history = playbackHistory();
+            var saved = history[String(card.yani_id)];
+            if (!saved) return;
+            var reached = positiveNumber(saved.max_episode);
+            (watchedEntries || []).forEach(function (entry) {
+                // Only finished episodes count: a title opened and abandoned
+                // after a minute must not push the queue past that episode.
+                if (!episodeFinished(entry && entry.time, entry && entry.duration, entry)) return;
+                reached = Math.max(reached, positiveNumber(entry && entry.number));
+            });
+            var aired = episodeCeiling(card);
+            (videos || []).forEach(function (video) {
+                aired = Math.max(aired, positiveNumber(window.LampaYaniEpisode.valueOf(video)));
+            });
+            if (reached === positiveNumber(saved.max_episode) && aired === positiveNumber(saved.episodes_aired)) return;
+            saved.max_episode = reached;
+            saved.episodes_aired = aired;
+            persistHistory(history);
         }
 
         function pullRemoteProgress(limit) {
@@ -6731,8 +6815,21 @@ function pluginYummyAnime() {
             return value !== false && value !== 'false';
         }
 
+        var unsyncableWarned = {};
+
         function syncServerProgress(video) {
-            if (!autoProgressSyncEnabled() || !video || !video.video_id || !window.LampaYaniApi) return;
+            if (!autoProgressSyncEnabled() || !window.LampaYaniApi || !video) return;
+            if (!video.video_id) {
+                // Progress is addressed by video id, so an episode without one
+                // can never reach the account. It used to fail silently, which
+                // reads as "sync is broken" rather than "this source has no id".
+                var key = String(video.title || '') + ':' + String(video.number || video.index || '');
+                if (!unsyncableWarned[key]) {
+                    unsyncableWarned[key] = true;
+                    console.warn('[YummyAnime] Episode has no video id, progress stays on this device only', key);
+                }
+                return;
+            }
             window.LampaYaniApi.syncVideoProgress(video.video_id, video.watched && video.watched.end_time, video.duration).catch(function (error) {
                 console.warn('[YummyAnime] Progress sync failed', error);
             });
@@ -6787,6 +6884,34 @@ function pluginYummyAnime() {
                 refreshVisiblePlaybackProgress(context.card);
             }
             if (remote) syncServerProgress(video);
+        }
+
+        // The account's watch history is the shared truth between devices; the
+        // local copy is only a cache of it. Pulling it once per session — not
+        // just when the Continue Watching screen happens to be opened — is what
+        // makes an episode finished on the phone show up on the TV, and keeps
+        // card progress correct everywhere it is drawn.
+        var remotePullAt = 0;
+        var remotePull = null;
+        var REMOTE_PULL_TTL = 5 * 60 * 1000;
+
+        function ensureRemoteHistory(force) {
+            if (!autoProgressSyncEnabled()) return Promise.resolve({imported: 0, skipped: true});
+            if (!force && remotePull && Date.now() - remotePullAt < REMOTE_PULL_TTL) return remotePull;
+            remotePullAt = Date.now();
+            remotePull = pullRemoteProgress(100).then(function (result) {
+                if (result && result.imported) {
+                    console.log('[YummyAnime] Imported ' + result.imported + ' history entries from the account');
+                }
+                return result;
+            }).catch(function (error) {
+                // A missing pull must never block playback or the dashboard, so
+                // the stale local copy simply stays in use until the next try.
+                console.warn('[YummyAnime] Could not pull the account history', error);
+                remotePullAt = 0;
+                return {imported: 0, failed: true};
+            });
+            return remotePull;
         }
 
         function syncPlaybackHistoryManually() {
@@ -6867,6 +6992,7 @@ function pluginYummyAnime() {
             importRemoteEntries: importRemoteEntries,
             importVideosProgress: importVideosProgress,
             pullRemoteProgress: pullRemoteProgress,
+            ensureRemoteHistory: ensureRemoteHistory,
             autoProgressSyncEnabled: autoProgressSyncEnabled,
             syncServerProgress: syncServerProgress,
             renderHistoryProgress: renderHistoryProgress,
@@ -10015,6 +10141,8 @@ function pluginYummyAnime() {
                 voice: String(item.voice || ''),
                 time: Math.max(0, Number(item.time || 0)),
                 duration: Math.max(0, Number(item.duration || 0)),
+                max_episode: Math.max(0, Number(item.max_episode || 0)),
+                episodes_aired: Math.max(0, Number(item.episodes_aired || 0)),
                 updated_at: historyTimestamp(item.updated_at),
                 card: item.card || null,
                 remote: false
@@ -10041,6 +10169,10 @@ function pluginYummyAnime() {
             merged[key] = Object.assign({}, older, newer, {
                 time: Number(newer.time || older.time || 0),
                 duration: Number(newer.duration || older.duration || 0),
+                // Reach and episode count are facts about the title, not about
+                // one record of it, so the better-informed side always wins.
+                max_episode: Math.max(Number(newer.max_episode || 0), Number(older.max_episode || 0)),
+                episodes_aired: Math.max(Number(newer.episodes_aired || 0), Number(older.episodes_aired || 0)),
                 title: newer.title || older.title || '',
                 poster: newer.poster || older.poster || '',
                 screenshot: newer.screenshot || older.screenshot || '',
@@ -10056,7 +10188,12 @@ function pluginYummyAnime() {
         return Boolean(entry && (entry.video_id || entry.number) && (entry.anime_id || entry.animeId));
     }
 
+    // One shared definition of "watched" for the whole plugin, see ui-utils.
     function isFinishedEpisode(entry) {
+        var utils = window.LampaYaniUiUtils;
+        if (utils && utils.isEpisodeFinished) {
+            return utils.isEpisodeFinished(entry && entry.time, entry && entry.duration, entry);
+        }
         var position = Math.max(0, Number(entry && entry.time || 0));
         var duration = Math.max(0, Number(entry && entry.duration || 0));
         return duration > 0 && position / duration >= 0.95;
@@ -10081,16 +10218,106 @@ function pluginYummyAnime() {
         });
     }
 
+    function animeKey(entry) {
+        return String(entry && (entry.anime_id || entry.animeId) || '');
+    }
+
+    function episodeNumber(entry) {
+        var number = Number(window.LampaYaniEpisode.normalize(entry && entry.number) || 0);
+        return number > 0 ? number : 0;
+    }
+
+    /**
+     * The furthest episode actually reached per title, across every local and
+     * remote record of it. Rewatching an early episode must not drag the queue
+     * backwards, so this is a maximum rather than the latest record.
+     */
+    function maxWatchedEpisodes(entries) {
+        var reach = {};
+        (entries || []).forEach(function (entry) {
+            var key = animeKey(entry);
+            if (!key) return;
+            // Only a finished episode moves the reach forward. Counting a few
+            // seconds of an episode as watched would advance the queue past an
+            // episode the viewer never actually saw.
+            if (!isFinishedEpisode(entry)) return;
+            var number = episodeNumber(entry);
+            if (number > (reach[key] || 0)) reach[key] = number;
+        });
+        return reach;
+    }
+
+    // How many episodes each title has released. Like the reach above, this is
+    // a fact about the title rather than about one record, so it is collected
+    // across every entry: only some of them carry it.
+    function episodeCeilings(entries) {
+        var ceilings = {};
+        (entries || []).forEach(function (entry) {
+            var key = animeKey(entry);
+            if (!key) return;
+            var value = Number(entry.episodes_aired || entry.episodes_total || 0);
+            if (isFinite(value) && value > (ceilings[key] || 0)) ceilings[key] = value;
+        });
+        return ceilings;
+    }
+
+    /**
+     * A finished episode used to drop its title out of Continue Watching
+     * entirely, even though the viewer had simply reached the end of one
+     * episode and the next one was waiting. Point the entry at that next
+     * episode instead — but only when the title is known to have one, so the
+     * queue never offers an episode that has not aired.
+     */
+    function nextEpisodeEntry(entry, reach, ceilings) {
+        var key = animeKey(entry);
+        var watched = Math.max(reach[key] || 0, episodeNumber(entry));
+        var ceiling = ceilings[key] || 0;
+        if (!watched || !ceiling) return null;
+        var next = watched + 1;
+        if (next > ceiling) return null;
+        return Object.assign({}, entry, {
+            number: String(next),
+            video_id: '',
+            episode_title: '',
+            time: 0,
+            duration: 0,
+            max_episode: watched,
+            resume_next: true
+        });
+    }
+
     function continueWatchingEntries(entries, excludedAnimeIds) {
         excludedAnimeIds = excludedAnimeIds || {};
-        var continuing = latestEntriesByAnime(entries, isContinueEntry).filter(function (entry) {
-            return !excludedAnimeIds[String(entry.anime_id || entry.animeId || '')];
+        var reach = maxWatchedEpisodes(entries);
+        var ceilings = episodeCeilings(entries);
+        function allowed(entry) {
+            return !excludedAnimeIds[animeKey(entry)];
+        }
+        function annotate(entry) {
+            var key = animeKey(entry);
+            if (!entry || !key || !reach[key]) return entry;
+            return Object.assign({}, entry, {max_episode: Math.max(reach[key], episodeNumber(entry))});
+        }
+
+        var queue = [];
+        var claimed = {};
+        latestEntriesByAnime(entries, isContinueEntry).filter(allowed).forEach(function (entry) {
+            claimed[animeKey(entry)] = true;
+            queue.push(annotate(entry));
         });
-        if (continuing.length) return continuing;
+        latestEntriesByAnime(entries, isFinishedEpisode).filter(allowed).forEach(function (entry) {
+            if (claimed[animeKey(entry)]) return;
+            var next = nextEpisodeEntry(entry, reach, ceilings);
+            if (!next) return;
+            claimed[animeKey(entry)] = true;
+            queue.push(next);
+        });
+        queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
+        if (queue.length) return queue;
         // The dashboard advertises the last watched title. Keep that title in
         // the queue when the 95% / completed-list filters would otherwise
         // leave Continue Watching empty.
-        return latestEntriesByAnime(entries).slice(0, 1);
+        return latestEntriesByAnime(entries).slice(0, 1).map(annotate);
     }
 
     function hasClockTimestamp(value) {
@@ -10159,6 +10386,8 @@ function pluginYummyAnime() {
             voice: entry.voice || '',
             updated_at: Number(entry.updated_at || 0)
         };
+        card.yani_resume.max_episode = Math.max(0, Number(entry.max_episode || 0));
+        card.yani_resume.resume_next = Boolean(entry.resume_next);
         card.yani_history_entry = entry;
         return card;
     }
@@ -12784,6 +13013,7 @@ function pluginYummyAnime() {
     var importRemoteEntries = playbackHistoryApi.importRemoteEntries;
     var importVideosProgress = playbackHistoryApi.importVideosProgress;
     var pullRemoteProgress = playbackHistoryApi.pullRemoteProgress;
+    var ensureRemoteHistory = playbackHistoryApi.ensureRemoteHistory;
     var autoProgressSyncEnabled = playbackHistoryApi.autoProgressSyncEnabled;
     var syncServerProgress = playbackHistoryApi.syncServerProgress;
     var renderHistoryProgress = playbackHistoryApi.renderHistoryProgress;
@@ -12948,6 +13178,11 @@ function pluginYummyAnime() {
                 settingsReady = true;
                 try {
                     addSettings();
+                    // The account's watch history is shared between devices, so
+                    // pull it before anything draws progress from the local
+                    // copy — otherwise the TV keeps showing what the phone
+                    // already finished.
+                    ensureRemoteHistory();
                     registerOnlineSource();
                     registerSearchSource();
                 } catch (settingsError) {
@@ -14951,7 +15186,7 @@ function pluginYummyAnime() {
             t: t,
             input: showYummyInput,
             goBack: goBack,
-            onAuthorized: function () { pullRemoteProgress(100).catch(function () {}); }
+            onAuthorized: function () { ensureRemoteHistory(true).catch(function () {}); }
         });
     }
 
@@ -15825,6 +16060,11 @@ function pluginYummyAnime() {
         if (!url || !Lampa.Activity || !Lampa.Activity.push) return false;
         try {
             rememberPlayback(card, group, selected);
+            // The embedded site player is still a watch, so the account has to
+            // learn about it like it does for the internal and external ones.
+            // Only the start can be reported: the page plays inside an iframe
+            // this plugin cannot read a position from.
+            syncServerProgress(selected);
             // Activity owns the back stack for the embedded page and will
             // restart the detail controller itself.
             clearPlaybackReturn();

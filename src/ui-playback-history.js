@@ -49,14 +49,42 @@
             return playbackHistory()[String(animeId)] || null;
         }
 
+        function positiveNumber(value) {
+            var number = Number(value);
+            return isFinite(number) && number > 0 ? number : 0;
+        }
+
+        function episodeFinished(position, duration, flags) {
+            var utils = window.LampaYaniUiUtils;
+            if (utils && utils.isEpisodeFinished) return utils.isEpisodeFinished(position, duration, flags);
+            return positiveNumber(duration) > 0 && positiveNumber(position) / positiveNumber(duration) >= 0.95;
+        }
+
+        // How many episodes the title has released. Continue Watching needs a
+        // ceiling before it may offer the episode after the one just finished,
+        // so it never points at an episode that does not exist yet.
+        function episodeCeiling(card) {
+            var episodes = card && (card.yani_episodes || card.episodes) || {};
+            return positiveNumber(episodes.aired || episodes.released) ||
+                positiveNumber(episodes.count || episodes.total) ||
+                positiveNumber(card && (card.episodes_aired || card.episodes_count));
+        }
+
         function rememberPlayback(card, group, video) {
             if (!window.Lampa || !window.Lampa.Storage || !card || !card.yani_id) return null;
             var history = playbackHistory();
+            var previous = history[String(card.yani_id)] || null;
             var videoData = window.LampaYaniUiUtils && window.LampaYaniUiUtils.videoData
                 ? window.LampaYaniUiUtils.videoData(video)
                 : {};
+            var number = window.LampaYaniEpisode.valueOf(video);
             var saved = history[String(card.yani_id)] = {
-                number: window.LampaYaniEpisode.valueOf(video),
+                number: number,
+                // The furthest episode ever reached for this title, which is not
+                // the same as the last one opened: rewatching episode 2 must not
+                // move the queue back from episode 9.
+                max_episode: Math.max(positiveNumber(number), positiveNumber(previous && previous.max_episode)),
+                episodes_aired: episodeCeiling(card) || positiveNumber(previous && previous.episodes_aired),
                 video_id: video.video_id || '',
                 time: Number(video.watched && video.watched.end_time || 0),
                 duration: Math.max(0, Number(video.duration || 0)),
@@ -126,7 +154,35 @@
                     updated_at: Number(watched.updated_at || watched.date || 0)
                 });
             });
-            return importRemoteEntries(entries);
+            var result = importRemoteEntries(entries);
+            recordEpisodeReach(card, videos, entries);
+            return result;
+        }
+
+        // The episode list is the most complete view of a title there is: it
+        // states every episode the account has watched and how many exist. Both
+        // are kept on the local entry so Continue Watching can offer the next
+        // episode without loading the title again.
+        function recordEpisodeReach(card, videos, watchedEntries) {
+            if (!card || !card.yani_id) return;
+            var history = playbackHistory();
+            var saved = history[String(card.yani_id)];
+            if (!saved) return;
+            var reached = positiveNumber(saved.max_episode);
+            (watchedEntries || []).forEach(function (entry) {
+                // Only finished episodes count: a title opened and abandoned
+                // after a minute must not push the queue past that episode.
+                if (!episodeFinished(entry && entry.time, entry && entry.duration, entry)) return;
+                reached = Math.max(reached, positiveNumber(entry && entry.number));
+            });
+            var aired = episodeCeiling(card);
+            (videos || []).forEach(function (video) {
+                aired = Math.max(aired, positiveNumber(window.LampaYaniEpisode.valueOf(video)));
+            });
+            if (reached === positiveNumber(saved.max_episode) && aired === positiveNumber(saved.episodes_aired)) return;
+            saved.max_episode = reached;
+            saved.episodes_aired = aired;
+            persistHistory(history);
         }
 
         function pullRemoteProgress(limit) {
@@ -146,8 +202,21 @@
             return value !== false && value !== 'false';
         }
 
+        var unsyncableWarned = {};
+
         function syncServerProgress(video) {
-            if (!autoProgressSyncEnabled() || !video || !video.video_id || !window.LampaYaniApi) return;
+            if (!autoProgressSyncEnabled() || !window.LampaYaniApi || !video) return;
+            if (!video.video_id) {
+                // Progress is addressed by video id, so an episode without one
+                // can never reach the account. It used to fail silently, which
+                // reads as "sync is broken" rather than "this source has no id".
+                var key = String(video.title || '') + ':' + String(video.number || video.index || '');
+                if (!unsyncableWarned[key]) {
+                    unsyncableWarned[key] = true;
+                    console.warn('[YummyAnime] Episode has no video id, progress stays on this device only', key);
+                }
+                return;
+            }
             window.LampaYaniApi.syncVideoProgress(video.video_id, video.watched && video.watched.end_time, video.duration).catch(function (error) {
                 console.warn('[YummyAnime] Progress sync failed', error);
             });
@@ -202,6 +271,34 @@
                 refreshVisiblePlaybackProgress(context.card);
             }
             if (remote) syncServerProgress(video);
+        }
+
+        // The account's watch history is the shared truth between devices; the
+        // local copy is only a cache of it. Pulling it once per session — not
+        // just when the Continue Watching screen happens to be opened — is what
+        // makes an episode finished on the phone show up on the TV, and keeps
+        // card progress correct everywhere it is drawn.
+        var remotePullAt = 0;
+        var remotePull = null;
+        var REMOTE_PULL_TTL = 5 * 60 * 1000;
+
+        function ensureRemoteHistory(force) {
+            if (!autoProgressSyncEnabled()) return Promise.resolve({imported: 0, skipped: true});
+            if (!force && remotePull && Date.now() - remotePullAt < REMOTE_PULL_TTL) return remotePull;
+            remotePullAt = Date.now();
+            remotePull = pullRemoteProgress(100).then(function (result) {
+                if (result && result.imported) {
+                    console.log('[YummyAnime] Imported ' + result.imported + ' history entries from the account');
+                }
+                return result;
+            }).catch(function (error) {
+                // A missing pull must never block playback or the dashboard, so
+                // the stale local copy simply stays in use until the next try.
+                console.warn('[YummyAnime] Could not pull the account history', error);
+                remotePullAt = 0;
+                return {imported: 0, failed: true};
+            });
+            return remotePull;
         }
 
         function syncPlaybackHistoryManually() {
@@ -282,6 +379,7 @@
             importRemoteEntries: importRemoteEntries,
             importVideosProgress: importVideosProgress,
             pullRemoteProgress: pullRemoteProgress,
+            ensureRemoteHistory: ensureRemoteHistory,
             autoProgressSyncEnabled: autoProgressSyncEnabled,
             syncServerProgress: syncServerProgress,
             renderHistoryProgress: renderHistoryProgress,
