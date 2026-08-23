@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.44.17',
+        version: '0.44.18',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -17532,3 +17532,140 @@ function pluginYummyAnime() {
 }
 
 if (!window.plugin_yummy_anime_ready) pluginYummyAnime();
+
+(function () {
+    'use strict';
+
+    // Диагностика утечки плеера в Лампе.
+    //
+    // Ставится как обычный плагин рядом с основным, ничего не меняет и ничего
+    // никуда не отправляет. Раз в 15 секунд и при каждом запуске плеера
+    // показывает счётчики, по которым видно, что именно не освобождается:
+    //
+    //   V  — сколько <video> в документе (в скобках — сколько из них
+    //        уже оторваны от DOM, то есть должны были быть убраны);
+    //   MS — сколько живых MediaSource: именно они держат аппаратные
+    //        декодеры, и именно их нехватка роняет рендерер в «кашу»;
+    //   OU — сколько blob-ссылок создано и не освобождено;
+    //   IF — сколько <iframe>;
+    //   JS — размер JS-кучи, если браузер его отдаёт.
+    //
+    // Если между сериями растёт MS или V — утечка подтверждена, и видно какая.
+    // Если всё стоит на месте, а растёт только JS — причина в другом.
+
+    if (window.yani_leak_probe_ready) return;
+    window.yani_leak_probe_ready = true;
+
+    var liveMediaSources = 0;
+    var totalMediaSources = 0;
+    var liveObjectUrls = 0;
+    var playCount = 0;
+    var history = [];
+
+    function hookMediaSource() {
+        var Native = window.MediaSource;
+        if (!Native) return;
+        function Tracked() {
+            var instance = new Native();
+            liveMediaSources += 1;
+            totalMediaSources += 1;
+            instance.addEventListener('sourceclose', function () { liveMediaSources -= 1; });
+            return instance;
+        }
+        Tracked.prototype = Native.prototype;
+        Tracked.isTypeSupported = function () { return Native.isTypeSupported.apply(Native, arguments); };
+        window.MediaSource = Tracked;
+    }
+
+    function hookObjectUrls() {
+        if (!window.URL || !URL.createObjectURL) return;
+        var create = URL.createObjectURL;
+        var revoke = URL.revokeObjectURL;
+        URL.createObjectURL = function () {
+            liveObjectUrls += 1;
+            return create.apply(URL, arguments);
+        };
+        URL.revokeObjectURL = function () {
+            liveObjectUrls -= 1;
+            return revoke.apply(URL, arguments);
+        };
+    }
+
+    function hookPlay() {
+        if (!window.HTMLMediaElement) return;
+        var play = HTMLMediaElement.prototype.play;
+        HTMLMediaElement.prototype.play = function () {
+            if (!this.__yaniCounted) {
+                this.__yaniCounted = true;
+                playCount += 1;
+                setTimeout(function () { report('запуск'); }, 1500);
+            }
+            return play.apply(this, arguments);
+        };
+    }
+
+    function videoStats() {
+        var videos = document.querySelectorAll('video');
+        var detached = 0;
+        for (var i = 0; i < videos.length; i++) {
+            if (!document.documentElement.contains(videos[i])) detached += 1;
+        }
+        return {total: videos.length, detached: detached};
+    }
+
+    function heapMb() {
+        var memory = window.performance && performance.memory;
+        if (!memory || !memory.usedJSHeapSize) return null;
+        return Math.round(memory.usedJSHeapSize / 1048576);
+    }
+
+    function snapshot() {
+        var videos = videoStats();
+        return {
+            plays: playCount,
+            videos: videos.total,
+            detached: videos.detached,
+            mediaSources: liveMediaSources,
+            mediaSourcesTotal: totalMediaSources,
+            objectUrls: liveObjectUrls,
+            iframes: document.querySelectorAll('iframe').length,
+            heap: heapMb()
+        };
+    }
+
+    function format(state) {
+        var parts = [
+            'N' + state.plays,
+            'V' + state.videos + (state.detached ? '(' + state.detached + '!)' : ''),
+            'MS' + state.mediaSources + '/' + state.mediaSourcesTotal,
+            'OU' + state.objectUrls,
+            'IF' + state.iframes
+        ];
+        if (state.heap !== null) parts.push('JS' + state.heap + 'M');
+        return parts.join(' ');
+    }
+
+    function report(reason) {
+        var state = snapshot();
+        state.at = new Date().toISOString();
+        state.reason = reason;
+        history.push(state);
+        if (history.length > 200) history.shift();
+        var line = format(state);
+        console.log('[yani-leak] ' + reason + ' ' + line);
+        if (window.Lampa && Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(line);
+    }
+
+    hookMediaSource();
+    hookObjectUrls();
+    hookPlay();
+    setInterval(function () { report('тик'); }, 15000);
+    report('старт');
+
+    // Полная история замеров: window.yaniLeakProbe.dump()
+    window.yaniLeakProbe = {
+        snapshot: snapshot,
+        history: function () { return history.slice(); },
+        dump: function () { return JSON.stringify(history, null, 1); }
+    };
+}());

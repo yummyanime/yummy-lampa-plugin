@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.18 — 2026-08-23
+
+- Add a temporary player resource probe to the test build for diagnosing the repeated-playback renderer crash
+
 ## 0.44.17 — 2026-08-21
 
 - Add silent background refresh for fresh offline caches
