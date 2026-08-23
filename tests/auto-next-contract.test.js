@@ -44,4 +44,23 @@ assert.ok(
     'auto-advance must default to disabled'
 );
 
+// Starting the next episode on top of a running player leaves the previous
+// <video> and its MediaSource alive, because Lampa only releases the player it
+// considers current. Measured on a TV: one stranded decoder per advance, and
+// the renderer dies after eight to ten of them.
+const advanceStart = source.indexOf('function advanceToNextEpisode');
+const advanceEnd = source.indexOf('function externalPlayablePlaylist', advanceStart);
+const advancePolicy = source.slice(advanceStart, advanceEnd);
+assert.ok(advanceStart >= 0 && advanceEnd > advanceStart, 'the advance step must exist');
+assert.ok(advancePolicy.includes('closeInternalPlayer();'), 'the running player must be closed before the next episode opens');
+assert.ok(
+    advancePolicy.indexOf('closeInternalPlayer();') < advancePolicy.indexOf('launchVideo('),
+    'the close must happen before the launch, not after it'
+);
+assert.ok(
+    advancePolicy.indexOf('beginPlaybackNavigation();') < advancePolicy.indexOf('closeInternalPlayer();'),
+    'the return session must be bumped first so closing does not steal focus back to the detail page'
+);
+assert.ok(source.includes('Lampa.Player.close'), 'closing must go through the player API');
+
 console.log('auto-next contract tests passed');

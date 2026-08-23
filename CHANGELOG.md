@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.44.19 — 2026-08-23
+
+- Fix the automatic episode switch stranding a video decoder per advance by closing the running player first
+
 ## 0.44.18 — 2026-08-23
 
 - Add a temporary player resource probe to the test build for diagnosing the repeated-playback renderer crash
