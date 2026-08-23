@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.45.5 — 2026-08-23
+
+- Add coverage proving account watch history alone fills Continue Watching 
+- Remove the debug breakdown from the viewer's screen
+
 ## 0.45.4 — 2026-08-23
 
 - Remove the user-list filter from Continue Watching so only a watched last episode ends a title

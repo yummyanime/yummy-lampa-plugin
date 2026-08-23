@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.45.4',
+        version: '0.45.5',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -10481,21 +10481,19 @@ function pluginYummyAnime() {
             return Promise.all(entries.map(function (entry) { return historyCard(entry, deps); }));
         }
 
-        // A queue shorter than the history is the expected outcome of three
-        // filters, but from the outside it just looks like records went
-        // missing. Say where they went.
+        // A queue shorter than the history it was built from is the expected
+        // outcome, but from the outside it looks like records went missing.
+        // Console only: this is for whoever is debugging the queue, not
+        // something to put on a viewer's screen.
         function reportContinueStats(page) {
             var stats = continueStats();
             if (!stats) return;
-            var line = 'API ' + ((page && page.entries && page.entries.length) || 0) +
-                ' · записей ' + stats.records +
-                ' · тайтлов ' + stats.titles +
-                ' · в очереди ' + (stats.resumed + stats.advanced) +
-                ' (продолжить ' + stats.resumed + ', следующая ' + stats.advanced + ')' +
-                ' · списки −' + stats.excluded +
-                ' · завершено −' + stats.finished_title;
-            console.log('[YummyAnime Continue] ' + line);
-            if (window.Lampa && Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(line);
+            console.log('[YummyAnime Continue] remote=' + ((page && page.entries && page.entries.length) || 0) +
+                ' records=' + stats.records +
+                ' titles=' + stats.titles +
+                ' queued=' + (stats.resumed + stats.advanced) +
+                ' (resumed=' + stats.resumed + ' advanced=' + stats.advanced + ')' +
+                ' completed=' + stats.finished_title);
         }
 
         /**

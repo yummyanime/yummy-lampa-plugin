@@ -1,8 +1,8 @@
 {
     "channel": "production",
-    "version": "0.45.4",
-    "tag": "v0.45.4",
+    "version": "0.45.5",
+    "tag": "v0.45.5",
     "url": "https://yummyanime.github.io/yummy-lampa-plugin/stable/index.js",
     "testUrl": "https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js",
-    "releasedAt": "2026-08-23T10:49:42.984Z"
+    "releasedAt": "2026-08-23T11:04:25.299Z"
 }

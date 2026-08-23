@@ -160,4 +160,27 @@ assert.strictEqual(
     'the last watched title stays in continue watching when filters would empty the list'
 );
 
+// Continue Watching must stand on its own from the account: a title watched on
+// another device has no local record here, so if the remote entries did not
+// reach the queue the section would be empty on a fresh install.
+const remoteOnly = history.normalizeRemoteHistory(
+    JSON.parse(fs.readFileSync('tests/fixtures/yani-api/history-progress.json', 'utf8')).watch_history
+);
+assert.strictEqual(remoteOnly.length, 2, 'both account records must survive normalization');
+const remoteQueue = history.continueWatchingEntries(history.mergeHistory({}, remoteOnly), {}, {});
+assert.strictEqual(remoteQueue.length, 2, 'unfinished account records must appear without any local history');
+assert.strictEqual(
+    remoteQueue.map((entry) => entry.anime_id).sort().join(','),
+    '10001,10002',
+    'both titles from the account belong in the queue'
+);
+
+// The only thing that ends a title is having watched its last released episode.
+const finishedRemote = history.continueWatchingEntries(
+    history.mergeHistory({}, [{anime_id: 10003, video_id: 1, number: '3', time: 1400, duration: 1440, updated_at: 5}]),
+    {},
+    {'10003': 3}
+);
+assert.strictEqual(finishedRemote.length, 0, 'a fully watched account title stays out of the queue');
+
 console.log('Watch history contract checks passed');
