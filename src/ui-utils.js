@@ -478,6 +478,7 @@
     // Watching queue all have to agree, or the same episode reads as watched in
     // one place and unwatched in another.
     var EPISODE_FINISHED_RATIO = 0.95;
+    var EPISODE_WATCHED_SECONDS = 30;
 
     function isEpisodeFinished(position, duration, flags) {
         if (flags && (flags.completed || flags.finished)) return true;
@@ -487,6 +488,11 @@
         // any stray second as a full watch is how a title silently disappears
         // from the queue.
         return duration > 0 && position / duration >= EPISODE_FINISHED_RATIO;
+    }
+
+    function isEpisodeProgressCounted(position, duration, flags) {
+        if (isEpisodeFinished(position, duration, flags)) return true;
+        return positiveNumber(position) > EPISODE_WATCHED_SECONDS;
     }
 
     function detailEpisodeStats(item, videos, localPlayback) {
@@ -515,11 +521,11 @@
             // per episode, so duplicate dubbings do not skew the average.
             if (duration >= 60 && duration <= 4 * 60 * 60) episode.durations.push(duration);
             var watched = video.watched || {};
-            if (isEpisodeFinished(watched.end_time, video.duration, watched)) episode.watched = true;
+            if (isEpisodeProgressCounted(watched.end_time, video.duration, watched)) episode.watched = true;
         });
 
         if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null &&
-            isEpisodeFinished(localPlayback.time, localPlayback.duration, localPlayback)) {
+            isEpisodeProgressCounted(localPlayback.time, localPlayback.duration, localPlayback)) {
             var localNumber = window.LampaYaniEpisode.normalize(localPlayback.number) || 'local';
             var localEpisode = grouped[localNumber] || (grouped[localNumber] = {durations: [], watched: false});
             localEpisode.watched = true;
@@ -635,8 +641,10 @@
         compactWatchedEpisodeLabel: compactWatchedEpisodeLabel,
         detailEpisodeStats: detailEpisodeStats,
         isEpisodeFinished: isEpisodeFinished,
+        isEpisodeProgressCounted: isEpisodeProgressCounted,
         ratingTier: ratingTier,
         EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
+        EPISODE_WATCHED_SECONDS: EPISODE_WATCHED_SECONDS,
         mediaTypeInfo: mediaTypeInfo,
         translationKind: translationKind,
         translationLabel: translationLabel

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.45.7',
+        version: '0.45.8',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -2999,6 +2999,7 @@ function pluginYummyAnime() {
     // Watching queue all have to agree, or the same episode reads as watched in
     // one place and unwatched in another.
     var EPISODE_FINISHED_RATIO = 0.95;
+    var EPISODE_WATCHED_SECONDS = 30;
 
     function isEpisodeFinished(position, duration, flags) {
         if (flags && (flags.completed || flags.finished)) return true;
@@ -3008,6 +3009,11 @@ function pluginYummyAnime() {
         // any stray second as a full watch is how a title silently disappears
         // from the queue.
         return duration > 0 && position / duration >= EPISODE_FINISHED_RATIO;
+    }
+
+    function isEpisodeProgressCounted(position, duration, flags) {
+        if (isEpisodeFinished(position, duration, flags)) return true;
+        return positiveNumber(position) > EPISODE_WATCHED_SECONDS;
     }
 
     function detailEpisodeStats(item, videos, localPlayback) {
@@ -3036,11 +3042,11 @@ function pluginYummyAnime() {
             // per episode, so duplicate dubbings do not skew the average.
             if (duration >= 60 && duration <= 4 * 60 * 60) episode.durations.push(duration);
             var watched = video.watched || {};
-            if (isEpisodeFinished(watched.end_time, video.duration, watched)) episode.watched = true;
+            if (isEpisodeProgressCounted(watched.end_time, video.duration, watched)) episode.watched = true;
         });
 
         if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null &&
-            isEpisodeFinished(localPlayback.time, localPlayback.duration, localPlayback)) {
+            isEpisodeProgressCounted(localPlayback.time, localPlayback.duration, localPlayback)) {
             var localNumber = window.LampaYaniEpisode.normalize(localPlayback.number) || 'local';
             var localEpisode = grouped[localNumber] || (grouped[localNumber] = {durations: [], watched: false});
             localEpisode.watched = true;
@@ -3156,8 +3162,10 @@ function pluginYummyAnime() {
         compactWatchedEpisodeLabel: compactWatchedEpisodeLabel,
         detailEpisodeStats: detailEpisodeStats,
         isEpisodeFinished: isEpisodeFinished,
+        isEpisodeProgressCounted: isEpisodeProgressCounted,
         ratingTier: ratingTier,
         EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
+        EPISODE_WATCHED_SECONDS: EPISODE_WATCHED_SECONDS,
         mediaTypeInfo: mediaTypeInfo,
         translationKind: translationKind,
         translationLabel: translationLabel
@@ -5590,9 +5598,10 @@ function pluginYummyAnime() {
             var playback = animeId ? getPlayback(animeId) : null;
             var episode = playback && Number(playback.number);
             if (!(episode > 0)) return 0;
-            var duration = Number(playback.duration || 0);
-            var position = Number(playback.time || 0);
-            return Math.max(0, Math.floor(episode) - (duration > 0 && position / duration < 0.75 ? 1 : 0));
+            var counted = window.LampaYaniUiUtils && window.LampaYaniUiUtils.isEpisodeProgressCounted
+                ? window.LampaYaniUiUtils.isEpisodeProgressCounted(playback.time, playback.duration, playback)
+                : Number(playback.time || 0) > 30;
+            return Math.max(0, Math.floor(episode) - (counted ? 0 : 1));
         }
 
         function toCard(item) {
@@ -5849,9 +5858,10 @@ function pluginYummyAnime() {
             var episode = Number(playback.number || 0);
             var fromCard = Math.max(0, Math.floor(Number(card && card.yani_watched_episodes || 0)));
             if (!(episode > 0)) return fromCard;
-            var duration = Number(playback.duration || 0);
-            var position = Number(playback.time || 0);
-            var fromPlayback = Math.max(0, Math.floor(episode) - (duration > 0 && position / duration < 0.75 ? 1 : 0));
+            var counted = window.LampaYaniUiUtils && window.LampaYaniUiUtils.isEpisodeProgressCounted
+                ? window.LampaYaniUiUtils.isEpisodeProgressCounted(playback.time, playback.duration, playback)
+                : Number(playback.time || 0) > 30;
+            var fromPlayback = Math.max(0, Math.floor(episode) - (counted ? 0 : 1));
             return Math.max(fromCard, fromPlayback);
         }
 

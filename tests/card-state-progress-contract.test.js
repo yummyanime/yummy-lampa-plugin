@@ -10,7 +10,7 @@ assert.match(cards, /status--' \+ cardStatusKey/);
 assert.match(cards, /cardEpisodesLabel\(card && card\.yani_episodes, localWatchedCount\(card\)\)/);
 assert.match(model, /function watchedEpisodeCount\(item, animeId\)/);
 assert.match(model, /explicit \* total/);
-assert.match(model, /position \/ duration < 0\.75/);
+assert.match(model, /isEpisodeProgressCounted/);
 assert.match(css, /\.yani-card-meta__status--ongoing/);
 assert.match(css, /\.yani-card-meta__status--released/);
 assert.match(css, /\.yani-card-meta__status--announced/);

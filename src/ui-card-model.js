@@ -73,9 +73,10 @@
             var playback = animeId ? getPlayback(animeId) : null;
             var episode = playback && Number(playback.number);
             if (!(episode > 0)) return 0;
-            var duration = Number(playback.duration || 0);
-            var position = Number(playback.time || 0);
-            return Math.max(0, Math.floor(episode) - (duration > 0 && position / duration < 0.75 ? 1 : 0));
+            var counted = window.LampaYaniUiUtils && window.LampaYaniUiUtils.isEpisodeProgressCounted
+                ? window.LampaYaniUiUtils.isEpisodeProgressCounted(playback.time, playback.duration, playback)
+                : Number(playback.time || 0) > 30;
+            return Math.max(0, Math.floor(episode) - (counted ? 0 : 1));
         }
 
         function toCard(item) {

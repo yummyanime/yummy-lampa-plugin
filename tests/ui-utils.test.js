@@ -133,15 +133,19 @@ assert.strictEqual(sparseWatched.watched, 2);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(sparseWatched.watchedNumbers)), [10, 13]);
 assert.strictEqual(sparseWatched.watchedLabel, '10, 13', 'sparse watched episodes must show numbers, not a sequential count');
 
-// An episode counts as watched only past 95% of its length: the tail is
-// credits. A few minutes in is a resume point, not a watch, and treating it as
-// one would advance the Continue Watching queue past an unseen episode.
+// Card and title counters treat more than 30 seconds as a watched episode.
+// Finishing the episode (95%) is a separate rule for Continue Watching.
 const barelyStarted = utils.detailEpisodeStats({}, [
-    {number: '4', duration: 1440, watched: {end_time: 300}},
+    {number: '4', duration: 1440, watched: {end_time: 20}},
     {number: '5', duration: 1440, watched: {end_time: 1370}}
 ], null);
-assert.strictEqual(barelyStarted.watched, 1, '21% of an episode is not a watch');
+assert.strictEqual(barelyStarted.watched, 1, '20 seconds is not a watch');
 assert.deepStrictEqual(JSON.parse(JSON.stringify(barelyStarted.watchedNumbers)), [5]);
+assert.strictEqual(utils.detailEpisodeStats({}, [
+    {number: '4', duration: 1440, watched: {end_time: 31}}
+], null).watched, 1, 'more than 30 seconds counts as watched');
+assert.strictEqual(utils.isEpisodeProgressCounted(31, 1440), true);
+assert.strictEqual(utils.isEpisodeProgressCounted(30, 1440), false);
 assert.strictEqual(utils.isEpisodeFinished(1370, 1440), true);
 assert.strictEqual(utils.isEpisodeFinished(300, 1440), false);
 assert.strictEqual(utils.isEpisodeFinished(300, 0), false, 'an unknown duration cannot prove a watch');

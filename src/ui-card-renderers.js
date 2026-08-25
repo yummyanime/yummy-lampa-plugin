@@ -148,9 +148,10 @@
             var episode = Number(playback.number || 0);
             var fromCard = Math.max(0, Math.floor(Number(card && card.yani_watched_episodes || 0)));
             if (!(episode > 0)) return fromCard;
-            var duration = Number(playback.duration || 0);
-            var position = Number(playback.time || 0);
-            var fromPlayback = Math.max(0, Math.floor(episode) - (duration > 0 && position / duration < 0.75 ? 1 : 0));
+            var counted = window.LampaYaniUiUtils && window.LampaYaniUiUtils.isEpisodeProgressCounted
+                ? window.LampaYaniUiUtils.isEpisodeProgressCounted(playback.time, playback.duration, playback)
+                : Number(playback.time || 0) > 30;
+            var fromPlayback = Math.max(0, Math.floor(episode) - (counted ? 0 : 1));
             return Math.max(fromCard, fromPlayback);
         }
 

@@ -37,6 +37,7 @@ const model = context.window.LampaYaniCardModel.create({
     },
     getPlayback: function (id) {
         if (String(id) === '77') return {number: 5, duration: 100, time: 10};
+        if (String(id) === 'started') return {number: 5, duration: 1440, time: 31};
         return null;
     },
     formatRating: function (value) { return Number(value).toFixed(1); },
@@ -68,6 +69,7 @@ assert.strictEqual(model.watchedEpisodeCount({
     user: {list: {progress: 0.5}}
 }, 1), 6);
 assert.strictEqual(model.watchedEpisodeCount({}, 77), 4);
+assert.strictEqual(model.watchedEpisodeCount({}, 'started'), 5, 'more than 30 seconds counts the current episode');
 
 const card = model.toCard({
     anime_id: 42,
