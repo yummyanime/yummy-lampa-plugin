@@ -26,6 +26,7 @@ assert.match(ui, /function flushPlaybackProgress\(remote, expectedContext\)/);
 assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/,
     'closing the internal player must flush progress');
 assert.match(history, /context\.card\.yani_resume = \{/);
+assert.match(history, /max_episode: saved\.max_episode/);
 assert.match(history, /function refreshVisiblePlaybackProgress\(card\)/);
 assert.match(history, /rendered\.addClass\('yani-history-card'\)\.attr\('data-yani-history-id'/);
 assert.match(ui, /LampaYaniPlaybackHistory\.create/);

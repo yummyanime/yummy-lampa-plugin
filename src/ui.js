@@ -46,6 +46,7 @@
     var addCardListBadge = cardRenderers.addCardListBadge;
     var cardPlaybackState = cardRenderers.cardPlaybackState;
     var addCardPlaybackProgress = cardRenderers.addCardPlaybackProgress;
+    var syncCardEpisodesMeta = cardRenderers.syncCardEpisodesMeta;
     var syncCardOverlayLayout = cardRenderers.syncCardOverlayLayout;
     var formatRating = cardRenderers.formatRating;
     var createRatingLogo = cardRenderers.createRatingLogo;
@@ -142,6 +143,7 @@
         cardRenderElement: cardRenderElement,
         openVideos: function (card, resume) { return openVideos(card, resume); },
         addCardPlaybackProgress: addCardPlaybackProgress,
+        syncCardEpisodesMeta: cardRenderers.syncCardEpisodesMeta,
         syncCardOverlayLayout: cardRenderers.syncCardOverlayLayout,
         playerKey: function (group) { return playerKey(group); },
         videoSourceUrl: function (video) { return videoSourceUrl(video); }
@@ -567,6 +569,7 @@
         var lastIntroContext = '';
         var lastIntroPoster = '';
         var lastStoredFocusKey = '';
+        var refreshContinueWatching = function () {};
         var homeFocusFrame = 0;
         var navigatorInfo = window.navigator || {};
         var reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -1378,6 +1381,16 @@
             var personalStats = readHomeListCounts(account && account.user_id);
             renderPersonal(personalStats);
 
+            refreshContinueWatching = function () {
+                if (destroyed) return;
+                localHistory = playbackHistory();
+                var localEntries = LampaYaniHomeSections.normalizeLocalHistory(localHistory);
+                continuing = LampaYaniHomeSections.continueWatchingEntries(localEntries, {});
+                setIntroMetric('continue', continuing.length, continueMetricDetail(continuing[0]));
+                renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
+                renderPersonal(personalStats);
+            };
+
             // A title leaves Continue Watching when its last released episode
             // has been watched — not because of which user list it sits in.
             function applyPlaybackSnapshot(remoteEntries) {
@@ -1576,6 +1589,7 @@
         };
 
         this.start = function () {
+            refreshContinueWatching();
             Lampa.Controller.add('content', {
                 toggle: function () {
                     var target = last && document.documentElement.contains(last) ? last : false;
@@ -1657,6 +1671,7 @@
             isRailFocus = function () { return false; };
             focusHomeElement = function () { return false; };
             focusSectionRail = function () { return false; };
+            refreshContinueWatching = function () {};
             scroll.destroy();
             html.remove();
         };

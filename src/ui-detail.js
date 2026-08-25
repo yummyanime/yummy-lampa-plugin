@@ -204,6 +204,7 @@
         var button;
         var titleFocus;
         var destroyed = false;
+        var refreshDetailWatchState = function () {};
         var videosAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var posterViewer = null;
         var posterExpanded = false;
@@ -232,6 +233,11 @@
         }
 
         detailFocus.bind(html);
+        $(document).on('yani:watch-progress.yaniDetail', function (event, card) {
+            if (destroyed) return;
+            if (!card || String(card.yani_id) !== String(data.yani_id)) return;
+            refreshDetailWatchState();
+        });
 
         function closePosterViewer() {
             if (!posterExpanded) return false;
@@ -443,8 +449,8 @@
         }
 
         function createDetailEpisodeSummary(cardData) {
-            var local = getPlayback(cardData.yani_id);
-            var stats = LampaYaniUiUtils.detailEpisodeStats(cardData, [], local);
+            var lastVideos = [];
+            var stats = LampaYaniUiUtils.detailEpisodeStats(cardData, lastVideos, getPlayback(cardData.yani_id));
             if (!stats.seasons && !stats.total && !stats.aired && !stats.watched && !stats.minutes) return null;
             var block = $('<div class="yani-detail__episode-summary selector"></div>')
                 .attr('aria-label', t('episode_information'));
@@ -477,15 +483,20 @@
                 });
             }
 
+            refreshDetailWatchState = function () {
+                render(LampaYaniUiUtils.detailEpisodeStats(cardData, lastVideos, getPlayback(cardData.yani_id)));
+            };
+
             function enrich() {
                 if (loading || loaded) return;
                 loading = true;
                 block.addClass('loading');
                 loadDetailVideos().then(function (videos) {
+                    lastVideos = Array.isArray(videos) ? videos : [];
                     loaded = true;
                     loading = false;
                     block.removeClass('loading');
-                    render(LampaYaniUiUtils.detailEpisodeStats(cardData, videos, local));
+                    refreshDetailWatchState();
                 }).catch(function (error) {
                     loading = false;
                     loaded = true;
@@ -813,6 +824,7 @@
         }
 
         comp.start = function () {
+            refreshDetailWatchState();
             var controller = {
                 link: detailComponent,
                 yaniDetailOwner: detailComponent,
@@ -843,6 +855,7 @@
         comp.render = function (js) { return js ? scroll.render(true) : scroll.render(); };
         comp.destroy = function () {
             destroyed = true;
+            $(document).off('.yaniDetail');
             closePosterViewer();
             if (videosAbort) videosAbort.abort();
             detailFocus.destroy();

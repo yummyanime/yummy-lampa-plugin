@@ -133,6 +133,27 @@
             return count > 0 ? count + ' ' + t('episodes_short') : '';
         }
 
+        function mergePlayback(card) {
+            var stored = getPlayback(card && card.yani_id) || {};
+            var resume = card && card.yani_resume || {};
+            var merged = Object.assign({}, stored);
+            Object.keys(resume).forEach(function (key) {
+                if (resume[key] !== undefined && resume[key] !== null && resume[key] !== '') merged[key] = resume[key];
+            });
+            return merged;
+        }
+
+        function localWatchedCount(card) {
+            var playback = mergePlayback(card);
+            var episode = Number(playback.number || 0);
+            var fromCard = Math.max(0, Math.floor(Number(card && card.yani_watched_episodes || 0)));
+            if (!(episode > 0)) return fromCard;
+            var duration = Number(playback.duration || 0);
+            var position = Number(playback.time || 0);
+            var fromPlayback = Math.max(0, Math.floor(episode) - (duration > 0 && position / duration < 0.75 ? 1 : 0));
+            return Math.max(fromCard, fromPlayback);
+        }
+
         function addCardMetadata(element, card) {
             var render = cardRenderElement(element, card);
             if (!render.length || render.find('.yani-card-meta').length) return;
@@ -141,7 +162,7 @@
             if (type && type.short) values.push({kind: 'type', text: type.short});
             var status = cardStatusLabel(card && card.yani_status);
             if (status) values.push({kind: 'status status--' + cardStatusKey(card.yani_status), text: status});
-            var episodes = cardEpisodesLabel(card && card.yani_episodes, card && card.yani_watched_episodes);
+            var episodes = cardEpisodesLabel(card && card.yani_episodes, localWatchedCount(card));
             if (episodes) values.push({kind: 'episodes', text: episodes});
             var year = String(card && (card.yani_year || card.release_date) || '').slice(0, 4);
             if (/^\d{4}$/.test(year)) values.push({kind: 'year', text: year});
@@ -382,9 +403,22 @@
             }
         }
 
+        function syncCardEpisodesMeta(element, card) {
+            var render = cardRenderElement(element, card);
+            var node = render.find('.yani-card-meta__episodes');
+            if (!node.length) return;
+            var episodes = card && card.yani_episodes;
+            if (!episodes) {
+                var match = String(node.text() || '').match(/(\d+)\s*\/\s*(\d+)/);
+                if (match) episodes = {aired: Number(match[2]), count: Number(match[2])};
+            }
+            var label = cardEpisodesLabel(episodes, localWatchedCount(card));
+            if (label) node.text(label);
+        }
+
         function cardPlaybackState(card) {
             if (!card) return null;
-            var playback = card.yani_resume || getPlayback(card.yani_id) || {};
+            var playback = mergePlayback(card);
             var duration = Math.max(0, Number(playback.duration || 0));
             var position = Math.max(0, Number(playback.time || 0));
             var progress = duration > 0 ? position / duration : Number(card.yani_list_progress || 0);
@@ -506,6 +540,7 @@
             listBadgeIcon: listBadgeIcon,
             addCardListBadge: addCardListBadge,
             cardPlaybackState: cardPlaybackState,
+            syncCardEpisodesMeta: syncCardEpisodesMeta,
             addCardPlaybackProgress: addCardPlaybackProgress,
             syncCardOverlayLayout: syncCardOverlayLayout,
             cardOverlayPriorityPlan: cardOverlayPriorityPlan,

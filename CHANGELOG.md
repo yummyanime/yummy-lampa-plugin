@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.7 — 2026-08-25
+
+- Fix watch progress staying stale on plugin cards, the title page, and Continue Watching
+
 ## 0.45.6 — 2026-08-23
 
 - Add colour bands to the YummyAnime score so it reads at a glance

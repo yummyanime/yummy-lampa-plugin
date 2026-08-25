@@ -10,7 +10,9 @@ assert.match(detail, /values\.watchedLabel \|\| values\.watched/);
 assert.match(detail, /kind: 'watched'/);
 assert.match(detail, /yani-detail__episode-stat--' \+ item\.kind/);
 assert.match(css, /\.yani-detail__episode-stat--watched/);
-assert.match(detail, /LampaYaniUiUtils\.detailEpisodeStats\(cardData, \[\], local\)/);
+assert.match(detail, /LampaYaniUiUtils\.detailEpisodeStats\(cardData, lastVideos, getPlayback\(cardData\.yani_id\)\)/);
+assert.match(detail, /refreshDetailWatchState = function \(\)/);
+assert.match(detail, /yani:watch-progress\.yaniDetail/);
 assert.match(detail, /yani-detail__episode-summary selector/);
 assert.match(detail, /block\.one\('hover:focus\.yaniEpisodeSummary', enrich\)/);
 assert.doesNotMatch(detail.slice(detail.indexOf('function createDetailEpisodeSummary'), detail.indexOf('function detailEpisodeIcon')), /hover:enter|click\./,

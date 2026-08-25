@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.45.6',
+        version: '0.45.7',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -5834,6 +5834,27 @@ function pluginYummyAnime() {
             return count > 0 ? count + ' ' + t('episodes_short') : '';
         }
 
+        function mergePlayback(card) {
+            var stored = getPlayback(card && card.yani_id) || {};
+            var resume = card && card.yani_resume || {};
+            var merged = Object.assign({}, stored);
+            Object.keys(resume).forEach(function (key) {
+                if (resume[key] !== undefined && resume[key] !== null && resume[key] !== '') merged[key] = resume[key];
+            });
+            return merged;
+        }
+
+        function localWatchedCount(card) {
+            var playback = mergePlayback(card);
+            var episode = Number(playback.number || 0);
+            var fromCard = Math.max(0, Math.floor(Number(card && card.yani_watched_episodes || 0)));
+            if (!(episode > 0)) return fromCard;
+            var duration = Number(playback.duration || 0);
+            var position = Number(playback.time || 0);
+            var fromPlayback = Math.max(0, Math.floor(episode) - (duration > 0 && position / duration < 0.75 ? 1 : 0));
+            return Math.max(fromCard, fromPlayback);
+        }
+
         function addCardMetadata(element, card) {
             var render = cardRenderElement(element, card);
             if (!render.length || render.find('.yani-card-meta').length) return;
@@ -5842,7 +5863,7 @@ function pluginYummyAnime() {
             if (type && type.short) values.push({kind: 'type', text: type.short});
             var status = cardStatusLabel(card && card.yani_status);
             if (status) values.push({kind: 'status status--' + cardStatusKey(card.yani_status), text: status});
-            var episodes = cardEpisodesLabel(card && card.yani_episodes, card && card.yani_watched_episodes);
+            var episodes = cardEpisodesLabel(card && card.yani_episodes, localWatchedCount(card));
             if (episodes) values.push({kind: 'episodes', text: episodes});
             var year = String(card && (card.yani_year || card.release_date) || '').slice(0, 4);
             if (/^\d{4}$/.test(year)) values.push({kind: 'year', text: year});
@@ -6083,9 +6104,22 @@ function pluginYummyAnime() {
             }
         }
 
+        function syncCardEpisodesMeta(element, card) {
+            var render = cardRenderElement(element, card);
+            var node = render.find('.yani-card-meta__episodes');
+            if (!node.length) return;
+            var episodes = card && card.yani_episodes;
+            if (!episodes) {
+                var match = String(node.text() || '').match(/(\d+)\s*\/\s*(\d+)/);
+                if (match) episodes = {aired: Number(match[2]), count: Number(match[2])};
+            }
+            var label = cardEpisodesLabel(episodes, localWatchedCount(card));
+            if (label) node.text(label);
+        }
+
         function cardPlaybackState(card) {
             if (!card) return null;
-            var playback = card.yani_resume || getPlayback(card.yani_id) || {};
+            var playback = mergePlayback(card);
             var duration = Math.max(0, Number(playback.duration || 0));
             var position = Math.max(0, Number(playback.time || 0));
             var progress = duration > 0 ? position / duration : Number(card.yani_list_progress || 0);
@@ -6207,6 +6241,7 @@ function pluginYummyAnime() {
             listBadgeIcon: listBadgeIcon,
             addCardListBadge: addCardListBadge,
             cardPlaybackState: cardPlaybackState,
+            syncCardEpisodesMeta: syncCardEpisodesMeta,
             addCardPlaybackProgress: addCardPlaybackProgress,
             syncCardOverlayLayout: syncCardOverlayLayout,
             cardOverlayPriorityPlan: cardOverlayPriorityPlan,
@@ -6650,6 +6685,7 @@ function pluginYummyAnime() {
         };
         var openVideos = deps.openVideos || function () {};
         var addCardPlaybackProgress = deps.addCardPlaybackProgress || function () {};
+        var syncCardEpisodesMeta = deps.syncCardEpisodesMeta || function () {};
         var syncCardOverlayLayout = deps.syncCardOverlayLayout || function () {};
         var playerKey = deps.playerKey || function (group) {
             return String(group && (group.player || group.title) || '').toLowerCase();
@@ -6881,8 +6917,10 @@ function pluginYummyAnime() {
             });
             $('[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]').not('.yani-history-card').each(function () {
                 addCardPlaybackProgress($(this), card);
+                syncCardEpisodesMeta($(this), card);
                 syncCardOverlayLayout($(this), card);
             });
+            if (window.$ && $(document) && $(document).trigger) $(document).trigger('yani:watch-progress', [card]);
         }
 
         function updatePlaybackProgress(context, position, duration, remote) {
@@ -6895,6 +6933,9 @@ function pluginYummyAnime() {
             if (saved) {
                 context.card.yani_resume = {
                     number: saved.number,
+                    max_episode: saved.max_episode,
+                    episodes_aired: saved.episodes_aired,
+                    resume_next: Boolean(saved.resume_next),
                     video_id: saved.video_id,
                     time: saved.time,
                     duration: saved.duration,
@@ -12317,6 +12358,7 @@ function pluginYummyAnime() {
         var button;
         var titleFocus;
         var destroyed = false;
+        var refreshDetailWatchState = function () {};
         var videosAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var posterViewer = null;
         var posterExpanded = false;
@@ -12345,6 +12387,11 @@ function pluginYummyAnime() {
         }
 
         detailFocus.bind(html);
+        $(document).on('yani:watch-progress.yaniDetail', function (event, card) {
+            if (destroyed) return;
+            if (!card || String(card.yani_id) !== String(data.yani_id)) return;
+            refreshDetailWatchState();
+        });
 
         function closePosterViewer() {
             if (!posterExpanded) return false;
@@ -12556,8 +12603,8 @@ function pluginYummyAnime() {
         }
 
         function createDetailEpisodeSummary(cardData) {
-            var local = getPlayback(cardData.yani_id);
-            var stats = LampaYaniUiUtils.detailEpisodeStats(cardData, [], local);
+            var lastVideos = [];
+            var stats = LampaYaniUiUtils.detailEpisodeStats(cardData, lastVideos, getPlayback(cardData.yani_id));
             if (!stats.seasons && !stats.total && !stats.aired && !stats.watched && !stats.minutes) return null;
             var block = $('<div class="yani-detail__episode-summary selector"></div>')
                 .attr('aria-label', t('episode_information'));
@@ -12590,15 +12637,20 @@ function pluginYummyAnime() {
                 });
             }
 
+            refreshDetailWatchState = function () {
+                render(LampaYaniUiUtils.detailEpisodeStats(cardData, lastVideos, getPlayback(cardData.yani_id)));
+            };
+
             function enrich() {
                 if (loading || loaded) return;
                 loading = true;
                 block.addClass('loading');
                 loadDetailVideos().then(function (videos) {
+                    lastVideos = Array.isArray(videos) ? videos : [];
                     loaded = true;
                     loading = false;
                     block.removeClass('loading');
-                    render(LampaYaniUiUtils.detailEpisodeStats(cardData, videos, local));
+                    refreshDetailWatchState();
                 }).catch(function (error) {
                     loading = false;
                     loaded = true;
@@ -12926,6 +12978,7 @@ function pluginYummyAnime() {
         }
 
         comp.start = function () {
+            refreshDetailWatchState();
             var controller = {
                 link: detailComponent,
                 yaniDetailOwner: detailComponent,
@@ -12956,6 +13009,7 @@ function pluginYummyAnime() {
         comp.render = function (js) { return js ? scroll.render(true) : scroll.render(); };
         comp.destroy = function () {
             destroyed = true;
+            $(document).off('.yaniDetail');
             closePosterViewer();
             if (videosAbort) videosAbort.abort();
             detailFocus.destroy();
@@ -13018,6 +13072,7 @@ function pluginYummyAnime() {
     var addCardListBadge = cardRenderers.addCardListBadge;
     var cardPlaybackState = cardRenderers.cardPlaybackState;
     var addCardPlaybackProgress = cardRenderers.addCardPlaybackProgress;
+    var syncCardEpisodesMeta = cardRenderers.syncCardEpisodesMeta;
     var syncCardOverlayLayout = cardRenderers.syncCardOverlayLayout;
     var formatRating = cardRenderers.formatRating;
     var createRatingLogo = cardRenderers.createRatingLogo;
@@ -13114,6 +13169,7 @@ function pluginYummyAnime() {
         cardRenderElement: cardRenderElement,
         openVideos: function (card, resume) { return openVideos(card, resume); },
         addCardPlaybackProgress: addCardPlaybackProgress,
+        syncCardEpisodesMeta: cardRenderers.syncCardEpisodesMeta,
         syncCardOverlayLayout: cardRenderers.syncCardOverlayLayout,
         playerKey: function (group) { return playerKey(group); },
         videoSourceUrl: function (video) { return videoSourceUrl(video); }
@@ -13539,6 +13595,7 @@ function pluginYummyAnime() {
         var lastIntroContext = '';
         var lastIntroPoster = '';
         var lastStoredFocusKey = '';
+        var refreshContinueWatching = function () {};
         var homeFocusFrame = 0;
         var navigatorInfo = window.navigator || {};
         var reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -14350,6 +14407,16 @@ function pluginYummyAnime() {
             var personalStats = readHomeListCounts(account && account.user_id);
             renderPersonal(personalStats);
 
+            refreshContinueWatching = function () {
+                if (destroyed) return;
+                localHistory = playbackHistory();
+                var localEntries = LampaYaniHomeSections.normalizeLocalHistory(localHistory);
+                continuing = LampaYaniHomeSections.continueWatchingEntries(localEntries, {});
+                setIntroMetric('continue', continuing.length, continueMetricDetail(continuing[0]));
+                renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
+                renderPersonal(personalStats);
+            };
+
             // A title leaves Continue Watching when its last released episode
             // has been watched — not because of which user list it sits in.
             function applyPlaybackSnapshot(remoteEntries) {
@@ -14548,6 +14615,7 @@ function pluginYummyAnime() {
         };
 
         this.start = function () {
+            refreshContinueWatching();
             Lampa.Controller.add('content', {
                 toggle: function () {
                     var target = last && document.documentElement.contains(last) ? last : false;
@@ -14629,6 +14697,7 @@ function pluginYummyAnime() {
             isRailFocus = function () { return false; };
             focusHomeElement = function () { return false; };
             focusSectionRail = function () { return false; };
+            refreshContinueWatching = function () {};
             scroll.destroy();
             html.remove();
         };

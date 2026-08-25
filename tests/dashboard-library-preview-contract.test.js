@@ -30,6 +30,7 @@ assert.equal(insights.libraryPreview([], 3).length, 0);
 assert.match(ui, /data-yani-home-key/);
 assert.match(ui, /yani_home_last_focus/);
 assert.match(ui, /renderLibraryStrip\(LampaYaniHomeInsights\.libraryPreview\(continuing, 3\)\)/);
+assert.match(ui, /refreshContinueWatching\(\);/);
 assert.match(ui, /yani-home__library-mini selector/);
 assert.match(ui, /yani-home__library-pulse/);
 assert.match(ui, /personal\.continue_count \+ ' \/ ' \+ personal\.tracked_total/);

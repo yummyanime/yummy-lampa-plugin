@@ -75,6 +75,20 @@ assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_pr
 assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_progress: 0.42}).percent, 42);
 assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_progress: 0.42}).progress, 0.42);
 assert.strictEqual(renderers.cardPlaybackState({}), null);
+
+const mergePlayback = context.window.LampaYaniCardRenderers.create({
+    t: function (key) { return key; },
+    locale: function () { return 'en'; },
+    getPlayback: function (id) {
+        return String(id) === '7' ? {number: 3, max_episode: 9, time: 10, duration: 100} : null;
+    },
+    mediaMeta: function () { return {}; }
+});
+assert.equal(mergePlayback.cardPlaybackState({
+    yani_id: 7,
+    yani_resume: {number: 3, time: 10, duration: 100}
+}).reached, 9, 'a stub resume must not wipe the stored furthest episode');
+
 assert.strictEqual(renderers.listBadgeKey({yani_list_id: 0}), 'watching');
 assert.strictEqual(renderers.listBadgeKey({yani_list_id: 2}), 'completed');
 assert.strictEqual(renderers.listBadgeKey({yani_is_favorite: true}), 'favorites');

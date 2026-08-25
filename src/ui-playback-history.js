@@ -16,6 +16,7 @@
         };
         var openVideos = deps.openVideos || function () {};
         var addCardPlaybackProgress = deps.addCardPlaybackProgress || function () {};
+        var syncCardEpisodesMeta = deps.syncCardEpisodesMeta || function () {};
         var syncCardOverlayLayout = deps.syncCardOverlayLayout || function () {};
         var playerKey = deps.playerKey || function (group) {
             return String(group && (group.player || group.title) || '').toLowerCase();
@@ -247,8 +248,10 @@
             });
             $('[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]').not('.yani-history-card').each(function () {
                 addCardPlaybackProgress($(this), card);
+                syncCardEpisodesMeta($(this), card);
                 syncCardOverlayLayout($(this), card);
             });
+            if (window.$ && $(document) && $(document).trigger) $(document).trigger('yani:watch-progress', [card]);
         }
 
         function updatePlaybackProgress(context, position, duration, remote) {
@@ -261,6 +264,9 @@
             if (saved) {
                 context.card.yani_resume = {
                     number: saved.number,
+                    max_episode: saved.max_episode,
+                    episodes_aired: saved.episodes_aired,
+                    resume_next: Boolean(saved.resume_next),
                     video_id: saved.video_id,
                     time: saved.time,
                     duration: saved.duration,

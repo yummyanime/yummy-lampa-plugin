@@ -7,7 +7,7 @@ const css = fs.readFileSync('style.css', 'utf8');
 
 assert.match(cards, /function cardStatusKey\(status\)/);
 assert.match(cards, /status--' \+ cardStatusKey/);
-assert.match(cards, /cardEpisodesLabel\(card && card\.yani_episodes, card && card\.yani_watched_episodes\)/);
+assert.match(cards, /cardEpisodesLabel\(card && card\.yani_episodes, localWatchedCount\(card\)\)/);
 assert.match(model, /function watchedEpisodeCount\(item, animeId\)/);
 assert.match(model, /explicit \* total/);
 assert.match(model, /position \/ duration < 0\.75/);
