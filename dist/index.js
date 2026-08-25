@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.45.8',
+        version: '0.45.9',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -337,6 +337,8 @@ function pluginYummyAnime() {
     messages.ru.auto_next = 'Автопереход к следующей серии';
     messages.ru.auto_next_description = 'В конце серии запускать следующую и заранее готовить её поток. Работает только во внутреннем плеере Lampa';
     messages.ru.auto_next_starting = 'Следующая серия:';
+    messages.ru.auto_next_last_voice = 'Это последняя доступная серия в этой озвучке';
+    messages.ru.auto_next_last_title = 'Это последняя доступная серия этого тайтла';
     messages.ru.resolver_server = 'Сервер резолвера YummyAnime';
     messages.ru.resolver_server_description = 'Собственный сервис из папки server/, превращающий плеер Alloha в обычный HLS-поток';
     messages.ru.resolver_server_prompt = 'Адрес резолвера, например http://192.168.1.10:8790. Оставьте пустым для отключения';
@@ -414,6 +416,8 @@ function pluginYummyAnime() {
     messages.en.auto_next = 'Auto-play the next episode';
     messages.en.auto_next_description = 'Start the next episode when one ends and resolve its stream in advance. Works in the internal Lampa player only';
     messages.en.auto_next_starting = 'Next episode:';
+    messages.en.auto_next_last_voice = 'This is the last available episode in this dub';
+    messages.en.auto_next_last_title = 'This is the last available episode of this title';
     messages.en.resolver_server = 'YummyAnime resolver server';
     messages.en.resolver_server_description = 'Self-hosted service from the server/ directory that turns the Alloha player into a plain HLS stream';
     messages.en.resolver_server_prompt = 'Resolver address, for example http://192.168.1.10:8790. Leave empty to disable';
@@ -775,6 +779,8 @@ function pluginYummyAnime() {
     messages.uk.auto_next = 'Автоперехід до наступної серії';
     messages.uk.auto_next_description = 'Наприкінці серії запускати наступну та заздалегідь готувати її потік. Працює лише у внутрішньому плеєрі Lampa';
     messages.uk.auto_next_starting = 'Наступна серія:';
+    messages.uk.auto_next_last_voice = 'Це останній доступний епізод у цьому озвученні';
+    messages.uk.auto_next_last_title = 'Це останній доступний епізод цього тайтлу';
     messages.uk.resolver_server = 'Сервер резолвера YummyAnime';
     messages.uk.resolver_server_description = 'Власний сервіс із теки server/, що перетворює плеєр Alloha на звичайний HLS-потік';
     messages.uk.resolver_server_prompt = 'Адреса резолвера, наприклад http://192.168.1.10:8790. Залиште порожнім для вимкнення';
@@ -16818,9 +16824,34 @@ function pluginYummyAnime() {
         }
     }
 
+    function titleAiredCount(card) {
+        var episodes = card && card.yani_episodes || {};
+        return Math.max(0, Number(episodes.aired || episodes.released || episodes.count || episodes.total || 0));
+    }
+
+    function autoNextEndMessage(context) {
+        var selected = context && context.selected;
+        var number = window.LampaYaniEpisode && window.LampaYaniEpisode.number
+            ? window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(selected))
+            : Number(selected && (selected.number || selected.index) || 0);
+        var aired = titleAiredCount(context && context.card);
+        if (aired > 0 && isFinite(number) && number >= aired) return t('auto_next_last_title');
+        return t('auto_next_last_voice');
+    }
+
+    function finishAutoNextPlayback(context) {
+        Lampa.Noty.show(autoNextEndMessage(context));
+        flushPlaybackProgress(true, context);
+        closeInternalPlayer();
+        restorePlaybackInteraction();
+    }
+
     function advanceToNextEpisode(context) {
         var next = nextEpisodeVideo(context);
-        if (!next) return;
+        if (!next) {
+            finishAutoNextPlayback(context);
+            return;
+        }
         Lampa.Noty.show(t('auto_next_starting') + ' ' + (next.number || next.index || ''));
         // Bumping the return session first: closing the player schedules a
         // focus restore back to the detail page, which must not fire while the

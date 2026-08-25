@@ -3782,9 +3782,34 @@
         }
     }
 
+    function titleAiredCount(card) {
+        var episodes = card && card.yani_episodes || {};
+        return Math.max(0, Number(episodes.aired || episodes.released || episodes.count || episodes.total || 0));
+    }
+
+    function autoNextEndMessage(context) {
+        var selected = context && context.selected;
+        var number = window.LampaYaniEpisode && window.LampaYaniEpisode.number
+            ? window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(selected))
+            : Number(selected && (selected.number || selected.index) || 0);
+        var aired = titleAiredCount(context && context.card);
+        if (aired > 0 && isFinite(number) && number >= aired) return t('auto_next_last_title');
+        return t('auto_next_last_voice');
+    }
+
+    function finishAutoNextPlayback(context) {
+        Lampa.Noty.show(autoNextEndMessage(context));
+        flushPlaybackProgress(true, context);
+        closeInternalPlayer();
+        restorePlaybackInteraction();
+    }
+
     function advanceToNextEpisode(context) {
         var next = nextEpisodeVideo(context);
-        if (!next) return;
+        if (!next) {
+            finishAutoNextPlayback(context);
+            return;
+        }
         Lampa.Noty.show(t('auto_next_starting') + ' ' + (next.number || next.index || ''));
         // Bumping the return session first: closing the player schedules a
         // focus restore back to the detail page, which must not fire while the

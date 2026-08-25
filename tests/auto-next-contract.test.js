@@ -52,6 +52,12 @@ const advanceStart = source.indexOf('function advanceToNextEpisode');
 const advanceEnd = source.indexOf('function externalPlayablePlaylist', advanceStart);
 const advancePolicy = source.slice(advanceStart, advanceEnd);
 assert.ok(advanceStart >= 0 && advanceEnd > advanceStart, 'the advance step must exist');
+assert.match(source, /function finishAutoNextPlayback\(context\)/);
+assert.match(source, /if \(!next\) \{\s*finishAutoNextPlayback\(context\);\s*return;/);
+assert.match(source, /t\('auto_next_last_voice'\)/);
+assert.match(source, /t\('auto_next_last_title'\)/);
+assert.ok(source.slice(source.indexOf('function finishAutoNextPlayback'), source.indexOf('function advanceToNextEpisode')).includes('closeInternalPlayer();'), 'the last episode must close the player');
+assert.ok(source.slice(source.indexOf('function finishAutoNextPlayback'), source.indexOf('function advanceToNextEpisode')).includes('restorePlaybackInteraction();'), 'the last episode must return to the title card');
 assert.ok(advancePolicy.includes('closeInternalPlayer();'), 'the running player must be closed before the next episode opens');
 assert.ok(
     advancePolicy.indexOf('closeInternalPlayer();') < advancePolicy.indexOf('launchVideo('),

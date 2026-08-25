@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.45.6',
+        version: '0.45.9',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -337,6 +337,8 @@ function pluginYummyAnime() {
     messages.ru.auto_next = 'Автопереход к следующей серии';
     messages.ru.auto_next_description = 'В конце серии запускать следующую и заранее готовить её поток. Работает только во внутреннем плеере Lampa';
     messages.ru.auto_next_starting = 'Следующая серия:';
+    messages.ru.auto_next_last_voice = 'Это последняя доступная серия в этой озвучке';
+    messages.ru.auto_next_last_title = 'Это последняя доступная серия этого тайтла';
     messages.ru.resolver_server = 'Сервер резолвера YummyAnime';
     messages.ru.resolver_server_description = 'Собственный сервис из папки server/, превращающий плеер Alloha в обычный HLS-поток';
     messages.ru.resolver_server_prompt = 'Адрес резолвера, например http://192.168.1.10:8790. Оставьте пустым для отключения';
@@ -414,6 +416,8 @@ function pluginYummyAnime() {
     messages.en.auto_next = 'Auto-play the next episode';
     messages.en.auto_next_description = 'Start the next episode when one ends and resolve its stream in advance. Works in the internal Lampa player only';
     messages.en.auto_next_starting = 'Next episode:';
+    messages.en.auto_next_last_voice = 'This is the last available episode in this dub';
+    messages.en.auto_next_last_title = 'This is the last available episode of this title';
     messages.en.resolver_server = 'YummyAnime resolver server';
     messages.en.resolver_server_description = 'Self-hosted service from the server/ directory that turns the Alloha player into a plain HLS stream';
     messages.en.resolver_server_prompt = 'Resolver address, for example http://192.168.1.10:8790. Leave empty to disable';
@@ -775,6 +779,8 @@ function pluginYummyAnime() {
     messages.uk.auto_next = 'Автоперехід до наступної серії';
     messages.uk.auto_next_description = 'Наприкінці серії запускати наступну та заздалегідь готувати її потік. Працює лише у внутрішньому плеєрі Lampa';
     messages.uk.auto_next_starting = 'Наступна серія:';
+    messages.uk.auto_next_last_voice = 'Це останній доступний епізод у цьому озвученні';
+    messages.uk.auto_next_last_title = 'Це останній доступний епізод цього тайтлу';
     messages.uk.resolver_server = 'Сервер резолвера YummyAnime';
     messages.uk.resolver_server_description = 'Власний сервіс із теки server/, що перетворює плеєр Alloha на звичайний HLS-потік';
     messages.uk.resolver_server_prompt = 'Адреса резолвера, наприклад http://192.168.1.10:8790. Залиште порожнім для вимкнення';
@@ -2999,6 +3005,7 @@ function pluginYummyAnime() {
     // Watching queue all have to agree, or the same episode reads as watched in
     // one place and unwatched in another.
     var EPISODE_FINISHED_RATIO = 0.95;
+    var EPISODE_WATCHED_SECONDS = 30;
 
     function isEpisodeFinished(position, duration, flags) {
         if (flags && (flags.completed || flags.finished)) return true;
@@ -3008,6 +3015,11 @@ function pluginYummyAnime() {
         // any stray second as a full watch is how a title silently disappears
         // from the queue.
         return duration > 0 && position / duration >= EPISODE_FINISHED_RATIO;
+    }
+
+    function isEpisodeProgressCounted(position, duration, flags) {
+        if (isEpisodeFinished(position, duration, flags)) return true;
+        return positiveNumber(position) > EPISODE_WATCHED_SECONDS;
     }
 
     function detailEpisodeStats(item, videos, localPlayback) {
@@ -3036,11 +3048,11 @@ function pluginYummyAnime() {
             // per episode, so duplicate dubbings do not skew the average.
             if (duration >= 60 && duration <= 4 * 60 * 60) episode.durations.push(duration);
             var watched = video.watched || {};
-            if (isEpisodeFinished(watched.end_time, video.duration, watched)) episode.watched = true;
+            if (isEpisodeProgressCounted(watched.end_time, video.duration, watched)) episode.watched = true;
         });
 
         if (localPlayback && localPlayback.number !== undefined && localPlayback.number !== null &&
-            isEpisodeFinished(localPlayback.time, localPlayback.duration, localPlayback)) {
+            isEpisodeProgressCounted(localPlayback.time, localPlayback.duration, localPlayback)) {
             var localNumber = window.LampaYaniEpisode.normalize(localPlayback.number) || 'local';
             var localEpisode = grouped[localNumber] || (grouped[localNumber] = {durations: [], watched: false});
             localEpisode.watched = true;
@@ -3156,8 +3168,10 @@ function pluginYummyAnime() {
         compactWatchedEpisodeLabel: compactWatchedEpisodeLabel,
         detailEpisodeStats: detailEpisodeStats,
         isEpisodeFinished: isEpisodeFinished,
+        isEpisodeProgressCounted: isEpisodeProgressCounted,
         ratingTier: ratingTier,
         EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
+        EPISODE_WATCHED_SECONDS: EPISODE_WATCHED_SECONDS,
         mediaTypeInfo: mediaTypeInfo,
         translationKind: translationKind,
         translationLabel: translationLabel
@@ -5590,9 +5604,10 @@ function pluginYummyAnime() {
             var playback = animeId ? getPlayback(animeId) : null;
             var episode = playback && Number(playback.number);
             if (!(episode > 0)) return 0;
-            var duration = Number(playback.duration || 0);
-            var position = Number(playback.time || 0);
-            return Math.max(0, Math.floor(episode) - (duration > 0 && position / duration < 0.75 ? 1 : 0));
+            var counted = window.LampaYaniUiUtils && window.LampaYaniUiUtils.isEpisodeProgressCounted
+                ? window.LampaYaniUiUtils.isEpisodeProgressCounted(playback.time, playback.duration, playback)
+                : Number(playback.time || 0) > 30;
+            return Math.max(0, Math.floor(episode) - (counted ? 0 : 1));
         }
 
         function toCard(item) {
@@ -5834,6 +5849,28 @@ function pluginYummyAnime() {
             return count > 0 ? count + ' ' + t('episodes_short') : '';
         }
 
+        function mergePlayback(card) {
+            var stored = getPlayback(card && card.yani_id) || {};
+            var resume = card && card.yani_resume || {};
+            var merged = Object.assign({}, stored);
+            Object.keys(resume).forEach(function (key) {
+                if (resume[key] !== undefined && resume[key] !== null && resume[key] !== '') merged[key] = resume[key];
+            });
+            return merged;
+        }
+
+        function localWatchedCount(card) {
+            var playback = mergePlayback(card);
+            var episode = Number(playback.number || 0);
+            var fromCard = Math.max(0, Math.floor(Number(card && card.yani_watched_episodes || 0)));
+            if (!(episode > 0)) return fromCard;
+            var counted = window.LampaYaniUiUtils && window.LampaYaniUiUtils.isEpisodeProgressCounted
+                ? window.LampaYaniUiUtils.isEpisodeProgressCounted(playback.time, playback.duration, playback)
+                : Number(playback.time || 0) > 30;
+            var fromPlayback = Math.max(0, Math.floor(episode) - (counted ? 0 : 1));
+            return Math.max(fromCard, fromPlayback);
+        }
+
         function addCardMetadata(element, card) {
             var render = cardRenderElement(element, card);
             if (!render.length || render.find('.yani-card-meta').length) return;
@@ -5842,7 +5879,7 @@ function pluginYummyAnime() {
             if (type && type.short) values.push({kind: 'type', text: type.short});
             var status = cardStatusLabel(card && card.yani_status);
             if (status) values.push({kind: 'status status--' + cardStatusKey(card.yani_status), text: status});
-            var episodes = cardEpisodesLabel(card && card.yani_episodes, card && card.yani_watched_episodes);
+            var episodes = cardEpisodesLabel(card && card.yani_episodes, localWatchedCount(card));
             if (episodes) values.push({kind: 'episodes', text: episodes});
             var year = String(card && (card.yani_year || card.release_date) || '').slice(0, 4);
             if (/^\d{4}$/.test(year)) values.push({kind: 'year', text: year});
@@ -6083,9 +6120,22 @@ function pluginYummyAnime() {
             }
         }
 
+        function syncCardEpisodesMeta(element, card) {
+            var render = cardRenderElement(element, card);
+            var node = render.find('.yani-card-meta__episodes');
+            if (!node.length) return;
+            var episodes = card && card.yani_episodes;
+            if (!episodes) {
+                var match = String(node.text() || '').match(/(\d+)\s*\/\s*(\d+)/);
+                if (match) episodes = {aired: Number(match[2]), count: Number(match[2])};
+            }
+            var label = cardEpisodesLabel(episodes, localWatchedCount(card));
+            if (label) node.text(label);
+        }
+
         function cardPlaybackState(card) {
             if (!card) return null;
-            var playback = card.yani_resume || getPlayback(card.yani_id) || {};
+            var playback = mergePlayback(card);
             var duration = Math.max(0, Number(playback.duration || 0));
             var position = Math.max(0, Number(playback.time || 0));
             var progress = duration > 0 ? position / duration : Number(card.yani_list_progress || 0);
@@ -6207,6 +6257,7 @@ function pluginYummyAnime() {
             listBadgeIcon: listBadgeIcon,
             addCardListBadge: addCardListBadge,
             cardPlaybackState: cardPlaybackState,
+            syncCardEpisodesMeta: syncCardEpisodesMeta,
             addCardPlaybackProgress: addCardPlaybackProgress,
             syncCardOverlayLayout: syncCardOverlayLayout,
             cardOverlayPriorityPlan: cardOverlayPriorityPlan,
@@ -6650,6 +6701,7 @@ function pluginYummyAnime() {
         };
         var openVideos = deps.openVideos || function () {};
         var addCardPlaybackProgress = deps.addCardPlaybackProgress || function () {};
+        var syncCardEpisodesMeta = deps.syncCardEpisodesMeta || function () {};
         var syncCardOverlayLayout = deps.syncCardOverlayLayout || function () {};
         var playerKey = deps.playerKey || function (group) {
             return String(group && (group.player || group.title) || '').toLowerCase();
@@ -6881,8 +6933,10 @@ function pluginYummyAnime() {
             });
             $('[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]').not('.yani-history-card').each(function () {
                 addCardPlaybackProgress($(this), card);
+                syncCardEpisodesMeta($(this), card);
                 syncCardOverlayLayout($(this), card);
             });
+            if (window.$ && $(document) && $(document).trigger) $(document).trigger('yani:watch-progress', [card]);
         }
 
         function updatePlaybackProgress(context, position, duration, remote) {
@@ -6895,6 +6949,9 @@ function pluginYummyAnime() {
             if (saved) {
                 context.card.yani_resume = {
                     number: saved.number,
+                    max_episode: saved.max_episode,
+                    episodes_aired: saved.episodes_aired,
+                    resume_next: Boolean(saved.resume_next),
                     video_id: saved.video_id,
                     time: saved.time,
                     duration: saved.duration,
@@ -12317,6 +12374,7 @@ function pluginYummyAnime() {
         var button;
         var titleFocus;
         var destroyed = false;
+        var refreshDetailWatchState = function () {};
         var videosAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var posterViewer = null;
         var posterExpanded = false;
@@ -12345,6 +12403,11 @@ function pluginYummyAnime() {
         }
 
         detailFocus.bind(html);
+        $(document).on('yani:watch-progress.yaniDetail', function (event, card) {
+            if (destroyed) return;
+            if (!card || String(card.yani_id) !== String(data.yani_id)) return;
+            refreshDetailWatchState();
+        });
 
         function closePosterViewer() {
             if (!posterExpanded) return false;
@@ -12556,8 +12619,8 @@ function pluginYummyAnime() {
         }
 
         function createDetailEpisodeSummary(cardData) {
-            var local = getPlayback(cardData.yani_id);
-            var stats = LampaYaniUiUtils.detailEpisodeStats(cardData, [], local);
+            var lastVideos = [];
+            var stats = LampaYaniUiUtils.detailEpisodeStats(cardData, lastVideos, getPlayback(cardData.yani_id));
             if (!stats.seasons && !stats.total && !stats.aired && !stats.watched && !stats.minutes) return null;
             var block = $('<div class="yani-detail__episode-summary selector"></div>')
                 .attr('aria-label', t('episode_information'));
@@ -12590,15 +12653,20 @@ function pluginYummyAnime() {
                 });
             }
 
+            refreshDetailWatchState = function () {
+                render(LampaYaniUiUtils.detailEpisodeStats(cardData, lastVideos, getPlayback(cardData.yani_id)));
+            };
+
             function enrich() {
                 if (loading || loaded) return;
                 loading = true;
                 block.addClass('loading');
                 loadDetailVideos().then(function (videos) {
+                    lastVideos = Array.isArray(videos) ? videos : [];
                     loaded = true;
                     loading = false;
                     block.removeClass('loading');
-                    render(LampaYaniUiUtils.detailEpisodeStats(cardData, videos, local));
+                    refreshDetailWatchState();
                 }).catch(function (error) {
                     loading = false;
                     loaded = true;
@@ -12926,6 +12994,7 @@ function pluginYummyAnime() {
         }
 
         comp.start = function () {
+            refreshDetailWatchState();
             var controller = {
                 link: detailComponent,
                 yaniDetailOwner: detailComponent,
@@ -12956,6 +13025,7 @@ function pluginYummyAnime() {
         comp.render = function (js) { return js ? scroll.render(true) : scroll.render(); };
         comp.destroy = function () {
             destroyed = true;
+            $(document).off('.yaniDetail');
             closePosterViewer();
             if (videosAbort) videosAbort.abort();
             detailFocus.destroy();
@@ -13018,6 +13088,7 @@ function pluginYummyAnime() {
     var addCardListBadge = cardRenderers.addCardListBadge;
     var cardPlaybackState = cardRenderers.cardPlaybackState;
     var addCardPlaybackProgress = cardRenderers.addCardPlaybackProgress;
+    var syncCardEpisodesMeta = cardRenderers.syncCardEpisodesMeta;
     var syncCardOverlayLayout = cardRenderers.syncCardOverlayLayout;
     var formatRating = cardRenderers.formatRating;
     var createRatingLogo = cardRenderers.createRatingLogo;
@@ -13114,6 +13185,7 @@ function pluginYummyAnime() {
         cardRenderElement: cardRenderElement,
         openVideos: function (card, resume) { return openVideos(card, resume); },
         addCardPlaybackProgress: addCardPlaybackProgress,
+        syncCardEpisodesMeta: cardRenderers.syncCardEpisodesMeta,
         syncCardOverlayLayout: cardRenderers.syncCardOverlayLayout,
         playerKey: function (group) { return playerKey(group); },
         videoSourceUrl: function (video) { return videoSourceUrl(video); }
@@ -13539,6 +13611,7 @@ function pluginYummyAnime() {
         var lastIntroContext = '';
         var lastIntroPoster = '';
         var lastStoredFocusKey = '';
+        var refreshContinueWatching = function () {};
         var homeFocusFrame = 0;
         var navigatorInfo = window.navigator || {};
         var reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -14350,6 +14423,16 @@ function pluginYummyAnime() {
             var personalStats = readHomeListCounts(account && account.user_id);
             renderPersonal(personalStats);
 
+            refreshContinueWatching = function () {
+                if (destroyed) return;
+                localHistory = playbackHistory();
+                var localEntries = LampaYaniHomeSections.normalizeLocalHistory(localHistory);
+                continuing = LampaYaniHomeSections.continueWatchingEntries(localEntries, {});
+                setIntroMetric('continue', continuing.length, continueMetricDetail(continuing[0]));
+                renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
+                renderPersonal(personalStats);
+            };
+
             // A title leaves Continue Watching when its last released episode
             // has been watched — not because of which user list it sits in.
             function applyPlaybackSnapshot(remoteEntries) {
@@ -14548,6 +14631,7 @@ function pluginYummyAnime() {
         };
 
         this.start = function () {
+            refreshContinueWatching();
             Lampa.Controller.add('content', {
                 toggle: function () {
                     var target = last && document.documentElement.contains(last) ? last : false;
@@ -14629,6 +14713,7 @@ function pluginYummyAnime() {
             isRailFocus = function () { return false; };
             focusHomeElement = function () { return false; };
             focusSectionRail = function () { return false; };
+            refreshContinueWatching = function () {};
             scroll.destroy();
             html.remove();
         };
@@ -16739,9 +16824,34 @@ function pluginYummyAnime() {
         }
     }
 
+    function titleAiredCount(card) {
+        var episodes = card && card.yani_episodes || {};
+        return Math.max(0, Number(episodes.aired || episodes.released || episodes.count || episodes.total || 0));
+    }
+
+    function autoNextEndMessage(context) {
+        var selected = context && context.selected;
+        var number = window.LampaYaniEpisode && window.LampaYaniEpisode.number
+            ? window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(selected))
+            : Number(selected && (selected.number || selected.index) || 0);
+        var aired = titleAiredCount(context && context.card);
+        if (aired > 0 && isFinite(number) && number >= aired) return t('auto_next_last_title');
+        return t('auto_next_last_voice');
+    }
+
+    function finishAutoNextPlayback(context) {
+        Lampa.Noty.show(autoNextEndMessage(context));
+        flushPlaybackProgress(true, context);
+        closeInternalPlayer();
+        restorePlaybackInteraction();
+    }
+
     function advanceToNextEpisode(context) {
         var next = nextEpisodeVideo(context);
-        if (!next) return;
+        if (!next) {
+            finishAutoNextPlayback(context);
+            return;
+        }
         Lampa.Noty.show(t('auto_next_starting') + ' ' + (next.number || next.index || ''));
         // Bumping the return session first: closing the player schedules a
         // focus restore back to the detail page, which must not fire while the

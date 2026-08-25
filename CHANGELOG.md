@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.9 — 2026-08-25
+
+- Add a notice and return to the title card when auto-next reaches the last episode
+
 ## 0.45.8 — 2026-08-25
 
 - Fix counting an episode as watched after 30 seconds of playback
