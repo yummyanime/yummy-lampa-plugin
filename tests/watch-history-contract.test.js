@@ -80,6 +80,31 @@ assert.strictEqual(nested[0].anime_id, 55);
 assert.strictEqual(nested[0].video_id, 5501);
 assert.strictEqual(nested[0].time, 210);
 assert.strictEqual(nested[0].number, '4');
+// Current YummyAnime history rows may omit video_id and carry the episode
+// number only in ep_title. They must still join local history and remain
+// resumable.
+const currentApi = history.normalizeRemoteHistory({response: [{
+    anime_id: 56,
+    date: 1720000200,
+    end_time: 120,
+    duration: 1400,
+    title: 'Current shape',
+    ep_title: '12',
+    poster: {huge: 'https://img.example/current.jpg'}
+}]});
+assert.strictEqual(currentApi[0].video_id, '');
+assert.strictEqual(currentApi[0].number, '12');
+assert.strictEqual(currentApi[0].episode_title, '');
+const currentMerged = history.mergeHistory({
+    57: {number: '3', time: 60, duration: 1400, updated_at: 1720000300000, title: 'Local only'}
+}, currentApi);
+assert.deepStrictEqual(
+    Array.from(history.continueWatchingEntries(currentMerged, {}, {}))
+        .map((entry) => Number(entry.anime_id))
+        .sort((left, right) => left - right),
+    [56, 57],
+    'Continue Watching must combine current API rows with local-only history'
+);
 
 const imported = history.importRemoteIntoLocal({
     42: {video_id: 4207, number: '7', time: 120, updated_at: 1710000000000, title: 'Stored'}

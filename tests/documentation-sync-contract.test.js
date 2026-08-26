@@ -39,7 +39,7 @@ assert.match(releaseWorkflow, /tags:[\s\S]*v\*/);
 assert.match(en, /Russian, English and Ukrainian extension interface/);
 assert.match(en, /Available translations panel/);
 assert.match(en, /src\/ui-detail\.js/);
-assert.doesNotMatch(root, /docs\/README\.ru\.md/);
-assert.ok(!fs.existsSync('docs/README.ru.md'), 'Russian documentation must be removed');
+assert.match(root, /<sub>\[Русская версия\]\(docs\/README\.ru\.md\)<\/sub>/);
+assert.ok(fs.existsSync('docs/README.ru.md'), 'optional Russian documentation must be available separately');
 
 console.log('documentation sync contract checks passed');

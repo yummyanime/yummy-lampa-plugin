@@ -34,12 +34,14 @@
             var anime = item.anime && typeof item.anime === 'object' ? item.anime : {};
             var watched = item.watched && typeof item.watched === 'object' ? item.watched : {};
             var animeId = item.anime_id || item.animeId || anime.anime_id || anime.id;
+            var explicitEpisode = item.episode || screenshot.episode || item.number || watched.episode || '';
+            var episode = explicitEpisode || item.ep_title || '';
             if (!animeId) return null;
             return {
                 anime_id: animeId,
                 video_id: item.video_id || item.videoId || item.video && item.video.id || '',
-                number: window.LampaYaniEpisode.normalize(item.episode || screenshot.episode || item.number || watched.episode || ''),
-                episode_title: item.ep_title || item.episode_title || screenshot.title || '',
+                number: window.LampaYaniEpisode.normalize(episode),
+                episode_title: item.episode_title || screenshot.title || (explicitEpisode ? item.ep_title : '') || '',
                 title: item.title || item.anime_title || anime.title || '',
                 poster: historyPoster(item.poster) || historyPoster(screenshot.poster) || historyPoster(anime.poster) || historyPoster(screenshot),
                 screenshot: historyScreenshot(item.screenshot_url || screenshot),

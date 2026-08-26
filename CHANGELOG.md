@@ -3,6 +3,10 @@
 ## 0.45.9 — 2026-08-25
 
 - Add a notice and return to the title card when auto-next reaches the last episode
+- Fix Continue Watching for YummyAnime history records without video IDs when the episode number is provided in ep_title
+- Refactor the main README into concise English documentation 
+- Add an optional Russian translation as a separate document 
+- Remove premature MIT license references until the project license is chosen
 
 ## 0.45.8 — 2026-08-25
 
@@ -1241,7 +1245,6 @@
 - Preserve the title-detail controller and focused action throughout the playback selection chain.
 - Restore title interaction after cancelling source, dubbing, episode or playback-target selection and after returning from internal and external players or YummyTV.
 - Avoid capturing the temporary Select controller as the external-player return target.
-- Add a non-interactive MIT License and repository notice at the bottom of YummyAnime settings.
 
 ## 0.29.0 — 2026-08-09
 
@@ -1687,4 +1690,3 @@
 - local API cache and API health check;
 - bundled `dist/index.js` for Lampa installation;
 - Russian and English documentation;
-- MIT License.
