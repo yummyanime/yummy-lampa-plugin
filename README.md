@@ -2,7 +2,7 @@
 
 An unofficial YummyAnime extension for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.45.9`
+Current version: `0.45.10`
 
 [Changelog](CHANGELOG.md) · [Technical documentation](docs/README.en.md)
 
@@ -60,6 +60,21 @@ Available lists are **Watching**, **Planned**, **Completed**, **Dropped**, **Pos
 A title can have only one main status. **Favorite** is independent and can be enabled or disabled separately. List status can be changed from the title page.
 
 **My Lists** shows recently added titles and opens each full list. **Continue Watching** combines local history with YummyAnime watch progress. Automatic synchronization can be enabled in settings or started manually from the account page.
+
+## Playback and sources such as Alloha
+
+Lampa's internal player and external Android players need a direct video stream, usually HLS (`.m3u8`), DASH, MP4, or WebM. Most sources can provide one. Sources such as Alloha may instead return a protected web player (an iframe), which is a web page rather than a playable video link. Sending that page to Lampa, VLC, Kodi, or another media player results in an error or a black screen.
+
+For Alloha, the extension uses the following order:
+
+1. **YummyAnime resolver server** — converts the selected episode and dubbing into a direct HLS stream.
+2. **Lampac server** — tries to find a direct stream by the title's external IDs; matching is not guaranteed.
+3. **Alloha embedded site player** — an optional fallback, disabled by default. It opens the original web player inside Lampa, so Lampa's timeline, progress tracking, and external-player handoff are unavailable.
+
+If none of these options is configured, Alloha playback is blocked with an explanation instead of sending an iframe to an incompatible player. Other available sources remain usable and are placed higher in the dubbing list. Resolver and Lampac addresses, source visibility, the embedded Alloha fallback, and the preferred player are configured under `Settings → YummyAnime`.
+
+The optional YummyTV integration only opens the title in the separately installed YummyTV application. It is not an Alloha resolver and is not required for the extension.
+
 
 ## Additional information
 

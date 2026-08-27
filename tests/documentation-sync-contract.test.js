@@ -4,6 +4,7 @@ const fs = require('fs');
 const config = fs.readFileSync('src/config.js', 'utf8');
 const root = fs.readFileSync('README.md', 'utf8');
 const en = fs.readFileSync('docs/README.en.md', 'utf8');
+const ru = fs.readFileSync('docs/README.ru.md', 'utf8');
 const changelog = fs.readFileSync('CHANGELOG.md', 'utf8');
 const dist = fs.readFileSync('dist/index.js', 'utf8');
 const pages = fs.readFileSync('.github/workflows/pages.yml', 'utf8');
@@ -41,5 +42,10 @@ assert.match(en, /Available translations panel/);
 assert.match(en, /src\/ui-detail\.js/);
 assert.match(root, /<sub>\[Русская версия\]\(docs\/README\.ru\.md\)<\/sub>/);
 assert.ok(fs.existsSync('docs/README.ru.md'), 'optional Russian documentation must be available separately');
+assert.match(root, /Playback and sources such as Alloha/);
+assert.match(root, /web page rather than a playable video link/);
+assert.match(en, /it is not an Alloha resolver/);
+assert.match(ru, /Воспроизведение и источники типа Alloha/);
+assert.match(ru, /iframe.*не видеофайл/s);
 
 console.log('documentation sync contract checks passed');

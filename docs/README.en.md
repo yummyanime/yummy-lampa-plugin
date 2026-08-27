@@ -113,17 +113,17 @@ When watching, the voice menu is titled **Choose dubbing and source**. Each row 
 
 Direct HLS/DASH/MP4/WebM URLs can be played in Lampa or handed to an external Android player. Choose the behavior under `Settings → YummyAnime → Preferred player`.
 
-Alloha never exposes a direct stream: its player page refuses to run outside an iframe, the manifest requires `authorizations` and `accepts-controls` headers where the latter rotates over a WebSocket every couple of minutes, and the token inside the `master.m3u8` path is single-use. A browser cannot attach those headers to a cross-origin request, which is why the extension cannot solve this on its own and defers to an external service.
+Alloha is different from an ordinary direct-stream source. Its API may return a protected player page (iframe) instead of a reusable media URL. The page and its manifest depend on short-lived tokens, request headers, and an active player session. An iframe URL is therefore not a video link and cannot be handed directly to Lampa, Kodi, VLC, or another media player. Doing so normally produces an unsupported-source error or a black screen.
 
-Direct-stream providers are tried in order:
+The extension handles Alloha in this order:
 
-1. **Resolver server** (`Settings → YummyAnime → YummyAnime resolver server`) — the service in [`server/`](../server/README.md), which keeps a live Alloha session in a headless browser and proxies the manifest with current headers. It matches the exact episode and dubbing.
-2. **Lampac server** (`Settings → YummyAnime → Lampac server`) — looks the title up again by its external ids, so it does not always find anime.
-3. **Embedded site player** — the `Alloha: embedded site player` switch, disabled by default. It opens the original Alloha player inside Lampa: no infrastructure required, but also no Lampa timeline and no external player.
+1. **Resolver server** (`Settings → YummyAnime → YummyAnime resolver server`) — the service in [`server/`](../server/README.md) keeps the required player session and proxies the selected episode and dubbing as a direct HLS stream.
+2. **Lampac server** (`Settings → YummyAnime → Lampac server`) — looks the title up again by its external IDs and returns a direct stream when a match exists. Anime matching is not guaranteed.
+3. **Embedded site player** — the `Alloha: embedded site player` switch, disabled by default. It opens the original Alloha web player inside Lampa. This mode does not provide Lampa's native timeline, reliable progress tracking, or external-player handoff.
 
-With none of them configured, selecting Alloha shows a warning and playback is blocked. An empty address disables the matching adapter. The extension contains no Alloha or Lampac credentials.
+If neither direct-stream adapter is configured and the embedded fallback is disabled, selecting Alloha shows a warning and playback is blocked. This prevents an iframe from being sent to an incompatible media player. Playable direct-stream sources are sorted above unresolved Alloha entries. An empty server address disables the corresponding adapter, and the extension contains no Alloha or Lampac credentials.
 
-The private YummyTV application integration is disabled by default and can be enabled separately under `Settings → YummyAnime → Services and sources`.
+The optional YummyTV integration is disabled by default and can be enabled separately under `Settings → YummyAnime → Services and sources`. It only opens the title in the separately installed YummyTV application; it is not an Alloha resolver and is not required for normal extension use.
 
 ## Implemented
 

@@ -1,12 +1,15 @@
 # Changelog
 
+## 0.45.10 — 2026-08-27
+
+- Add a clear playback guide for iframe sources such as Alloha, direct-stream resolvers, Lampac, the embedded fallback, and optional YummyTV integration
+
 ## 0.45.9 — 2026-08-25
 
 - Add a notice and return to the title card when auto-next reaches the last episode
 - Fix Continue Watching for YummyAnime history records without video IDs when the episode number is provided in ep_title
-- Refactor the main README into concise English documentation 
-- Add an optional Russian translation as a separate document 
-- Remove premature MIT license references until the project license is chosen
+- Fix Continue Watching by loading up to 300 recent YummyAnime history records and invalidating the smaller dashboard cache | Add ratings and the last watched episode to Continue Watching cards
+- Refactor the main README into concise English documentation | Add an optional Russian translation as a separate document | Remove premature MIT license references until the project license is chosen
 
 ## 0.45.8 — 2026-08-25
 

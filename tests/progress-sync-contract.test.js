@@ -9,7 +9,7 @@ assert.match(ui, /name: 'yani_auto_sync_progress', type: 'trigger', default: tru
 assert.match(ui, /autoProgressSyncEnabled/);
 assert.match(history, /function autoProgressSyncEnabled\(\)/);
 assert.match(history, /function pullRemoteProgress/);
-assert.match(history, /pullRemoteProgress\(100\)/);
+assert.match(history, /pullRemoteProgress\(300\)/);
 assert.match(ui, /importRemoteEntries\(remoteEntries\)/);
 assert.match(history, /if \(!window\.LampaYaniAuth \|\| !window\.LampaYaniAuth\.token\(\)/, 'automatic server sync must require authorization');
 assert.match(ui, /lastLocalSync >= 10000/, 'local progress writes must be throttled');

@@ -230,7 +230,8 @@
             var duration = Math.max(0, Number(playback.duration || 0));
             var position = Math.max(0, Number(playback.time || 0));
             var percent = duration > 0 ? Math.min(100, Math.round(position / duration * 100)) : 0;
-            var label = playback.number ? t('episode') + ' ' + playback.number : t('continue_watching');
+            var episode = playback.last_watched_episode || playback.number;
+            var label = episode ? t('episode') + ' ' + episode : t('continue_watching');
             if (percent) label += ' · ' + percent + '%';
             view.append($('<span class="yani-card-history"></span>').text(label));
             if (duration > 0) {
@@ -267,6 +268,7 @@
                     max_episode: saved.max_episode,
                     episodes_aired: saved.episodes_aired,
                     resume_next: Boolean(saved.resume_next),
+                    last_watched_episode: Number(saved.time || 0) > 0 ? Number(saved.number || 0) : 0,
                     video_id: saved.video_id,
                     time: saved.time,
                     duration: saved.duration,
@@ -292,7 +294,7 @@
             if (!autoProgressSyncEnabled()) return Promise.resolve({imported: 0, skipped: true});
             if (!force && remotePull && Date.now() - remotePullAt < REMOTE_PULL_TTL) return remotePull;
             remotePullAt = Date.now();
-            remotePull = pullRemoteProgress(100).then(function (result) {
+            remotePull = pullRemoteProgress(300).then(function (result) {
                 if (result && result.imported) {
                     console.log('[YummyAnime] Imported ' + result.imported + ' history entries from the account');
                 }
@@ -313,7 +315,7 @@
                 return;
             }
             if (window.Lampa && window.Lampa.Loading && window.Lampa.Loading.start) window.Lampa.Loading.start();
-            pullRemoteProgress(100).catch(function (error) {
+            pullRemoteProgress(300).catch(function (error) {
                 console.warn('[YummyAnime] Remote history pull failed', error);
                 return {imported: 0};
             }).then(function (pulled) {

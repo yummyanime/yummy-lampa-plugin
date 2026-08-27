@@ -243,8 +243,14 @@
         }
         function annotate(entry) {
             var key = animeKey(entry);
-            if (!entry || !key || !reach[key]) return entry;
-            return Object.assign({}, entry, {max_episode: Math.max(reach[key], episodeNumber(entry))});
+            if (!entry || !key) return entry;
+            var currentEpisode = episodeNumber(entry);
+            var lastWatched = Math.max(reach[key] || 0, Number(entry.time || 0) > 0 ? currentEpisode : 0);
+            if (!lastWatched && !reach[key]) return entry;
+            return Object.assign({}, entry, {
+                max_episode: Math.max(reach[key] || 0, currentEpisode),
+                last_watched_episode: lastWatched
+            });
         }
 
         // The queue holds titles, not episodes. Finishing an episode advances a
@@ -360,33 +366,44 @@
             updated_at: Number(entry.updated_at || 0)
         };
         card.yani_resume.max_episode = Math.max(0, Number(entry.max_episode || 0));
+        card.yani_resume.last_watched_episode = Math.max(0, Number(entry.last_watched_episode || 0));
         card.yani_resume.resume_next = Boolean(entry.resume_next);
         card.yani_history_entry = entry;
         return card;
     }
 
-    function historyCard(entry, deps) {
+    function historyCard(entry, deps, enrich, loadDetail) {
         var source = Object.assign({}, entry.card || {}, {
             anime_id: entry.anime_id,
             title: entry.title || entry.card && entry.card.title || deps.t('untitled'),
             poster: entry.poster || entry.card && entry.card.poster || ''
         });
         var fallback = attachHistoryEntry(deps.toCard(source), entry);
-        if (entry.title && fallback.poster) return Promise.resolve(fallback);
-        return deps.detail(entry.anime_id).then(function (payload) {
+        if (!enrich && entry.title && fallback.poster) return Promise.resolve(fallback);
+        if (!loadDetail) return Promise.resolve(fallback);
+        return loadDetail(entry.anime_id).then(function (payload) {
             var value = payload && payload.response ? payload.response : payload;
-            return value ? attachHistoryEntry(deps.toCard(value), entry) : fallback;
+            return value ? attachHistoryEntry(deps.toCard(Object.assign({}, source, value)), entry) : fallback;
         }).catch(function () { return fallback; });
     }
 
     function history(object, deps) {
         var comp = new Lampa.InteractionCategory(object);
         var continueMode = object.mode === 'continue';
-        var limit = continueMode ? 100 : 30;
+        var limit = continueMode ? 300 : 30;
         var offset = 0;
         var hasMore = false;
         var seen = {};
         object.page = 1;
+
+        var detailRequests = {};
+
+        function loadDetail(id) {
+            var key = String(id || '');
+            if (!key || !deps.detail) return Promise.resolve(null);
+            if (!detailRequests[key]) detailRequests[key] = deps.detail(id);
+            return detailRequests[key];
+        }
 
         function uniqueEntries(entries) {
             return entries.filter(function (entry) {
@@ -407,7 +424,11 @@
         }
 
         function cardsFor(entries) {
-            return Promise.all(entries.map(function (entry) { return historyCard(entry, deps); }));
+            var mapper = function (entry) { return historyCard(entry, deps, continueMode, loadDetail); };
+            if (continueMode && window.LampaYaniCardRails && window.LampaYaniCardRails.mapLimit) {
+                return window.LampaYaniCardRails.mapLimit(entries, 3, mapper);
+            }
+            return Promise.all(entries.map(mapper));
         }
 
         // A queue shorter than the history it was built from is the expected
@@ -443,7 +464,7 @@
             var ids = Object.keys(wanted);
             if (!ids.length) return Promise.resolve({});
             return Promise.all(ids.map(function (id) {
-                return deps.detail(id).then(function (payload) {
+                return loadDetail(id).then(function (payload) {
                     var value = payload && payload.response ? payload.response : payload;
                     var episodes = value && (value.episodes || {}) || {};
                     var count = Number(episodes.aired || episodes.released || episodes.count || episodes.total || 0);

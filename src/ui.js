@@ -1432,7 +1432,7 @@
             if (playbackNeedsRefresh) scheduleHomeTask(function () {
                 var control = homeRequestControl();
                 Promise.all([
-                    LampaYaniApi.watchHistory(30, 0, control).then(LampaYaniHomeSections.normalizeRemoteHistory).catch(function (error) {
+                    LampaYaniApi.watchHistory(300, 0, control).then(LampaYaniHomeSections.normalizeRemoteHistory).catch(function (error) {
                         if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Server playback history is unavailable', error);
                         return null;
                     })
@@ -2387,7 +2387,7 @@
     var homeNotificationCacheLifetime = 300000;
     var homeDashboardCacheKey = 'yani_home_dashboard_snapshot';
     var homeDashboardCacheLifetime = 86400000;
-    var homePlaybackCacheKey = 'yani_home_playback_snapshot';
+    var homePlaybackCacheKey = 'yani_home_playback_snapshot_v2';
     var homePlaybackCacheLifetime = 300000;
 
     function readHomePlaybackSnapshot(userKey) {
@@ -2411,7 +2411,7 @@
         Lampa.Storage.set(homePlaybackCacheKey, JSON.stringify({
             user_key: String(userKey),
             updated_at: Date.now(),
-            entries: Array.isArray(entries) ? entries.slice(0, 100) : []
+            entries: Array.isArray(entries) ? entries.slice(0, 300) : []
         }));
     }
 

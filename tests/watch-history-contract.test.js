@@ -32,7 +32,7 @@ assert.ok(!/fetchExcluded/.test(ui), 'the queue must not filter by user lists');
 assert.ok(!/loadContinueWatchingExclusions/.test(ui), 'the user-list filter must be gone');
 assert.match(ui, /function applyPlaybackSnapshot\(remoteEntries\)/);
 assert.match(ui, /setPreview\(homeButtons\.continue_watching, '', ''\)/, 'empty continue queue must clear the dashboard title');
-assert.match(ui, /LampaYaniApi\.watchHistory\(30, 0, control\)\.then\(LampaYaniHomeSections\.normalizeRemoteHistory\)/);
+assert.match(ui, /LampaYaniApi\.watchHistory\(300, 0, control\)\.then\(LampaYaniHomeSections\.normalizeRemoteHistory\)/);
 assert.match(ui, /readHomePlaybackSnapshot\(playbackUserKey\)/);
 assert.match(ui, /cacheHomePlaybackSnapshot\(playbackUserKey, result\[0\]\)/);
 assert.match(ui, /importRemoteEntries\(remoteEntries\)/);
@@ -47,6 +47,11 @@ assert.match(model, /window\.LampaYaniUiUtils\.posterSources/, 'poster URLs must
 assert.match(fs.readFileSync('src/ui-utils.js', 'utf8'), /value\.huge/, 'large remote history posters must be supported');
 assert.match(ui, /LampaYaniPlaybackHistory\.create/);
 assert.match(ui, /historyCardRender: bindHistoryCardRender/);
+assert.match(sectionsSource, /var limit = continueMode \? 300 : 30/);
+assert.match(sectionsSource, /historyCard\(entry, deps, continueMode, loadDetail\)/);
+assert.match(sectionsSource, /LampaYaniCardRails\.mapLimit\(entries, 3, mapper\)/);
+assert.match(historySource, /playback\.last_watched_episode \|\| playback\.number/);
+assert.match(ui, /yani_home_playback_snapshot_v2/);
 
 const remote = history.normalizeRemoteHistory({response: [{
     anime_id: 42,

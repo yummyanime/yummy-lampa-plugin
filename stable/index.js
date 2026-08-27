@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.45.9',
+        version: '0.45.10',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -6915,7 +6915,8 @@ function pluginYummyAnime() {
             var duration = Math.max(0, Number(playback.duration || 0));
             var position = Math.max(0, Number(playback.time || 0));
             var percent = duration > 0 ? Math.min(100, Math.round(position / duration * 100)) : 0;
-            var label = playback.number ? t('episode') + ' ' + playback.number : t('continue_watching');
+            var episode = playback.last_watched_episode || playback.number;
+            var label = episode ? t('episode') + ' ' + episode : t('continue_watching');
             if (percent) label += ' · ' + percent + '%';
             view.append($('<span class="yani-card-history"></span>').text(label));
             if (duration > 0) {
@@ -6952,6 +6953,7 @@ function pluginYummyAnime() {
                     max_episode: saved.max_episode,
                     episodes_aired: saved.episodes_aired,
                     resume_next: Boolean(saved.resume_next),
+                    last_watched_episode: Number(saved.time || 0) > 0 ? Number(saved.number || 0) : 0,
                     video_id: saved.video_id,
                     time: saved.time,
                     duration: saved.duration,
@@ -6977,7 +6979,7 @@ function pluginYummyAnime() {
             if (!autoProgressSyncEnabled()) return Promise.resolve({imported: 0, skipped: true});
             if (!force && remotePull && Date.now() - remotePullAt < REMOTE_PULL_TTL) return remotePull;
             remotePullAt = Date.now();
-            remotePull = pullRemoteProgress(100).then(function (result) {
+            remotePull = pullRemoteProgress(300).then(function (result) {
                 if (result && result.imported) {
                     console.log('[YummyAnime] Imported ' + result.imported + ' history entries from the account');
                 }
@@ -6998,7 +7000,7 @@ function pluginYummyAnime() {
                 return;
             }
             if (window.Lampa && window.Lampa.Loading && window.Lampa.Loading.start) window.Lampa.Loading.start();
-            pullRemoteProgress(100).catch(function (error) {
+            pullRemoteProgress(300).catch(function (error) {
                 console.warn('[YummyAnime] Remote history pull failed', error);
                 return {imported: 0};
             }).then(function (pulled) {
@@ -10394,8 +10396,14 @@ function pluginYummyAnime() {
         }
         function annotate(entry) {
             var key = animeKey(entry);
-            if (!entry || !key || !reach[key]) return entry;
-            return Object.assign({}, entry, {max_episode: Math.max(reach[key], episodeNumber(entry))});
+            if (!entry || !key) return entry;
+            var currentEpisode = episodeNumber(entry);
+            var lastWatched = Math.max(reach[key] || 0, Number(entry.time || 0) > 0 ? currentEpisode : 0);
+            if (!lastWatched && !reach[key]) return entry;
+            return Object.assign({}, entry, {
+                max_episode: Math.max(reach[key] || 0, currentEpisode),
+                last_watched_episode: lastWatched
+            });
         }
 
         // The queue holds titles, not episodes. Finishing an episode advances a
@@ -10511,33 +10519,44 @@ function pluginYummyAnime() {
             updated_at: Number(entry.updated_at || 0)
         };
         card.yani_resume.max_episode = Math.max(0, Number(entry.max_episode || 0));
+        card.yani_resume.last_watched_episode = Math.max(0, Number(entry.last_watched_episode || 0));
         card.yani_resume.resume_next = Boolean(entry.resume_next);
         card.yani_history_entry = entry;
         return card;
     }
 
-    function historyCard(entry, deps) {
+    function historyCard(entry, deps, enrich, loadDetail) {
         var source = Object.assign({}, entry.card || {}, {
             anime_id: entry.anime_id,
             title: entry.title || entry.card && entry.card.title || deps.t('untitled'),
             poster: entry.poster || entry.card && entry.card.poster || ''
         });
         var fallback = attachHistoryEntry(deps.toCard(source), entry);
-        if (entry.title && fallback.poster) return Promise.resolve(fallback);
-        return deps.detail(entry.anime_id).then(function (payload) {
+        if (!enrich && entry.title && fallback.poster) return Promise.resolve(fallback);
+        if (!loadDetail) return Promise.resolve(fallback);
+        return loadDetail(entry.anime_id).then(function (payload) {
             var value = payload && payload.response ? payload.response : payload;
-            return value ? attachHistoryEntry(deps.toCard(value), entry) : fallback;
+            return value ? attachHistoryEntry(deps.toCard(Object.assign({}, source, value)), entry) : fallback;
         }).catch(function () { return fallback; });
     }
 
     function history(object, deps) {
         var comp = new Lampa.InteractionCategory(object);
         var continueMode = object.mode === 'continue';
-        var limit = continueMode ? 100 : 30;
+        var limit = continueMode ? 300 : 30;
         var offset = 0;
         var hasMore = false;
         var seen = {};
         object.page = 1;
+
+        var detailRequests = {};
+
+        function loadDetail(id) {
+            var key = String(id || '');
+            if (!key || !deps.detail) return Promise.resolve(null);
+            if (!detailRequests[key]) detailRequests[key] = deps.detail(id);
+            return detailRequests[key];
+        }
 
         function uniqueEntries(entries) {
             return entries.filter(function (entry) {
@@ -10558,7 +10577,11 @@ function pluginYummyAnime() {
         }
 
         function cardsFor(entries) {
-            return Promise.all(entries.map(function (entry) { return historyCard(entry, deps); }));
+            var mapper = function (entry) { return historyCard(entry, deps, continueMode, loadDetail); };
+            if (continueMode && window.LampaYaniCardRails && window.LampaYaniCardRails.mapLimit) {
+                return window.LampaYaniCardRails.mapLimit(entries, 3, mapper);
+            }
+            return Promise.all(entries.map(mapper));
         }
 
         // A queue shorter than the history it was built from is the expected
@@ -10594,7 +10617,7 @@ function pluginYummyAnime() {
             var ids = Object.keys(wanted);
             if (!ids.length) return Promise.resolve({});
             return Promise.all(ids.map(function (id) {
-                return deps.detail(id).then(function (payload) {
+                return loadDetail(id).then(function (payload) {
                     var value = payload && payload.response ? payload.response : payload;
                     var episodes = value && (value.episodes || {}) || {};
                     var count = Number(episodes.aired || episodes.released || episodes.count || episodes.total || 0);
@@ -14476,7 +14499,7 @@ function pluginYummyAnime() {
             if (playbackNeedsRefresh) scheduleHomeTask(function () {
                 var control = homeRequestControl();
                 Promise.all([
-                    LampaYaniApi.watchHistory(30, 0, control).then(LampaYaniHomeSections.normalizeRemoteHistory).catch(function (error) {
+                    LampaYaniApi.watchHistory(300, 0, control).then(LampaYaniHomeSections.normalizeRemoteHistory).catch(function (error) {
                         if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Server playback history is unavailable', error);
                         return null;
                     })
@@ -15431,7 +15454,7 @@ function pluginYummyAnime() {
     var homeNotificationCacheLifetime = 300000;
     var homeDashboardCacheKey = 'yani_home_dashboard_snapshot';
     var homeDashboardCacheLifetime = 86400000;
-    var homePlaybackCacheKey = 'yani_home_playback_snapshot';
+    var homePlaybackCacheKey = 'yani_home_playback_snapshot_v2';
     var homePlaybackCacheLifetime = 300000;
 
     function readHomePlaybackSnapshot(userKey) {
@@ -15455,7 +15478,7 @@ function pluginYummyAnime() {
         Lampa.Storage.set(homePlaybackCacheKey, JSON.stringify({
             user_key: String(userKey),
             updated_at: Date.now(),
-            entries: Array.isArray(entries) ? entries.slice(0, 100) : []
+            entries: Array.isArray(entries) ? entries.slice(0, 300) : []
         }));
     }
 
