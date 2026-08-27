@@ -24,7 +24,7 @@ assert.match(source, /yani_playback_history/);
 assert.match(source, /syncVideoWatches\(videos\)/);
 assert.match(source, /function importRemoteEntries/);
 assert.match(source, /function pullRemoteProgress/);
-assert.match(source, /watchHistory\(limit \|\| 100, 0\)/);
+assert.match(source, /fetchHistoryRange\(window\.LampaYaniApi\.watchHistory, maximum, 30\)/);
 // Signing in must refresh from the account immediately: the point of signing
 // in is to see what the other devices already watched.
 assert.match(ui, /onAuthorized: function \(\) \{ ensureRemoteHistory\(true\)/);

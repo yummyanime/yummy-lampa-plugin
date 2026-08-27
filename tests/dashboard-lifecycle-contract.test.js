@@ -15,7 +15,7 @@ assert.match(api, /watchHistory: function \(limit, offset, control\)/);
 
 assert.match(ui, /var homeAbortController = typeof AbortController !== 'undefined'/);
 assert.match(ui, /var homeTimers = \[\]/);
-assert.match(ui, /scheduleHomeTask\(function \(\) \{[\s\S]*?watchHistory\(300, 0, control\)/);
+assert.match(ui, /scheduleHomeTask\(function \(\) \{[\s\S]*?fetchHistoryRange\(LampaYaniApi\.watchHistory, 300, 30, control\)/);
 assert.match(ui, /}, 140 \* homeDelayScale\)/);
 assert.match(ui, /}, 420 \* homeDelayScale\)/);
 assert.match(ui, /}, 760 \* homeDelayScale\)/);

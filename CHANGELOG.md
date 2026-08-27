@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.12 — 2026-08-27
+
+- Fix Continue Watching appearing empty because a 300-record history request was sent as one unsupported API page | Refactor account history loading into 30-record pages with partial-result fallback
+
 ## 0.45.11 — 2026-08-27
 
 - Fix dashboard focus stalls by deferring background DOM updates until remote navigation becomes idle | Refactor live dashboard refreshes into a coalesced render queue

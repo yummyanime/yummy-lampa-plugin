@@ -4,7 +4,7 @@
     function historyPayloadItems(payload) {
         var value = payload && payload.response !== undefined ? payload.response : payload;
         if (Array.isArray(value)) return value;
-        return value && (value.items || value.data || value.history || value.watches) || [];
+        return value && (value.items || value.data || value.history || value.watches || value.results) || [];
     }
 
     function historyTimestamp(value) {
@@ -53,6 +53,32 @@
                 remote: true
             };
         }).filter(Boolean);
+    }
+
+    function fetchHistoryRange(fetchPage, maxItems, pageSize, control) {
+        var maximum = Math.max(1, Number(maxItems || 30));
+        var size = Math.max(1, Math.min(30, Number(pageSize || 30)));
+        var offset = 0;
+        var entries = [];
+
+        function next() {
+            return Promise.resolve(fetchPage(size, offset, control)).then(function (payload) {
+                var raw = historyPayloadItems(payload);
+                var normalized = normalizeRemoteHistory(payload);
+                if (normalized.length) entries = entries.concat(normalized);
+                offset += raw.length;
+                if (!raw.length || raw.length < size || offset >= maximum) return entries.slice(0, maximum);
+                return next();
+            }).catch(function (error) {
+                if (entries.length) {
+                    console.warn('[YummyAnime History] A later history page is unavailable', error);
+                    return entries.slice(0, maximum);
+                }
+                throw error;
+            });
+        }
+
+        return next();
     }
 
     function normalizeLocalHistory(saved) {
@@ -390,7 +416,8 @@
     function history(object, deps) {
         var comp = new Lampa.InteractionCategory(object);
         var continueMode = object.mode === 'continue';
-        var limit = continueMode ? 300 : 30;
+        var limit = 30;
+        var continueLimit = 300;
         var offset = 0;
         var hasMore = false;
         var seen = {};
@@ -416,6 +443,11 @@
 
         function loadRemotePage() {
             if (!deps.authorized()) return Promise.resolve({entries: [], count: 0});
+            if (continueMode) {
+                return fetchHistoryRange(deps.fetchRemote, continueLimit, limit).then(function (entries) {
+                    return {entries: entries, count: entries.length};
+                });
+            }
             return deps.fetchRemote(limit, offset).then(function (payload) {
                 var raw = historyPayloadItems(payload);
                 offset += raw.length;
@@ -480,8 +512,10 @@
         comp.create = function () {
             var self = this;
             var local = deps.history();
+            var remoteFailed = false;
             this.activity.loader(true);
             var remote = loadRemotePage().catch(function (error) {
+                remoteFailed = true;
                 console.warn('[YummyAnime History] Server history is unavailable', error);
                 return {entries: [], count: 0, failed: true};
             });
@@ -498,7 +532,7 @@
             }).then(function (cards) {
                 var totalPages = hasMore ? 2 : 1;
                 self.build({results: cards.filter(Boolean), total_pages: totalPages, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
-                if (!cards.length) Lampa.Noty.show(deps.t('history_empty'));
+                if (!cards.length) Lampa.Noty.show(deps.t(remoteFailed ? 'history_load_error' : 'history_empty'));
             }).catch(function (error) {
                 console.error('[YummyAnime History]', error);
                 self.activity.loader(false);
@@ -536,6 +570,7 @@
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.HomeSections = window.LampaYaniHomeSections = {
         history: history,
+        fetchHistoryRange: fetchHistoryRange,
         normalizeRemoteHistory: normalizeRemoteHistory,
         normalizeLocalHistory: normalizeLocalHistory,
         mergeHistory: mergeHistory,

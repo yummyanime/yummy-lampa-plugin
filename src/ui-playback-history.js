@@ -190,8 +190,12 @@
             if (!window.LampaYaniAuth || !LampaYaniAuth.token() || !window.LampaYaniApi || !LampaYaniApi.watchHistory) {
                 return Promise.resolve({imported: 0});
             }
-            return window.LampaYaniApi.watchHistory(limit || 100, 0).then(function (payload) {
-                var Home = window.LampaYaniHomeSections;
+            var Home = window.LampaYaniHomeSections;
+            var maximum = Math.max(1, Number(limit || 100));
+            if (Home && Home.fetchHistoryRange) {
+                return Home.fetchHistoryRange(window.LampaYaniApi.watchHistory, maximum, 30).then(importRemoteEntries);
+            }
+            return window.LampaYaniApi.watchHistory(Math.min(30, maximum), 0).then(function (payload) {
                 var remote = Home && Home.normalizeRemoteHistory ? Home.normalizeRemoteHistory(payload) : [];
                 return importRemoteEntries(remote);
             });

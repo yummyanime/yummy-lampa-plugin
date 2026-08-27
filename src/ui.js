@@ -1488,7 +1488,7 @@
             if (playbackNeedsRefresh) scheduleHomeTask(function () {
                 var control = homeRequestControl();
                 Promise.all([
-                    LampaYaniApi.watchHistory(300, 0, control).then(LampaYaniHomeSections.normalizeRemoteHistory).catch(function (error) {
+                    LampaYaniHomeSections.fetchHistoryRange(LampaYaniApi.watchHistory, 300, 30, control).catch(function (error) {
                         if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Server playback history is unavailable', error);
                         return null;
                     })
@@ -2591,7 +2591,7 @@
         return resolveUserListsUserId().then(function (id) {
             return Promise.all([
                 loadUserListsSnapshot(id),
-                LampaYaniApi.watchHistory(100, 0).catch(function () { return []; })
+                LampaYaniHomeSections.fetchHistoryRange(LampaYaniApi.watchHistory, 100, 30).catch(function () { return []; })
             ]);
         }).then(function (result) {
             var definitions = accountListDefinitions();
