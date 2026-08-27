@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.13 — 2026-08-27
+
+- Refactor collection tiles with prominent two-line titles, a deeper readability gradient and TV-focus accent
+
 ## 0.45.12 — 2026-08-27
 
 - Fix Continue Watching appearing empty because a 300-record history request was sent as one unsupported API page | Refactor account history loading into 30-record pages with partial-result fallback

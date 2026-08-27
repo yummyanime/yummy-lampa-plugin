@@ -69,7 +69,10 @@ assert.match(css, /\.yani-collection-tile-card\.focus \.card__view/);
 assert.match(css, /\.yani-collection-tiles-line \.card .card__view/);
 assert.match(css, /\.yani-collections-tile-catalog \.card__view::after/);
 assert.match(css, /\.yani-collections-tile-catalog \.card > \.card__title/);
+assert.match(css, /\.yani-collections-tile-catalog \.yani-collection-tile-card__copy strong/);
 assert.match(css, /-webkit-line-clamp: 2/);
+assert.match(css, /border-left: \.16em solid #ef6470/);
+assert.match(css, /font-size: 1\.08em/);
 assert.match(collections, /onFocus: function \(target, card\)/);
 
 const context = {window: {}};
