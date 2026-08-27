@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.1 — 2026-08-27
+
+- Fix account authorization state in settings after sign-out
+
 ## 0.46.0 — 2026-08-27
 
 - Refactor For You into a personal event feed built from lists, watch history, subscriptions, schedule, new videos, and notifications 

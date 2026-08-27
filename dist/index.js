@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.0',
+        version: '0.46.1',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -18063,53 +18063,20 @@ function pluginYummyAnime() {
             }
         });
 
-        var authorized = Boolean(LampaYaniAuth.token());
-        if (authorized) {
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_account_state', type: 'button'},
-                field: {name: t('authorized') + ': ' + authDisplayName(), description: t('auth_manage_description')},
-                onChange: openSettingsLogin
-            });
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
-                field: {name: t('auto_sync_progress'), description: t('auto_sync_progress_description')}
-            });
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_account_refresh', type: 'button'},
-                field: {name: t('refresh_name'), description: t('refresh_description')},
-                onChange: function () {
-                    LampaYaniAuth.refresh().then(function () {
-                        Lampa.Noty.show(t('token_refreshed'));
-                    }).catch(function (error) {
-                        console.error('[YummyAnime]', error);
-                        Lampa.Noty.show(t('token_refresh_error'));
-                    });
-                }
-            });
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_account_logout', type: 'button'},
-                field: {name: t('logout_name'), description: t('logout_description')},
-                onChange: function () {
-                    LampaYaniAuth.logout().then(function () {
-                        Lampa.Noty.show(t('logged_out'));
-                    }).catch(function (error) {
-                        console.error('[YummyAnime]', error);
-                        Lampa.Noty.show(t('token_removed'));
-                    });
-                }
-            });
-        } else {
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_account_login', type: 'button'},
-                field: {name: t('login_name'), description: t('login_description')},
-                onChange: openSettingsLogin
-            });
-        }
+        // Keep the settings registry stable. The account page reads the token every
+        // time it renders, so sign-in and sign-out are reflected immediately without
+        // leaving stale conditional rows in Lampa's one-time settings registry.
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_account_state', type: 'button'},
+            field: {name: t('auth_title'), description: t('auth_manage_description')},
+            onChange: openSettingsLogin
+        });
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
+            field: {name: t('auto_sync_progress'), description: t('auto_sync_progress_description')}
+        });
 
         Lampa.SettingsApi.addParam({
             component: 'yani',
@@ -18196,11 +18163,6 @@ function pluginYummyAnime() {
             title: 'YummyAnime · ' + t('auth_title'),
             component: 'yani_auth'
         });
-    }
-
-    function authDisplayName() {
-        var account = LampaYaniAuth.get();
-        return account.display_name || account.login || t('user');
     }
 
     function editLampacServer() {
