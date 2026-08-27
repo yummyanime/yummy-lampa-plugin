@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.8 — 2026-08-28
+
+- Add registration guidance to authorization screens
+
 ## 0.46.7 — 2026-08-28
 
 - Fix internal player focus restoration after closing playback

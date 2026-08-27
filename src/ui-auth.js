@@ -14,7 +14,7 @@
             field(form, 'password', deps.t('auth_password'), password ? '••••••••' : deps.t('auth_password_empty'), function () { deps.input({title: deps.t('password_prompt'), value: '', password: true, nosave: true, align: 'center'}, function (value) { password = String(value || ''); render(); setTimeout(refreshFocus, 30); }); });
             content.append(form); var actions = $('<div class="yani-auth__actions"></div>');
             if (!authorized) action(actions, 'submit', deps.t('auth_submit'), 'primary', submit); else { action(actions, 'refresh', deps.t('refresh_name'), '', refresh); action(actions, 'logout', deps.t('logout_name'), '', logout); }
-            content.append(actions); if (authorized && account.login) content.append($('<div class="yani-auth__account"></div>').text(deps.t('auth_account') + ': ' + account.login)); content.append($('<div class="yani-auth__hint"></div>').text(deps.t('auth_hint')));
+            content.append(actions); if (authorized && account.login) content.append($('<div class="yani-auth__account"></div>').text(deps.t('auth_account') + ': ' + account.login)); content.append($('<div class="yani-auth__hint"></div>').text(deps.hint ? deps.hint() : deps.t('auth_hint')));
             setTimeout(refreshFocus, 0);
         }
         function field(parent, key, title, value, handler) { var item = focus($('<div class="yani-auth__field selector"></div>'), key); item.append($('<div class="yani-auth__field-title"></div>').text(title), $('<div class="yani-auth__field-value"></div>').text(value)); item.on('hover:enter', handler); parent.append(item); }

@@ -2,7 +2,7 @@
 
 An unofficial YummyAnime extension for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.46.7`
+Current version: `0.46.8`
 
 [Changelog](CHANGELOG.md) · [Technical documentation](docs/README.en.md)
 
@@ -22,7 +22,7 @@ Use the stable version for everyday use.
 
 ## Sign in
 
-Open `Settings → YummyAnime → Sign in to YummyAnime`, then enter your username or email and password.
+Create a YummyAnime account at `https://en.yummyani.me/`. To sign in to the plugin, enter your YummyAnime login or email and password under `Settings → YummyAnime → Sign in to YummyAnime`.
 
 Signing in enables your profile, notifications, ratings, favorites, personal lists, and watch-progress sync. The password is not stored. The extension stores a Bearer token on the device and refreshes it automatically.
 

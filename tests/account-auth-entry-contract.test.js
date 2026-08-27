@@ -3,7 +3,7 @@ const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 
-assert.match(ui, /addAccountNotice\(t\('not_logged_in'\), t\('login_hint'\), \{title: t\('login_name'\), handler: openAccountLogin\}\)/,
+assert.match(ui, /addAccountNotice\(t\('not_logged_in'\), localizedAuthText\('login_hint'\), \{title: t\('login_name'\), handler: openAccountLogin\}\)/,
     'the signed-out Account page must offer a direct sign-in action');
 assert.match(ui, /yani-account__login-button selector/,
     'the Account sign-in action must participate in TV remote focus navigation');

@@ -10,6 +10,9 @@ assert.match(ui, /name: 'yani_auto_sync_progress', type: 'trigger', default: tru
     'progress synchronization remains configurable while signed out');
 assert.doesNotMatch(ui, /name: 'yani_account_(?:login|logout|refresh)'/,
     'settings must not retain authorization-dependent rows after the token changes');
+assert.ok(ui.includes('function localizedAuthText(key)'), 'authorization text must use the localized website helper');
+assert.ok(ui.includes("hint: function () { return localizedAuthText('auth_hint'); }"), 'the authorization page must receive the shared registration hint');
+assert.ok(authPage.includes("deps.hint ? deps.hint() : deps.t('auth_hint')"), 'the authorization page must render the registration and credential hint');
 assert.match(authPage, /authorized = Boolean\(LampaYaniAuth\.token\(\)\)/,
     'the account page must derive authorization from the current token on every render');
 assert.match(authPage, /function logout\(\)[\s\S]{0,260}LampaYaniAuth\.logout\(\)[\s\S]{0,260}render\(\)/,

@@ -2191,7 +2191,7 @@
             this.activity.loader(true);
 
             if (!LampaYaniAuth.token()) {
-                addAccountNotice(t('not_logged_in'), t('login_hint'), {title: t('login_name'), handler: openAccountLogin});
+                addAccountNotice(t('not_logged_in'), localizedAuthText('login_hint'), {title: t('login_name'), handler: openAccountLogin});
                 finish(self);
                 return;
             }
@@ -2396,6 +2396,7 @@
             t: t,
             input: showYummyInput,
             goBack: goBack,
+            hint: function () { return localizedAuthText('auth_hint'); },
             onAuthorized: function () {
                 ensureRemoteHistory(true).catch(function () {});
                 if (object && object.refresh_account_on_authorized) {
@@ -2412,7 +2413,7 @@
     }
 
     function openUserLists() {
-        if (!LampaYaniAuth.token()) return Lampa.Noty.show(t('login_required'));
+        if (!LampaYaniAuth.token()) return Lampa.Noty.show(localizedAuthText('login_required'));
         Lampa.Activity.push({
             url: 'yani/user-lists',
             title: 'YummyAnime · ' + t('user_lists'),
@@ -2766,7 +2767,7 @@
     }
 
     function openUserListShortcut(definition) {
-        if (!LampaYaniAuth.token()) return Lampa.Noty.show(t('login_required'));
+        if (!LampaYaniAuth.token()) return Lampa.Noty.show(localizedAuthText('login_required'));
         pushAccountList(definition, [], true);
         return Promise.resolve();
     }
@@ -4738,7 +4739,7 @@
         Lampa.SettingsApi.addParam({
             component: 'yani',
             param: {name: 'yani_account_state', type: 'button'},
-            field: {name: t('auth_title'), description: t('auth_manage_description')},
+            field: {name: t('auth_title'), description: localizedAuthText('auth_manage_description')},
             onChange: openSettingsLogin
         });
         Lampa.SettingsApi.addParam({
@@ -4809,6 +4810,9 @@
         return language === 'en' || language === 'uk' ? 'https://en.yummyani.me/' : 'https://ru.yummyani.me/';
     }
 
+    function localizedAuthText(key) {
+        return String(t(key) || '').replace(/\{site\}/g, yummyWebsiteUrl());
+    }
     function yummyTitleUrl(card) {
         var slug = card && card.yani_url;
         if (!slug || typeof slug !== 'string') return '';

@@ -64,6 +64,12 @@ node scripts/release.js --promote 0.41.38
 
 The `YummyAnime → Status` screen shows YummyStatus history for three hours, one day, one week or one month. GitHub Actions refreshes the monitoring snapshot every five minutes.
 
+## Authorization
+
+Create a YummyAnime account at `https://en.yummyani.me/`. To sign in to the plugin, use your YummyAnime login or email and password under `Settings → YummyAnime → Sign in to YummyAnime`.
+
+The password is used only for sign-in and is not stored by the plugin. After successful authorization, the plugin stores and automatically refreshes the personal Bearer token.
+
 ## API
 
 The extension uses:
