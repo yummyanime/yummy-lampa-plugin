@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.1',
+        version: '0.46.2',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -15557,7 +15557,7 @@ function pluginYummyAnime() {
             this.activity.loader(true);
 
             if (!LampaYaniAuth.token()) {
-                addAccountNotice(t('not_logged_in'), t('login_hint'));
+                addAccountNotice(t('not_logged_in'), t('login_hint'), {title: t('login_name'), handler: openAccountLogin});
                 finish(self);
                 return;
             }
@@ -15593,11 +15593,21 @@ function pluginYummyAnime() {
             return payload && payload.response ? payload.response : payload || [];
         }
 
-        function addAccountNotice(title, description) {
-            var notice = $('<div class="yani-account__notice selector"></div>');
+        function addAccountNotice(title, description, action) {
+            var notice = $('<div class="yani-account__notice"></div>');
             notice.append($('<div class="yani-account__notice-title"></div>').text(title));
             notice.append($('<div class="yani-account__notice-text"></div>').text(description));
-            bindAccountFocus(notice);
+            if (action && action.handler) {
+                var button = $('<div class="yani-account__notification-button yani-account__login-button selector"></div>');
+                button.append($('<strong></strong>').text(action.title || t('login_name')));
+                button.append($('<span aria-hidden="true">→</span>'));
+                bindAccountFocus(button);
+                button.on('hover:enter click.yaniAccountLogin', action.handler);
+                notice.append(button);
+            } else {
+                notice.addClass('selector');
+                bindAccountFocus(notice);
+            }
             content.append(notice);
         }
 
@@ -15745,7 +15755,14 @@ function pluginYummyAnime() {
             t: t,
             input: showYummyInput,
             goBack: goBack,
-            onAuthorized: function () { ensureRemoteHistory(true).catch(function () {}); }
+            onAuthorized: function () {
+                ensureRemoteHistory(true).catch(function () {});
+                if (object && object.refresh_account_on_authorized) {
+                    setTimeout(function () {
+                        Lampa.Activity.replace({url: 'yani/account', title: 'YummyAnime ' + t('account'), component: 'yani_account'});
+                    }, 0);
+                }
+            }
         });
     }
 
@@ -18162,6 +18179,15 @@ function pluginYummyAnime() {
             url: 'yani/auth',
             title: 'YummyAnime · ' + t('auth_title'),
             component: 'yani_auth'
+        });
+    }
+
+    function openAccountLogin() {
+        Lampa.Activity.push({
+            url: 'yani/auth',
+            title: 'YummyAnime · ' + t('auth_title'),
+            component: 'yani_auth',
+            refresh_account_on_authorized: true
         });
     }
 

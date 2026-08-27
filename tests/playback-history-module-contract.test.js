@@ -27,7 +27,7 @@ assert.match(source, /function pullRemoteProgress/);
 assert.match(source, /fetchHistoryRange\(window\.LampaYaniApi\.watchHistory, maximum, 30\)/);
 // Signing in must refresh from the account immediately: the point of signing
 // in is to see what the other devices already watched.
-assert.match(ui, /onAuthorized: function \(\) \{ ensureRemoteHistory\(true\)/);
+assert.match(ui, /onAuthorized: function \(\) \{[\s\S]{0,180}ensureRemoteHistory\(true\)/);
 assert.match(source, /function ensureRemoteHistory\(force\)/, 'the shared account history must have a single pull entry point');
 assert.match(ui, /ensureRemoteHistory\(\);/, 'the account history must be pulled when the plugin starts');
 

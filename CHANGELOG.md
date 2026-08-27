@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.2 — 2026-08-27
+
+- Add dashboard Account authorization with immediate profile refresh
+
 ## 0.46.1 — 2026-08-27
 
 - Fix account authorization state in settings after sign-out
