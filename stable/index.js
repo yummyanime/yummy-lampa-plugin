@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.6',
+        version: '0.46.7',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -7288,8 +7288,11 @@ function pluginYummyAnime() {
                     if (playbackReturnState.session !== session || !playbackReturnState.active) return;
                     if (verifyOnly) {
                         var activeController = currentControllerName();
+                        var expectedController = snapshot.controller && snapshot.controller !== 'select' ? snapshot.controller : 'content';
                         var activeFocus = document.querySelector('.selector.focus');
-                        if (activeController && activeController !== 'select' && activeFocus) {
+                        var focusInCollection = !snapshot.collection || !snapshot.collection.length ||
+                            snapshot.collection[0] === activeFocus || snapshot.collection[0].contains(activeFocus);
+                        if (activeController === expectedController && activeFocus && focusInCollection) {
                             clearPlaybackReturn();
                             return;
                         }
@@ -16769,7 +16772,9 @@ function pluginYummyAnime() {
             if (Lampa.Player.callback) {
                 Lampa.Player.callback(function () {
                     flushPlaybackProgress(true, callbackContext);
-                    restorePlaybackInteraction();
+                    // Player.callback can fire before Lampa finishes removing its
+                    // player controller. Verify the detail focus after that lifecycle.
+                    restorePlaybackInteraction(null, {retryDelays: [250, 700]});
                 });
             }
             return true;

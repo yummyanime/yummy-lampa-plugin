@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.7 — 2026-08-28
+
+- Fix internal player focus restoration after closing playback
+
 ## 0.46.6 — 2026-08-27
 
 - Fix focus restoration after returning from external players

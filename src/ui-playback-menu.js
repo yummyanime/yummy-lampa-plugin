@@ -154,8 +154,11 @@
                     if (playbackReturnState.session !== session || !playbackReturnState.active) return;
                     if (verifyOnly) {
                         var activeController = currentControllerName();
+                        var expectedController = snapshot.controller && snapshot.controller !== 'select' ? snapshot.controller : 'content';
                         var activeFocus = document.querySelector('.selector.focus');
-                        if (activeController && activeController !== 'select' && activeFocus) {
+                        var focusInCollection = !snapshot.collection || !snapshot.collection.length ||
+                            snapshot.collection[0] === activeFocus || snapshot.collection[0].contains(activeFocus);
+                        if (activeController === expectedController && activeFocus && focusInCollection) {
                             clearPlaybackReturn();
                             return;
                         }

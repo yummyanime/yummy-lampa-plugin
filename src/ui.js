@@ -3356,7 +3356,9 @@
             if (Lampa.Player.callback) {
                 Lampa.Player.callback(function () {
                     flushPlaybackProgress(true, callbackContext);
-                    restorePlaybackInteraction();
+                    // Player.callback can fire before Lampa finishes removing its
+                    // player controller. Verify the detail focus after that lifecycle.
+                    restorePlaybackInteraction(null, {retryDelays: [250, 700]});
                 });
             }
             return true;
