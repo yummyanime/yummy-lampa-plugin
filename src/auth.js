@@ -26,9 +26,24 @@
         return LampaYaniConfig.applicationToken ? LampaYaniConfig.applicationToken() : LampaYaniConfig.applicationHeader;
     }
 
+    function emitAuthorizationChanged(authorized) {
+        if (typeof document === 'undefined' || !document.dispatchEvent) return;
+        var detail = {authorized: Boolean(authorized)};
+        var event = null;
+        if (typeof CustomEvent === 'function') event = new CustomEvent('yani:auth-changed', {detail: detail});
+        else if (document.createEvent) {
+            event = document.createEvent('CustomEvent');
+            event.initCustomEvent('yani:auth-changed', false, false, detail);
+        }
+        if (event) document.dispatchEvent(event);
+    }
+
     function persist(data) {
+        var wasAuthorized = Boolean(tokenFrom(readStored()));
         memory = data || {};
         Lampa.Storage.set(key, JSON.stringify(memory));
+        var authorized = Boolean(tokenFrom(memory));
+        if (authorized !== wasAuthorized) emitAuthorizationChanged(authorized);
         return memory;
     }
 

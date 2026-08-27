@@ -2,7 +2,7 @@
 
 An unofficial YummyAnime extension for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.46.2`
+Current version: `0.46.4`
 
 [Changelog](CHANGELOG.md) · [Technical documentation](docs/README.en.md)
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.46.4 — 2026-08-27
+
+- Fix immediate dashboard refresh after account sign-in and sign-out
+
+## 0.46.3 — 2026-08-27
+
+- Add sign-out action to the bottom of dashboard Account
+
 ## 0.46.2 — 2026-08-27
 
 - Add dashboard Account authorization with immediate profile refresh

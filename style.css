@@ -2293,6 +2293,16 @@ body > .yani-skip-prompt {
 
 .yani-account__notification-button.focus { background: #287da9; box-shadow: 0 0 0 .14em rgba(98,201,255,.65); }
 .yani-account__notification-button span { color: #72d8ff; }
+.yani-account__logout-button {
+    margin-top: 2.2em;
+    border-color: rgba(255, 112, 132, .38);
+    background: rgba(105, 35, 49, .72);
+}
+.yani-account__logout-button span { color: rgba(255, 218, 224, .76); }
+.yani-account__logout-button.focus {
+    background: #cf4960;
+    box-shadow: 0 0 0 .14em rgba(255, 137, 157, .7);
+}
 .yani-notifications__content {
     width: min(78em, calc(100vw - 4em));
     margin: 0 auto;

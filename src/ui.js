@@ -576,6 +576,13 @@
         var homeNavigationUntil = 0;
         var homePendingRenders = {};
         var homeRenderIdleDelay = 450;
+        var homeAuthorized = Boolean(LampaYaniAuth.token());
+        var homeAuthorizationChanged = false;
+        function onHomeAuthorizationChanged() {
+            homeAuthorizationChanged = true;
+            userListsSnapshot = null;
+        }
+        if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('yani:auth-changed', onHomeAuthorizationChanged);
         var navigatorInfo = window.navigator || {};
         var reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         var lowMemoryDevice = Number(navigatorInfo.deviceMemory || 0) > 0 && Number(navigatorInfo.deviceMemory) <= 2;
@@ -1655,6 +1662,15 @@
         };
 
         this.start = function () {
+            if (homeAuthorizationChanged || homeAuthorized !== Boolean(LampaYaniAuth.token())) {
+                homeAuthorizationChanged = false;
+                Lampa.Activity.replace({
+                    url: object && object.url || 'yani/home',
+                    title: object && object.title || 'YummyAnime',
+                    component: 'yani_home'
+                });
+                return;
+            }
             refreshContinueWatching();
             Lampa.Controller.add('content', {
                 toggle: function () {
@@ -1734,6 +1750,7 @@
             homeRenderIdleTimer = homeRenderFrame = 0;
             homePendingRenders = {};
             if (homeAbortController) homeAbortController.abort();
+            if (typeof document !== 'undefined' && document.removeEventListener) document.removeEventListener('yani:auth-changed', onHomeAuthorizationChanged);
             homeButtons = {};
             currentEpisodeFlow = null;
             preferredHomeKey = 'catalog';
@@ -2306,6 +2323,13 @@
             });
             content.append(listGrid);
             renderAccountStatistics(genreStats, ratingStats, typeStats);
+
+            var logoutButton = $('<div class="yani-account__notification-button yani-account__logout-button selector"></div>');
+            logoutButton.append($('<strong></strong>').text(t('logout_name')));
+            logoutButton.append($('<span></span>').text(t('logout_description')));
+            bindAccountFocus(logoutButton);
+            logoutButton.on('hover:enter click.yaniAccountLogout', logoutFromAccount);
+            content.append(logoutButton);
         }
 
         function renderAccountStatistics(genreStats, ratingStats, typeStats) {
@@ -4804,6 +4828,21 @@
             title: 'YummyAnime · ' + t('auth_title'),
             component: 'yani_auth',
             refresh_account_on_authorized: true
+        });
+    }
+
+    var accountLogoutPending = false;
+    function logoutFromAccount() {
+        if (accountLogoutPending) return;
+        accountLogoutPending = true;
+        LampaYaniAuth.logout().then(function () {
+            Lampa.Noty.show(t('logged_out'));
+        }).catch(function (error) {
+            console.error('[YummyAnime]', error);
+            Lampa.Noty.show(t('token_removed'));
+        }).then(function () {
+            accountLogoutPending = false;
+            Lampa.Activity.replace({url: 'yani/account', title: 'YummyAnime ' + t('account'), component: 'yani_account'});
         });
     }
 
