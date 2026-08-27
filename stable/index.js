@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.8',
+        version: '0.46.10',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -321,9 +321,16 @@ function pluginYummyAnime() {
     messages.ru.playback_target_external = 'Внешний Android-плеер';
     messages.ru.playback_target_internal = 'Внутренний плеер Lampa';
     messages.ru.playback_services = 'Сервисы и источники';
+    messages.ru.settings_account_section = 'Аккаунт и синхронизация';
+    messages.ru.settings_interface_section = 'Интерфейс';
+    messages.ru.settings_playback_section = 'Воспроизведение';
+    messages.ru.settings_integrations_section = 'Дополнительные возможности';
+    messages.ru.settings_about_section = 'О расширении';
     messages.ru.display_sources = 'Отображать источники';
     messages.ru.display_sources_description = 'Какие видеосервисы показывать в списке озвучек при просмотре';
     messages.ru.source_visibility_description = 'Показывать этот источник в списке озвучек';
+    messages.ru.source_external_support_description = 'Экспериментальный источник. Для воспроизведения могут потребоваться внешние компоненты';
+    messages.ru.source_external_support_warning = '{source} включён. Стабильное воспроизведение без дополнительного внешнего функционала не гарантируется.';
     messages.ru.no_enabled_sources = 'Все источники скрыты в настройках. Включите хотя бы один в «Отображать источники»';
     messages.ru.choose_voice = 'Выберите озвучку и источник';
     messages.ru.yummytv_integration = 'Интеграция с YummyTV';
@@ -400,9 +407,16 @@ function pluginYummyAnime() {
     messages.en.playback_target_external = 'External Android player';
     messages.en.playback_target_internal = 'Internal Lampa player';
     messages.en.playback_services = 'Services and sources';
+    messages.en.settings_account_section = 'Account and sync';
+    messages.en.settings_interface_section = 'Interface';
+    messages.en.settings_playback_section = 'Playback';
+    messages.en.settings_integrations_section = 'Additional integrations';
+    messages.en.settings_about_section = 'About';
     messages.en.display_sources = 'Show sources';
     messages.en.display_sources_description = 'Which video services appear in the dubbing list when watching';
     messages.en.source_visibility_description = 'Show this source in the dubbing list';
+    messages.en.source_external_support_description = 'Experimental source. Playback may require additional external components';
+    messages.en.source_external_support_warning = '{source} is enabled. Reliable playback is not guaranteed without additional external functionality.';
     messages.en.no_enabled_sources = 'All sources are hidden in settings. Enable at least one under “Show sources”';
     messages.en.choose_voice = 'Choose dubbing and source';
     messages.en.yummytv_integration = 'YummyTV integration';
@@ -626,6 +640,13 @@ function pluginYummyAnime() {
     messages.uk.display_sources = 'Показувати джерела';
     messages.uk.display_sources_description = 'Які відеосервіси показувати в списку озвучень під час перегляду';
     messages.uk.source_visibility_description = 'Показувати це джерело в списку озвучень';
+    messages.uk.settings_account_section = 'Обліковий запис і синхронізація';
+    messages.uk.settings_interface_section = 'Інтерфейс';
+    messages.uk.settings_playback_section = 'Відтворення';
+    messages.uk.settings_integrations_section = 'Додаткові можливості';
+    messages.uk.settings_about_section = 'Про розширення';
+    messages.uk.source_external_support_description = 'Експериментальне джерело. Для відтворення можуть знадобитися зовнішні компоненти';
+    messages.uk.source_external_support_warning = '{source} увімкнено. Стабільне відтворення без додаткового зовнішнього функціоналу не гарантується.';
     messages.uk.no_enabled_sources = 'Усі джерела приховано в налаштуваннях. Увімкніть хоча б одне в «Показувати джерела»';
     messages.uk.choose_playback = 'Виберіть плеєр';
     messages.uk.watch_external_player = 'Зовнішній Android-плеєр';
@@ -2667,6 +2688,22 @@ function pluginYummyAnime() {
         return false;
     }
 
+    function isAndroidTvPlatform() {
+        if (!isAndroidPlatform()) return false;
+        var lampa = window.Lampa;
+        var platform = lampa && lampa.Platform;
+        if (platform && typeof platform.is === 'function' && (
+            platform.is('android_tv') || platform.is('androidtv') || platform.is('google_tv')
+        )) return true;
+        var platformName = platform && typeof platform.get === 'function' ? String(platform.get() || '') : '';
+        if (/android[ _-]?tv|google[ _-]?tv/i.test(platformName)) return true;
+        var userAgent = window.navigator && window.navigator.userAgent ? String(window.navigator.userAgent) : '';
+        if (/android tv|google tv|aft\w*|bravia|shield android tv|smart-tv|smarttv/i.test(userAgent)) return true;
+        // Android TV WebViews commonly omit the Mobile token. Android phones and
+        // tablets include it, so the integration stays hidden there.
+        return !/\bmobile\b/i.test(userAgent);
+    }
+
     function titleScriptRank(title) {
         if (/[A-Za-z]/.test(title) && !/[А-Яа-яЁё]/.test(title)) return 0;
         if (/[\u3040-\u30ff\u3400-\u9fff]/.test(title)) return 1;
@@ -3194,6 +3231,7 @@ function pluginYummyAnime() {
         titleValues: titleValues,
         normalizeMatchTitle: normalizeMatchTitle,
         isAndroidPlatform: isAndroidPlatform,
+        isAndroidTvPlatform: isAndroidTvPlatform,
         stripSeasonSuffix: stripSeasonSuffix,
         parseSeasonHint: parseSeasonHint,
         cardSeasonHint: cardSeasonHint,
@@ -16795,7 +16833,29 @@ function pluginYummyAnime() {
             : false;
     }
 
+    function isAndroidTvPlatform() {
+        return window.LampaYaniUiUtils && typeof LampaYaniUiUtils.isAndroidTvPlatform === 'function'
+            ? LampaYaniUiUtils.isAndroidTvPlatform()
+            : false;
+    }
+
     var PLAYBACK_SOURCE_IDS = ['kodik', 'alloha', 'cvh', 'sibnet', 'aksor'];
+    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
+    var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
+
+    function playbackSourceDefaultEnabled(sourceId) {
+        return EXPERIMENTAL_PLAYBACK_SOURCE_IDS.indexOf(sourceId) < 0;
+    }
+
+    function playbackSourceLabel(sourceId) {
+        return PLAYBACK_SOURCE_LABELS[sourceId] || String(sourceId || '');
+    }
+
+    function triggerSettingEnabled(value, storageKey, fallback) {
+        if (value && typeof value === 'object') value = value.value;
+        if (value === undefined && Lampa.Storage && Lampa.Storage.get) value = Lampa.Storage.get(storageKey, fallback);
+        return value === true || value === 'true' || value === 1 || value === '1';
+    }
 
     function migrateLegacyPlayerPreference() {
         if (!Lampa.Storage || Lampa.Storage.get('yani_player_pref_migrated', false)) return;
@@ -16819,8 +16879,9 @@ function pluginYummyAnime() {
 
     function isPlaybackSourceEnabled(sourceId) {
         if (!sourceId) return true;
-        if (!Lampa.Storage || !Lampa.Storage.get) return true;
-        var value = Lampa.Storage.get('yani_source_' + sourceId, true);
+        var fallback = playbackSourceDefaultEnabled(sourceId);
+        if (!Lampa.Storage || !Lampa.Storage.get) return fallback;
+        var value = Lampa.Storage.get('yani_source_' + sourceId, fallback);
         return value !== false && value !== 'false' && value !== 0 && value !== '0';
     }
 
@@ -17763,6 +17824,7 @@ function pluginYummyAnime() {
     }
 
     function yummyTvEnabled() {
+        if (!isAndroidTvPlatform()) return false;
         if (!Lampa.Storage || !Lampa.Storage.get) return false;
         var value = Lampa.Storage.get('yani_yummytv_enabled', false);
         return value === true || value === 'true' || value === 1 || value === '1';
@@ -18000,19 +18062,28 @@ function pluginYummyAnime() {
 
         Lampa.SettingsApi.addParam({
             component: 'yani',
-            param: {name: 'yani_about', type: 'button'},
-            field: {
-                name: t('version_name'),
-                description: t('version_label') + ' ' + LampaYaniConfig.version + ' · ' + t('extension') + ' · ' + t('website_description') + ': ' + yummyWebsiteUrl()
-            },
-            onChange: openYummyWebsite
+            param: {name: 'yani_account_title', type: 'title'},
+            field: {name: t('settings_account_section')}
+        });
+
+        // Keep this row stable: the account page reads the token on every render,
+        // so sign-in and sign-out never leave stale conditional settings behind.
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_account_state', type: 'button'},
+            field: {name: t('auth_title'), description: localizedAuthText('auth_manage_description')},
+            onChange: openSettingsLogin
+        });
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
+            field: {name: t('auto_sync_progress'), description: t('auto_sync_progress_description')}
         });
 
         Lampa.SettingsApi.addParam({
             component: 'yani',
-            param: {name: 'yani_usage_policy', type: 'button'},
-            field: {name: t('usage_policy_title'), description: t('usage_policy_settings_description')},
-            onChange: showUsagePolicy
+            param: {name: 'yani_interface_title', type: 'title'},
+            field: {name: t('settings_interface_section')}
         });
 
         Lampa.SettingsApi.addParam({
@@ -18028,16 +18099,8 @@ function pluginYummyAnime() {
 
         Lampa.SettingsApi.addParam({
             component: 'yani',
-            param: {name: 'yani_display_sources_title', type: 'title'},
-            field: {name: t('display_sources'), description: t('display_sources_description')}
-        });
-        PLAYBACK_SOURCE_IDS.forEach(function (sourceId) {
-            var label = sourceId.charAt(0).toUpperCase() + sourceId.slice(1);
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_source_' + sourceId, type: 'trigger', default: true},
-                field: {name: label, description: t('source_visibility_description')}
-            });
+            param: {name: 'yani_playback_title', type: 'title'},
+            field: {name: t('settings_playback_section')}
         });
 
         if (isAndroidPlatform()) {
@@ -18089,15 +18152,51 @@ function pluginYummyAnime() {
 
         Lampa.SettingsApi.addParam({
             component: 'yani',
-            param: {name: 'yani_playback_services_title', type: 'title'},
-            field: {name: t('playback_services')}
+            param: {name: 'yani_clear_playback_history', type: 'button'},
+            field: {name: t('clear_history'), description: t('clear_history_description')},
+            onChange: function () {
+                if (Lampa.Storage) Lampa.Storage.set('yani_playback_history', '{}');
+                Lampa.Noty.show(t('history_cleared'));
+            }
         });
 
         Lampa.SettingsApi.addParam({
             component: 'yani',
-            param: {name: 'yani_yummytv_enabled', type: 'trigger', default: false},
-            field: {name: t('yummytv_integration'), description: t('yummytv_integration_description')}
+            param: {name: 'yani_display_sources_title', type: 'title'},
+            field: {name: t('display_sources'), description: t('display_sources_description')}
         });
+        PLAYBACK_SOURCE_IDS.forEach(function (sourceId) {
+            var label = playbackSourceLabel(sourceId);
+            var storageKey = 'yani_source_' + sourceId;
+            var experimental = EXPERIMENTAL_PLAYBACK_SOURCE_IDS.indexOf(sourceId) >= 0;
+            Lampa.SettingsApi.addParam({
+                component: 'yani',
+                param: {name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled(sourceId)},
+                field: {
+                    name: label,
+                    description: experimental ? t('source_external_support_description') : t('source_visibility_description')
+                },
+                onChange: function (value) {
+                    if (experimental && triggerSettingEnabled(value, storageKey, false)) {
+                        Lampa.Noty.show(String(t('source_external_support_warning')).replace(/\{source\}/g, label));
+                    }
+                }
+            });
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_playback_services_title', type: 'title'},
+            field: {name: t('settings_integrations_section')}
+        });
+
+        if (isAndroidTvPlatform()) {
+            Lampa.SettingsApi.addParam({
+                component: 'yani',
+                param: {name: 'yani_yummytv_enabled', type: 'trigger', default: false},
+                field: {name: t('yummytv_integration'), description: t('yummytv_integration_description')}
+            });
+        }
 
         var resolverUrl = window.LampaYaniResolver ? LampaYaniResolver.baseUrl() : '';
         Lampa.SettingsApi.addParam({
@@ -18141,31 +18240,6 @@ function pluginYummyAnime() {
             component: 'yani',
             param: {name: 'yani_alloha_iframe', type: 'trigger', default: false},
             field: {name: t('alloha_iframe'), description: t('alloha_iframe_description')}
-        });
-
-        Lampa.SettingsApi.addParam({
-            component: 'yani',
-            param: {name: 'yani_clear_playback_history', type: 'button'},
-            field: {name: t('clear_history'), description: t('clear_history_description')},
-            onChange: function () {
-                if (Lampa.Storage) Lampa.Storage.set('yani_playback_history', '{}');
-                Lampa.Noty.show(t('history_cleared'));
-            }
-        });
-
-        // Keep the settings registry stable. The account page reads the token every
-        // time it renders, so sign-in and sign-out are reflected immediately without
-        // leaving stale conditional rows in Lampa's one-time settings registry.
-        Lampa.SettingsApi.addParam({
-            component: 'yani',
-            param: {name: 'yani_account_state', type: 'button'},
-            field: {name: t('auth_title'), description: localizedAuthText('auth_manage_description')},
-            onChange: openSettingsLogin
-        });
-        Lampa.SettingsApi.addParam({
-            component: 'yani',
-            param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
-            field: {name: t('auto_sync_progress'), description: t('auto_sync_progress_description')}
         });
 
         Lampa.SettingsApi.addParam({
@@ -18214,6 +18288,29 @@ function pluginYummyAnime() {
                 param: {name: 'yani_section_' + section[0], type: 'trigger', default: true},
                 field: {name: t(section[1]), description: t('section_visibility_description')}
             });
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_about_title', type: 'title'},
+            field: {name: t('settings_about_section')}
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_about', type: 'button'},
+            field: {
+                name: t('version_name'),
+                description: t('version_label') + ' ' + LampaYaniConfig.version + ' · ' + t('extension') + ' · ' + t('website_description') + ': ' + yummyWebsiteUrl()
+            },
+            onChange: openYummyWebsite
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_usage_policy', type: 'button'},
+            field: {name: t('usage_policy_title'), description: t('usage_policy_settings_description')},
+            onChange: showUsagePolicy
         });
 
         // A title row is deliberately non-interactive: the repository URL is

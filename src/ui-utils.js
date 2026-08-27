@@ -97,6 +97,22 @@
         return false;
     }
 
+    function isAndroidTvPlatform() {
+        if (!isAndroidPlatform()) return false;
+        var lampa = window.Lampa;
+        var platform = lampa && lampa.Platform;
+        if (platform && typeof platform.is === 'function' && (
+            platform.is('android_tv') || platform.is('androidtv') || platform.is('google_tv')
+        )) return true;
+        var platformName = platform && typeof platform.get === 'function' ? String(platform.get() || '') : '';
+        if (/android[ _-]?tv|google[ _-]?tv/i.test(platformName)) return true;
+        var userAgent = window.navigator && window.navigator.userAgent ? String(window.navigator.userAgent) : '';
+        if (/android tv|google tv|aft\w*|bravia|shield android tv|smart-tv|smarttv/i.test(userAgent)) return true;
+        // Android TV WebViews commonly omit the Mobile token. Android phones and
+        // tablets include it, so the integration stays hidden there.
+        return !/\bmobile\b/i.test(userAgent);
+    }
+
     function titleScriptRank(title) {
         if (/[A-Za-z]/.test(title) && !/[А-Яа-яЁё]/.test(title)) return 0;
         if (/[\u3040-\u30ff\u3400-\u9fff]/.test(title)) return 1;
@@ -624,6 +640,7 @@
         titleValues: titleValues,
         normalizeMatchTitle: normalizeMatchTitle,
         isAndroidPlatform: isAndroidPlatform,
+        isAndroidTvPlatform: isAndroidTvPlatform,
         stripSeasonSuffix: stripSeasonSuffix,
         parseSeasonHint: parseSeasonHint,
         cardSeasonHint: cardSeasonHint,

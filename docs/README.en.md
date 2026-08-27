@@ -15,7 +15,7 @@ A new Lampa extension powered by the official YummyAnime (Yani) API.
 - a dedicated My Lists section with recent horizontal rows for signed-in users;
 - viewing comments;
 - dubbing and source selection, then playback in the internal Lampa player or an external Android player;
-- per-source visibility toggles so Kodik, Alloha, CVH, Sibnet and Aksor can be hidden from the dubbing list;
+- per-source visibility toggles so Kodik, Alloha, CVH, Sibnet and Aksor can be hidden from the dubbing list; Alloha and CVH are disabled by default and show a compatibility warning when enabled;
 - preferred-player setting on Android: ask every time, internal Lampa player, or external Android player (system app chooser); locked to internal Lampa outside Android;
 - blocking Alloha in media players when no direct stream is available, with a clear Lampac warning;
 - optional self-hosted Lampac resolution of Alloha sources into direct HLS;
@@ -106,7 +106,7 @@ The extension treats two different things separately:
 
 In settings:
 
-1. **Show sources** — toggles for Kodik, Alloha, CVH, Sibnet and Aksor. Disabled sources are omitted from the dubbing list when you press Watch.
+1. **Show sources** — toggles for Kodik, Alloha, CVH, Sibnet and Aksor. Alloha and CVH are disabled by default because reliable playback may require additional external components. Enabling either one displays a warning. Disabled sources are omitted from the dubbing list when you press Watch.
 2. **Preferred player** — ask every time, internal Lampa player, or external Android player.
 
 On Android, the preferred-player setting is fully editable. On every other platform the setting is inactive, locked to the internal Lampa player, and external playback is never offered.
@@ -129,7 +129,7 @@ The extension handles Alloha in this order:
 
 If neither direct-stream adapter is configured and the embedded fallback is disabled, selecting Alloha shows a warning and playback is blocked. This prevents an iframe from being sent to an incompatible media player. Playable direct-stream sources are sorted above unresolved Alloha entries. An empty server address disables the corresponding adapter, and the extension contains no Alloha or Lampac credentials.
 
-The optional YummyTV integration is disabled by default and can be enabled separately under `Settings → YummyAnime → Services and sources`. It only opens the title in the separately installed YummyTV application; it is not an Alloha resolver and is not required for normal extension use.
+The optional YummyTV integration is available only on Android TV, is disabled by default, and can be enabled separately under `Settings → YummyAnime → Additional integrations`. It only opens the title in the separately installed YummyTV application; it is not an Alloha resolver and is not required for normal extension use.
 
 ## Implemented
 

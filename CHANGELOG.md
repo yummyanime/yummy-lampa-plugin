@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.46.10 — 2026-08-28
+
+- Fix YummyTV availability to Android TV only
+
+## 0.46.9 — 2026-08-28
+
+- Refactor settings into clear sections 
+- Refactor authorization placement to the top
+- Fix Alloha and CVH safe defaults
+- Add compatibility warnings for experimental sources
+
 ## 0.46.8 — 2026-08-28
 
 - Add registration guidance to authorization screens
