@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.46.6 — 2026-08-27
+
+- Fix focus restoration after returning from external players
+
+## 0.46.5 — 2026-08-27
+
+- Fix focus restoration after returning from YummyTV
+
 ## 0.46.4 — 2026-08-27
 
 - Fix immediate dashboard refresh after account sign-in and sign-out

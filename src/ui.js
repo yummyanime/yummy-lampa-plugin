@@ -166,6 +166,7 @@
     var externalRestoreState = {
         pending: false,
         installed: false,
+        session: 0,
         openedAt: 0,
         departed: false,
         controller: 'content',
@@ -4389,6 +4390,7 @@
         if (!playbackReturnState.active) beginPlaybackNavigation();
         var origin = playbackReturnSnapshot();
         externalRestoreState.pending = true;
+        externalRestoreState.session = playbackReturnState.session;
         externalRestoreState.openedAt = Date.now();
         externalRestoreState.departed = false;
         externalRestoreState.controller = origin.controller;
@@ -4402,6 +4404,7 @@
 
     function cancelExternalRestore() {
         externalRestoreState.pending = false;
+        externalRestoreState.session = 0;
         externalRestoreState.departed = false;
         externalRestoreState.openedAt = 0;
         externalRestoreState.element = null;
@@ -4440,7 +4443,9 @@
 
     function restoreExternalFocus() {
         if (!externalRestoreState.pending) return;
-        if (playbackReturnState.active) {
+        // The active playback-return state is the state we must restore. Only
+        // cancel when it was already completed or a newer playback session won.
+        if (!playbackReturnState.active || playbackReturnState.session !== externalRestoreState.session) {
             cancelExternalRestore();
             return;
         }
@@ -4454,12 +4459,17 @@
         var delay = Math.max(0, 250 - elapsed);
         setTimeout(function () {
             if (!externalRestoreState.pending) return;
-            externalRestoreState.pending = false;
-            restorePlaybackInteraction({
+            if (!playbackReturnState.active || playbackReturnState.session !== externalRestoreState.session) {
+                cancelExternalRestore();
+                return;
+            }
+            var snapshot = {
                 controller: externalRestoreState.controller || 'content',
                 element: externalRestoreState.element,
                 collection: externalRestoreState.collection
-            });
+            };
+            cancelExternalRestore();
+            restorePlaybackInteraction(snapshot, {retryDelays: [250, 700]});
         }, delay);
     }
 

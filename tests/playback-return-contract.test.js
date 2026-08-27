@@ -10,7 +10,8 @@ assert.match(detail, /beginPlaybackNavigation\(button, scroll\.render\(\)\);[\s\
 assert.match(menu, /function showPlaybackSelect\(params\)[\s\S]{0,1200}if \(settled\) return;[\s\S]{0,200}restorePlaybackInteraction\(\)/);
 assert.match(menu, /function loadVideosForPlayback/);
 assert.match(ui, /function openEmbeddedEpisode/);
-assert.match(ui, /if \(playbackReturnState\.active\) \{\s*cancelExternalRestore\(\)/);
+assert.doesNotMatch(ui, /function restoreExternalFocus\(\)[\s\S]{0,300}if \(playbackReturnState\.active\) \{\s*cancelExternalRestore\(\)/,
+    'an active YummyTV return session must be restored, not cancelled');
 assert.match(menu, /function chooseEpisode[\s\S]{0,1200}showPlaybackSelect\(\{/);
 assert.match(menu, /function openVideos[\s\S]{0,8000}showPlaybackSelect\(\{/);
 assert.match(menu, /function showDirectPlaybackOptions[\s\S]{0,2200}showPlaybackSelect\(\{/);
@@ -28,6 +29,19 @@ assert.match(ui, /function cancelExternalRestore\(\)[\s\S]{0,300}externalRestore
 assert.match(ui, /function openExternalUri[\s\S]{0,1500}cancelExternalRestore\(\);[\s\S]{0,50}return false/);
 assert.match(ui, /function openAndroidAppUri[\s\S]{0,1200}cancelExternalRestore\(\);[\s\S]{0,50}return false/);
 assert.match(ui, /externalRestoreState\.controller = origin\.controller/);
+assert.match(ui, /externalRestoreState\.session = playbackReturnState\.session/);
+assert.match(ui, /if \(!playbackReturnState\.active \|\| playbackReturnState\.session !== externalRestoreState\.session\)/);
+assert.match(ui, /var snapshot = \{/);
+assert.match(ui, /cancelExternalRestore\(\);\s*restorePlaybackInteraction\(snapshot/);
+assert.match(ui, /restorePlaybackInteraction\(snapshot, \{retryDelays: \[250, 700\]\}\)/);
+assert.match(menu, /function restorePlaybackInteraction\(snapshot, options\)[\s\S]{0,500}retryDelays/);
+assert.match(menu, /activeController !== 'select' && activeFocus/);
+['Lampa.Android.openPlayer', 'Android.openPlayer', 'AndroidJS.openPlayer'].forEach((bridge) => {
+    const start = ui.indexOf("tryExternalOpen('" + bridge + "'");
+    assert.ok(start >= 0, bridge + ' bridge must exist');
+    assert.match(ui.slice(start, start + 500), /prepareExternalRestore\(\)/,
+        bridge + ' must preserve focus before launching an external player');
+});
 assert.match(ui, /externalRestoreState\.departed/);
 assert.match(ui, /setTimeout\(restoreExternalFocus, 1500\)/);
 assert.match(ui, /if \(!externalRestoreState\.departed && elapsed < 1200\)[\s\S]{0,150}setTimeout\(restoreExternalFocus, 1200 - elapsed\)/);

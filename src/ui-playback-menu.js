@@ -142,40 +142,54 @@
             playbackReturnState.collection = null;
         }
 
-        function restorePlaybackInteraction(snapshot) {
+        function restorePlaybackInteraction(snapshot, options) {
             snapshot = snapshot && snapshot.controller ? snapshot : playbackReturnSnapshot();
+            options = options || {};
+            var retryDelays = Array.isArray(options.retryDelays) ? options.retryDelays.slice() : [];
             var session = playbackReturnState.session;
             if (restoreTimer) clearTimeout(restoreTimer);
-            restoreTimer = setTimeout(function () {
-                restoreTimer = null;
-                if (playbackReturnState.session !== session || !playbackReturnState.active) return;
-                try {
-                    var controller = snapshot.controller && snapshot.controller !== 'select' ? snapshot.controller : 'content';
-                    if (window.Lampa && Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
-                    var element = snapshot.element;
-                    if (!element || !document.documentElement.contains(element)) {
-                        element = document.querySelector('.yani-detail .selector.focus') ||
-                            document.querySelector('.yani-detail .selector') ||
-                            document.querySelector('.selector.focus') || document.querySelector('.selector');
+            function restore(delay, verifyOnly) {
+                restoreTimer = setTimeout(function () {
+                    restoreTimer = null;
+                    if (playbackReturnState.session !== session || !playbackReturnState.active) return;
+                    if (verifyOnly) {
+                        var activeController = currentControllerName();
+                        var activeFocus = document.querySelector('.selector.focus');
+                        if (activeController && activeController !== 'select' && activeFocus) {
+                            clearPlaybackReturn();
+                            return;
+                        }
                     }
-                    var collection = snapshot.collection;
-                    if (!collection || !collection.length || !document.documentElement.contains(collection[0])) {
-                        collection = element ? $(element).closest('.scroll, .yani-detail, .yani-home') : $('body');
+                    try {
+                        var controller = snapshot.controller && snapshot.controller !== 'select' ? snapshot.controller : 'content';
+                        if (window.Lampa && Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
+                        var element = snapshot.element;
+                        if (!element || !document.documentElement.contains(element)) {
+                            element = document.querySelector('.yani-detail .selector.focus') ||
+                                document.querySelector('.yani-detail .selector') ||
+                                document.querySelector('.selector.focus') || document.querySelector('.selector');
+                        }
+                        var collection = snapshot.collection;
+                        if (!collection || !collection.length || !document.documentElement.contains(collection[0])) {
+                            collection = element ? $(element).closest('.scroll, .yani-detail, .yani-home') : $('body');
+                        }
+                        if (collection && collection.length && Lampa.Controller && Lampa.Controller.collectionSet) {
+                            Lampa.Controller.collectionSet(collection);
+                        }
+                        if (element && Lampa.Controller && Lampa.Controller.collectionFocus) {
+                            Lampa.Controller.collectionFocus(element, collection);
+                        }
+                    } catch (error) {
+                        console.warn('[YummyAnime] Could not restore playback navigation', error);
+                    } finally {
+                        if (playbackReturnState.session !== session) return;
+                        if (retryDelays.length) restore(retryDelays.shift(), true);
+                        else clearPlaybackReturn();
                     }
-                    if (collection && collection.length && Lampa.Controller && Lampa.Controller.collectionSet) {
-                        Lampa.Controller.collectionSet(collection);
-                    }
-                    if (element && Lampa.Controller && Lampa.Controller.collectionFocus) {
-                        Lampa.Controller.collectionFocus(element, collection);
-                    }
-                } catch (error) {
-                    console.warn('[YummyAnime] Could not restore playback navigation', error);
-                } finally {
-                    if (playbackReturnState.session === session) clearPlaybackReturn();
-                }
-            }, 0);
+                }, delay);
+            }
+            restore(0, false);
         }
-
         function showPlaybackSelect(params) {
             if (!window.Lampa || !Lampa.Select || !Lampa.Select.show) {
                 restorePlaybackInteraction();
