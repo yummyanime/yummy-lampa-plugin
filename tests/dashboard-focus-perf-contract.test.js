@@ -12,6 +12,13 @@ assert.match(ui, /poster === lastIntroPoster/);
 assert.match(ui, /rect\.top >= box\.top \+ 8 && rect\.bottom <= box\.bottom - 8/);
 assert.match(ui, /button\.on\('hover:focus', function \(event\) \{\s*activateHomeFocus/);
 assert.doesNotMatch(ui, /button\.on\('hover:focus'[\s\S]{0,220}Lampa\.Storage\.set\(homeFocusStorageKey/);
+assert.match(ui, /function queueHomeRender\(key, callback\)/);
+assert.match(ui, /function noteHomeNavigation\(\)/);
+assert.match(ui, /homeNavigationUntil = Date\.now\(\) \+ homeRenderIdleDelay/);
+assert.match(ui, /queueHomeRender\('remote-playback'/);
+assert.match(ui, /queueHomeRender\('personal-lists'/);
+assert.match(ui, /queueHomeRender\('dashboard'/);
+assert.match(ui, /down: function \(\) \{\s*noteHomeNavigation\(\)/);
 
 assert.doesNotMatch(css, /\.yani-home__item\.focus \{[\s\S]{0,280}transform:/);
 assert.doesNotMatch(css, /\.yani-home__ambient \{\s*position: absolute;[\s\S]{0,200}transform:/);

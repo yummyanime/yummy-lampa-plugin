@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.45.11 — 2026-08-27
+
+- Fix dashboard focus stalls by deferring background DOM updates until remote navigation becomes idle | Refactor live dashboard refreshes into a coalesced render queue
+
 ## 0.45.10 — 2026-08-27
 
 - Add a clear playback guide for iframe sources such as Alloha, direct-stream resolvers, Lampac, the embedded fallback, and optional YummyTV integration

@@ -571,6 +571,11 @@
         var lastStoredFocusKey = '';
         var refreshContinueWatching = function () {};
         var homeFocusFrame = 0;
+        var homeRenderIdleTimer = 0;
+        var homeRenderFrame = 0;
+        var homeNavigationUntil = 0;
+        var homePendingRenders = {};
+        var homeRenderIdleDelay = 450;
         var navigatorInfo = window.navigator || {};
         var reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         var lowMemoryDevice = Number(navigatorInfo.deviceMemory || 0) > 0 && Number(navigatorInfo.deviceMemory) <= 2;
@@ -588,6 +593,55 @@
             }, Math.max(0, Number(delay || 0)));
             homeTimers.push(timer);
             return timer;
+        }
+
+        function scheduleHomeRenderFlush() {
+            if (destroyed) return;
+            if (homeRenderIdleTimer) clearTimeout(homeRenderIdleTimer);
+            var wait = Math.max(0, homeNavigationUntil - Date.now());
+            homeRenderIdleTimer = setTimeout(flushHomeRenders, wait ? wait + 16 : 0);
+        }
+
+        function flushHomeRenders() {
+            homeRenderIdleTimer = 0;
+            if (destroyed) {
+                homePendingRenders = {};
+                return;
+            }
+            if (Date.now() < homeNavigationUntil) {
+                scheduleHomeRenderFlush();
+                return;
+            }
+            var pending = homePendingRenders;
+            var keys = Object.keys(pending);
+            homePendingRenders = {};
+            if (!keys.length) return;
+            if (homeRenderFrame) cancelAnimationFrame(homeRenderFrame);
+            homeRenderFrame = requestAnimationFrame(function () {
+                homeRenderFrame = 0;
+                if (destroyed) return;
+                if (Date.now() < homeNavigationUntil) {
+                    keys.forEach(function (key) {
+                        if (!homePendingRenders[key]) homePendingRenders[key] = pending[key];
+                    });
+                    scheduleHomeRenderFlush();
+                    return;
+                }
+                keys.forEach(function (key) {
+                    if (!destroyed && typeof pending[key] === 'function') pending[key]();
+                });
+            });
+        }
+
+        function queueHomeRender(key, callback) {
+            if (destroyed || typeof callback !== 'function') return;
+            homePendingRenders[String(key || 'default')] = callback;
+            scheduleHomeRenderFlush();
+        }
+
+        function noteHomeNavigation() {
+            homeNavigationUntil = Date.now() + homeRenderIdleDelay;
+            if (Object.keys(homePendingRenders).length || homeRenderFrame) scheduleHomeRenderFlush();
         }
 
         function homeRequestCancelled(error) {
@@ -1382,13 +1436,15 @@
             renderPersonal(personalStats);
 
             refreshContinueWatching = function () {
-                if (destroyed) return;
-                localHistory = playbackHistory();
-                var localEntries = LampaYaniHomeSections.normalizeLocalHistory(localHistory);
-                continuing = LampaYaniHomeSections.continueWatchingEntries(localEntries, {});
-                setIntroMetric('continue', continuing.length, continueMetricDetail(continuing[0]));
-                renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
-                renderPersonal(personalStats);
+                queueHomeRender('local-playback', function () {
+                    if (destroyed) return;
+                    localHistory = playbackHistory();
+                    var localEntries = LampaYaniHomeSections.normalizeLocalHistory(localHistory);
+                    continuing = LampaYaniHomeSections.continueWatchingEntries(localEntries, {});
+                    setIntroMetric('continue', continuing.length, continueMetricDetail(continuing[0]));
+                    renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
+                    renderPersonal(personalStats);
+                });
             };
 
             // A title leaves Continue Watching when its last released episode
@@ -1438,11 +1494,11 @@
                     })
                 ]).then(function (result) {
                     if (destroyed) return;
-                    if (result[0] !== null) {
-                        cacheHomePlaybackSnapshot(playbackUserKey, result[0]);
-                        applyPlaybackSnapshot(result[0]);
-                    }
-                    finishLibraryRefresh(result[0] === null);
+                    if (result[0] !== null) cacheHomePlaybackSnapshot(playbackUserKey, result[0]);
+                    queueHomeRender('remote-playback', function () {
+                        if (result[0] !== null) applyPlaybackSnapshot(result[0]);
+                        finishLibraryRefresh(result[0] === null);
+                    });
                 });
             }, 140 * homeDelayScale);
 
@@ -1452,12 +1508,16 @@
                     var normalized = LampaYaniHomeInsights.listCounts(stats);
                     var hasCounts = Object.keys(normalized).some(function (key) { return Number(normalized[key] || 0) > 0; });
                     cacheHomeListCounts(account.user_id, hasCounts ? normalized : readHomeListCounts(account.user_id));
-                    personalStats = stats;
-                    renderPersonal(personalStats);
-                    finishLibraryRefresh(false);
+                    queueHomeRender('personal-lists', function () {
+                        personalStats = stats;
+                        renderPersonal(personalStats);
+                        finishLibraryRefresh(false);
+                    });
                 }).catch(function (error) {
                     if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Personal list insights are unavailable', error);
-                    finishLibraryRefresh(true);
+                    queueHomeRender('personal-lists', function () {
+                        finishLibraryRefresh(true);
+                    });
                 });
             }, 420 * homeDelayScale);
 
@@ -1483,7 +1543,9 @@
                 }).then(function (count) {
                     if (destroyed) return;
                     cacheHomeNotificationCount(notificationUserKey, count);
-                    renderNotifications(count);
+                    queueHomeRender('notifications', function () {
+                        renderNotifications(count);
+                    });
                 }).catch(function (error) {
                     if (!homeRequestCancelled(error)) console.warn('[YummyAnime Home] Notification count is unavailable', error);
                 });
@@ -1575,14 +1637,18 @@
                     var merged = LampaYaniHomeInsights.mergeDashboardSnapshot(dashboardCache.dashboard, dashboard);
                     var state = service.api ? service.degraded ? 'partial' : 'live' : dashboardCache.available ? 'offline' : 'offline';
                     var updatedAt = service.api ? Date.now() : dashboardCache.updated_at;
-                    renderDashboardSnapshot(merged, state, updatedAt);
                     if (service.feed && service.schedule) cacheHomeDashboardSnapshot(dashboard);
+                    queueHomeRender('dashboard', function () {
+                        renderDashboardSnapshot(merged, state, updatedAt);
+                    });
                 }).catch(function (error) {
                     if (homeRequestCancelled(error)) return;
-                    if (dashboardCache.available) setIntroDataState('offline', dashboardCache.updated_at);
-                    setChapterState('episode_flow', dashboardCache.available ? 'cached' : 'offline');
-                    setChapterState('discover', dashboardCache.available ? 'cached' : 'offline');
-                    setChapterState('service', 'offline');
+                    queueHomeRender('dashboard', function () {
+                        if (dashboardCache.available) setIntroDataState('offline', dashboardCache.updated_at);
+                        setChapterState('episode_flow', dashboardCache.available ? 'cached' : 'offline');
+                        setChapterState('discover', dashboardCache.available ? 'cached' : 'offline');
+                        setChapterState('service', 'offline');
+                    });
                     console.warn('[YummyAnime Home] Dashboard insights are unavailable', error);
                 });
             }
@@ -1611,6 +1677,7 @@
                     if (target) renderIntroContext($(target));
                 },
                 left: function () {
+                    noteHomeNavigation();
                     if (isRailFocus(last)) {
                         var key = String($(last).data('yani-home-target-key') || '');
                         var tile = key && homeButtons[key] && homeButtons[key][0];
@@ -1623,11 +1690,13 @@
                     else Lampa.Controller.toggle('menu');
                 },
                 right: function () {
+                    noteHomeNavigation();
                     if (isRailFocus(last)) return;
                     if (Navigator.canmove('right')) Navigator.move('right');
                     else focusSectionRail();
                 },
                 up: function () {
+                    noteHomeNavigation();
                     if (isRailFocus(last)) {
                         var nodes = railNodes();
                         var index = nodes.index(last);
@@ -1639,6 +1708,7 @@
                     else Lampa.Controller.toggle('head');
                 },
                 down: function () {
+                    noteHomeNavigation();
                     if (isRailFocus(last)) {
                         var nodes = railNodes();
                         var index = nodes.index(last);
@@ -1659,6 +1729,10 @@
             homeFocusFrame = 0;
             homeTimers.forEach(function (timer) { clearTimeout(timer); });
             homeTimers = [];
+            if (homeRenderIdleTimer) clearTimeout(homeRenderIdleTimer);
+            if (homeRenderFrame) cancelAnimationFrame(homeRenderFrame);
+            homeRenderIdleTimer = homeRenderFrame = 0;
+            homePendingRenders = {};
             if (homeAbortController) homeAbortController.abort();
             homeButtons = {};
             currentEpisodeFlow = null;
