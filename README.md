@@ -2,7 +2,7 @@
 
 An unofficial YummyAnime extension for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.45.13`
+Current version: `0.46.0`
 
 [Changelog](CHANGELOG.md) · [Technical documentation](docs/README.en.md)
 
@@ -33,6 +33,7 @@ Signing in enables your profile, notifications, ratings, favorites, personal lis
 - **Search** — search by main and alternative titles.
 - **Collections** — themed YummyAnime collections.
 - **Top** — overall ranking, series, movies, and ONA.
+- **For You** — new episodes, translations, news, and related titles for anime from your lists and watch history.
 - **Updates** — recent activity for subscriptions and personal lists.
 - **Continue Watching** — unfinished titles from local and YummyAnime watch history.
 - **My Lists** — quick access to your library.

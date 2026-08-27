@@ -1,16 +1,23 @@
 # Changelog
 
+## 0.46.0 — 2026-08-27
+
+- Refactor For You into a personal event feed built from lists, watch history, subscriptions, schedule, new videos, and notifications 
+- Add related titles from recent viewing-order connections
+
 ## 0.45.13 — 2026-08-27
 
 - Refactor collection tiles with prominent two-line titles, a deeper readability gradient and TV-focus accent
 
 ## 0.45.12 — 2026-08-27
 
-- Fix Continue Watching appearing empty because a 300-record history request was sent as one unsupported API page | Refactor account history loading into 30-record pages with partial-result fallback
+- Fix Continue Watching appearing empty because a 300-record history request was sent as one unsupported API page 
+- Refactor account history loading into 30-record pages with partial-result fallback
 
 ## 0.45.11 — 2026-08-27
 
-- Fix dashboard focus stalls by deferring background DOM updates until remote navigation becomes idle | Refactor live dashboard refreshes into a coalesced render queue
+- Fix dashboard focus stalls by deferring background DOM updates until remote navigation becomes idle 
+- Refactor live dashboard refreshes into a coalesced render queue
 
 ## 0.45.10 — 2026-08-27
 
@@ -20,8 +27,10 @@
 
 - Add a notice and return to the title card when auto-next reaches the last episode
 - Fix Continue Watching for YummyAnime history records without video IDs when the episode number is provided in ep_title
-- Fix Continue Watching by loading up to 300 recent YummyAnime history records and invalidating the smaller dashboard cache | Add ratings and the last watched episode to Continue Watching cards
-- Refactor the main README into concise English documentation | Add an optional Russian translation as a separate document | Remove premature MIT license references until the project license is chosen
+- Fix Continue Watching by loading up to 300 recent YummyAnime history records and invalidating the smaller dashboard cache 
+- Add ratings and the last watched episode to Continue Watching cards
+- Refactor the main README into concise English documentation | Add an optional Russian translation as a separate document 
+- Remove premature MIT license references until the project license is chosen
 
 ## 0.45.8 — 2026-08-25
 

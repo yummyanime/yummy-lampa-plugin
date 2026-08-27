@@ -670,7 +670,7 @@
             {key: 'top_rated', title: t('top_rated'), group: 'discover', action: function () {
                 Lampa.Activity.push({url: 'yani/top', title: 'YummyAnime ' + t('top_rated'), component: 'yani_top', topMode: true, params: {limit: 30, sort: 'top', sort_forward: true, from_year: 1900}});
             }},
-            {key: 'for_you', title: t('for_you'), group: 'discover', action: function () {
+            {key: 'for_you', title: t('for_you'), subtitle: t('personal_feed_subtitle'), group: 'discover', action: function () {
                 Lampa.Activity.push({url: 'yani/for-you', title: 'YummyAnime ' + t('for_you'), component: 'yani_recommended'});
             }},
             {key: 'updates', title: t('updates'), group: 'library', action: function () {
@@ -1931,8 +1931,16 @@
             history: playbackHistory,
             authorized: function () { return Boolean(LampaYaniAuth.token()); },
             watchHistory: LampaYaniApi.watchHistory,
-            recommendations: LampaYaniApi.recommendations,
-            catalog: LampaYaniApi.catalog,
+            resolveUserId: resolveUserListsUserId,
+            loadLists: loadUserListsSnapshot,
+            loadList: LampaYaniApi.userList,
+            normalizeList: normalizeUserList,
+            subscriptions: LampaYaniApi.subscriptions,
+            schedule: LampaYaniApi.schedule,
+            feed: LampaYaniApi.feed,
+            notifications: LampaYaniApi.notifications,
+            normalizeNotifications: normalizeNotifications,
+            detail: LampaYaniApi.detail,
             normalize: LampaYaniApi.normalize,
             toCard: toCard,
             cardRender: bindRecommendedCardRender,

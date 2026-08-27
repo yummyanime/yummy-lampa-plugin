@@ -128,7 +128,7 @@ The optional YummyTV integration is disabled by default and can be enabled separ
 ## Implemented
 
 - detailed anime view;
-- recommendations and trailers;
+- a personal event feed, related titles, and trailers;
 - favorites and user lists;
 - Bearer token refresh through `/profile/token`;
 - read-only comments.
@@ -141,4 +141,4 @@ GitHub Actions automatically checks JavaScript syntax on every push and pull req
 
 The authenticated token is automatically refreshed through `GET /profile/token`.
 
-The detailed view uses Yani data, while trailers and recommendations are loaded through `/anime/{id}/trailers` and `/anime/{id}/recommendations`.
+The detailed view uses Yani data. The For You feed combines lists, watch history, schedule, new videos, and notifications. Related titles come from the viewing order of up to four recent titles, while trailers are loaded through `/anime/{id}/trailers`.
