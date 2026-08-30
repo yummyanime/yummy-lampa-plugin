@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.19 — 2026-08-30
+
+- Fix Android TV CVH playback fallback 
+- Fix episode list ordering
+
 ## 0.46.18 — 2026-08-30
 
 - Fix episode grouping and numeric ordering 

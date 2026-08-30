@@ -3390,18 +3390,46 @@
         return isCvhPlaybackSource(item.url, item.source) ? 'mp4' : '';
     }
 
+    function internalPlayerQuality(item, extensionHint) {
+        var qualities = item && (item.quality || videoStreamQualities(item.source));
+        if (!qualities || typeof qualities !== 'object') return qualities;
+        // Android TV 14 rejects some of the CVH Full HD encodes with a
+        // misleading "no supported source" error. Keep the direct stream and
+        // all qualities for external players, but cap only the internal TV
+        // playlist at the most broadly supported CVH level.
+        if (!isAndroidTvPlatform() || extensionHint !== 'mp4') return qualities;
+        var safe = {};
+        ['240p', '360p', '480p', '576p', '720p'].forEach(function (label) {
+            if (qualities[label]) safe[label] = qualities[label];
+        });
+        return Object.keys(safe).length ? safe : qualities;
+    }
+
+    function internalPlayerSourceUrl(item, extensionHint, qualities) {
+        if (!item) return '';
+        if (isAndroidTvPlatform() && extensionHint === 'mp4' && qualities && typeof qualities === 'object') {
+            var preferred = ['720p', '576p', '480p', '360p', '240p'];
+            for (var index = 0; index < preferred.length; index++) {
+                if (qualities[preferred[index]]) return qualities[preferred[index]];
+            }
+        }
+        return item.url;
+    }
+
     function internalPlayerPlaylistItem(item) {
         if (!item) return null;
+        var extensionHint = internalPlayerExtensionHint(item);
+        var quality = internalPlayerQuality(item, extensionHint);
         return LampaYaniUiUtils.internalPlayerItem({
             title: item.title,
-            url: item.url,
+            url: internalPlayerSourceUrl(item, extensionHint, quality),
             time: item.time,
-            quality: item.quality || videoStreamQualities(item.source),
+            quality: quality,
             headers: item.headers || videoStreamHeaders(item.source),
             poster: item.poster || '',
-            extensionHint: internalPlayerExtensionHint(item),
-            extension: internalPlayerExtensionHint(item),
-            mime: internalPlayerExtensionHint(item) === 'mp4' ? 'video/mp4' : ''
+            extensionHint: extensionHint,
+            extension: extensionHint,
+            mime: extensionHint === 'mp4' ? 'video/mp4' : ''
         });
     }
 
