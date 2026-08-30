@@ -328,6 +328,7 @@
                     ensureRemoteHistory();
                     registerOnlineSource();
                     registerSearchSource();
+                    registerCvhInternalVideoTube();
                 } catch (settingsError) {
                     console.error('[YummyAnime] Settings registration failed', settingsError);
                 }
@@ -3390,6 +3391,37 @@
         return isCvhPlaybackSource(item.url, item.source) ? 'mp4' : '';
     }
 
+    function isCvhInternalVideoUrl(src) {
+        src = String(src || '');
+        return isAndroidPlatform() &&
+            /^https?:\/\/[^/?#]*okcdn\.ru(?:[/?#]|$)/i.test(src) &&
+            /(?:#|&)yani\.mp4(?:&|$)/i.test(src);
+    }
+
+    function registerCvhInternalVideoTube() {
+        if (window.LampaYaniCvhVideoTube) return true;
+        if (!window.Lampa || !Lampa.PlayerVideo || typeof Lampa.PlayerVideo.registerTube !== 'function') return false;
+
+        var tube = {
+            name: 'YummyAnime CVH',
+            verify: function (src) {
+                return isCvhInternalVideoUrl(src);
+            },
+            create: function (callback) {
+                // CVH MP4 responses do not include Access-Control-Allow-Origin.
+                // Lampa's default crossorigin attribute makes Android WebView
+                // reject those streams, so this source uses a plain video tag.
+                var element = $('<video class="player-video__video" poster="./img/video_poster.png"></video>');
+                callback(element[0]);
+                return element;
+            }
+        };
+
+        Lampa.PlayerVideo.registerTube(tube);
+        window.LampaYaniCvhVideoTube = tube;
+        return true;
+    }
+
     function internalPlayerQuality(item, extensionHint) {
         var qualities = item && (item.quality || videoStreamQualities(item.source));
         if (!qualities || typeof qualities !== 'object') return qualities;
@@ -3493,8 +3525,9 @@
 
     function playbackSourceDefaultEnabled(sourceId) {
         // CVH exposes direct MP4 streams but its JSON endpoints have no CORS
-        // headers. Android's native Lampa bridge and the WebOS runtime can
-        // resolve and play them reliably; other platforms keep it opt-in.
+        // headers. The Android internal player uses a source-specific video
+        // element while WebOS can play the stream directly; other platforms
+        // keep the source opt-in.
         if (sourceId === 'cvh') return isAndroidPlatform() || isWebOsPlatform();
         return EXPERIMENTAL_PLAYBACK_SOURCE_IDS.indexOf(sourceId) < 0;
     }

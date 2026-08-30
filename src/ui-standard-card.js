@@ -97,13 +97,11 @@
                 // activity navigation untouched.
                 if (isNativeDetail && missingId) {
                     if (card && (card.yani_genre_tile || card.yani_genre || card.yani_collection_tile || card.yani_collection_id || card.yani_collection)) {
-                        console.warn('[YummyAnime] Blocked native TMDB detail for genre/collection tile');
                         return;
                     }
                     if (isYummyCard) {
                         var yaniId = getYummyId(card);
                         if (yaniId) {
-                            console.warn('[YummyAnime] Blocked native TMDB detail with undefined id', yaniId);
                             return originalPush.call(this, {
                                 url: 'yani/detail/' + encodeURIComponent(yaniId),
                                 title: card.title || card.name || 'YummyAnime',

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.46.21 — 2026-08-30
+
+- Fix Android TV CVH internal playback CORS
+- Fix complete episode and dubbing grouping
+
+## 0.46.20 — 2026-08-30
+
+- Fix Android TV CVH player routing
+- Remove expected TMDB fallback warnings
+
 ## 0.46.19 — 2026-08-30
 
 - Fix Android TV CVH playback fallback 

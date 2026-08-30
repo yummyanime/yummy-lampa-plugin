@@ -20,8 +20,11 @@ assert.match(source, /function showPlaybackSelect\(params\)/);
 assert.match(source, /function openVideos\(card, resume\)/);
 assert.match(source, /function chooseEpisode\(card, group\)/);
 assert.match(source, /androidExternalPlayerAvailable/);
+assert.doesNotMatch(source, /internalPlayerAvailable|canInternal/,
+    'the playback picker must keep the internal option available for CVH');
 assert.match(source, /Tizen \/ WebOS/);
 assert.match(ui, /androidExternalPlayerAvailable: function \(\) \{ return isAndroidPlatform\(\); \}/);
+assert.match(ui, /registerCvhInternalVideoTube\(\);/);
 assert.match(ui, /function isAndroidPlatform\(\)/);
 assert.match(ui, /if \(!isAndroidPlatform\(\)\) return 'internal'/);
 assert.match(ui, /yani_playback_target_locked/);
@@ -83,13 +86,19 @@ const api = context.window.LampaYaniPlaybackMenu.create({
 
 assert.strictEqual(api.playerKey({player: 'Kodik'}), 'kodik');
 assert.strictEqual(api.videoSourceUrl({iframe_url: 'https://example/a.m3u8'}), 'https://example/a.m3u8');
-var grouped = api.groupVideos([
-    {number: '1', video_id: 'one', iframe_url: 'https://cdn.example/one', quality: '360p', data: {dubbing: 'Studio', player: 'CVH', player_id: 'cvh'}},
-    {number: '2', video_id: 'two', iframe_url: 'https://cdn.example/two', quality: '720p', data: {dubbing: 'Studio', player: 'CVH', player_id: 'cvh'}},
-    {number: '3', video_id: 'three', iframe_url: 'https://cdn.example/three', quality: '1080p', data: {dubbing: 'Studio', player: 'CVH', player_id: 'cvh'}}
-]);
+var episodes = [];
+for (var episode = 1; episode <= 12; episode++) {
+    episodes.push({
+        number: String(episode),
+        video_id: 'episode-' + episode,
+        iframe_url: 'https://cdn.example/' + episode,
+        quality: episode % 3 === 0 ? '1080p' : episode % 2 === 0 ? '720p' : '360p',
+        data: {dubbing: 'Studio', player: 'CVH', player_id: 'cvh'}
+    });
+}
+var grouped = api.groupVideos(episodes);
 assert.strictEqual(Object.keys(grouped).length, 1, 'quality changes must not split one dubbing/source into multiple groups');
-assert.strictEqual(grouped[Object.keys(grouped)[0]].videos.length, 3, 'all episodes must stay in the selected dubbing/source group');
+assert.strictEqual(grouped[Object.keys(grouped)[0]].videos.length, 12, 'all episodes must stay in the selected dubbing/source group');
 assert.strictEqual(api.playbackReturnState.active, false);
 api.beginPlaybackNavigation();
 assert.strictEqual(api.playbackReturnState.active, true);

@@ -28,6 +28,20 @@ assert.match(source, /\['240p', '360p', '480p', '576p', '720p'\]/,
 assert.match(source, /function internalPlayerSourceUrl\(item, extensionHint, qualities\)/);
 assert.match(source, /internalPlayerSourceUrl\(item, extensionHint, quality\)/,
     'the internal player must start the Android TV-safe quality, not the rejected Full HD URL');
+assert.match(source, /function registerCvhInternalVideoTube\(\)/);
+assert.match(source, /Lampa\.PlayerVideo\.registerTube\(tube\)/,
+    'CVH playback must use Lampa\'s supported custom video-tube API');
+assert.match(source, /okcdn\\\.ru[\s\S]{0,120}yani\\\.mp4/,
+    'the adapter must only claim resolver-confirmed CVH MP4 URLs');
+assert.match(source, /registerCvhInternalVideoTube\(\);/,
+    'the CVH adapter must be registered during plugin startup');
+const tubeStart = source.indexOf('function registerCvhInternalVideoTube');
+const tubeEnd = source.indexOf('\n    function internalPlayerQuality', tubeStart);
+const tubeSource = source.slice(tubeStart, tubeEnd);
+assert.doesNotMatch(tubeSource, /crossorigin\s*=/i,
+    'the CVH video element must not enable CORS mode because CVH omits ACAO');
+assert.doesNotMatch(menu, /internalPlayerAvailable|canInternal/,
+    'CVH must not be hidden from the internal-player picker');
 assert.ok(internalPlayback.includes('isExternalPlayableUrl(item.url, item.source)'), 'resolved streams without a filename extension must remain in the internal playlist');
 assert.ok(source.includes('isExternalPlayableUrl(current && current.url, current && current.source)'), 'the internal player must accept a resolver-confirmed CVH stream');
 assert.match(source, /isCvhPlaybackSource\(url, group\)[\s\S]{0,260}cvh_stream_unavailable/,
