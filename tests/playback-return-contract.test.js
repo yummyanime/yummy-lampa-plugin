@@ -36,7 +36,7 @@ assert.match(ui, /cancelExternalRestore\(\);\s*restorePlaybackInteraction\(snaps
 assert.match(ui, /restorePlaybackInteraction\(snapshot, \{retryDelays: \[250, 700\]\}\)/);
 assert.match(menu, /function restorePlaybackInteraction\(snapshot, options\)[\s\S]{0,500}retryDelays/);
 assert.match(menu, /activeController === expectedController && activeFocus && focusInCollection/);
-assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,260}restorePlaybackInteraction\(null, \{retryDelays: \[250, 700\]\}\)/);
+assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,700}restorePlaybackInteraction\(null, \{retryDelays: \[250, 700\]\}\)/);
 ['Lampa.Android.openPlayer', 'Android.openPlayer', 'AndroidJS.openPlayer'].forEach((bridge) => {
     const start = ui.indexOf("tryExternalOpen('" + bridge + "'");
     assert.ok(start >= 0, bridge + ' bridge must exist');
@@ -47,6 +47,8 @@ assert.match(ui, /externalRestoreState\.departed/);
 assert.match(ui, /setTimeout\(restoreExternalFocus, 1500\)/);
 assert.match(ui, /if \(!externalRestoreState\.departed && elapsed < 1200\)[\s\S]{0,150}setTimeout\(restoreExternalFocus, 1200 - elapsed\)/);
 assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/);
+assert.match(ui, /playbackReturnState\.session !== callbackSession/,
+    'a callback from the closing episode must not restore focus over the next player');
 assert.match(ui, /param: \{name: 'yani_yummytv_enabled', type: 'trigger', default: false\}/);
 assert.match(ui, /Storage\.get\('yani_yummytv_enabled', false\)/);
 assert.match(sources, /var beginPlaybackNavigation = playbackMenu\.beginPlaybackNavigation|function beginPlaybackNavigation/);

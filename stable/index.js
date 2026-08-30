@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.14',
+        version: '0.46.15',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -16931,6 +16931,7 @@ function pluginYummyAnime() {
     function playInternalDirectVideo(current, playlist) {
         if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas) return false;
         var callbackContext = playbackContext;
+        var callbackSession = playbackReturnState.session;
         var directPlaylist = (playlist || []).filter(function (item) { return isExternalPlayableUrl(item.url, item.source); }).map(function (item) {
             return LampaYaniUiUtils.internalPlayerItem({
                 title: item.title,
@@ -16960,6 +16961,11 @@ function pluginYummyAnime() {
             if (Lampa.Player.callback) {
                 Lampa.Player.callback(function () {
                     flushPlaybackProgress(true, callbackContext);
+                    // Closing the previous episode during auto-next invokes its
+                    // callback after a new playback session has begun. That old
+                    // callback must not restore the detail focus over the next
+                    // episode's player.
+                    if (playbackReturnState.session !== callbackSession) return;
                     // Player.callback can fire before Lampa finishes removing its
                     // player controller. Verify the detail focus after that lifecycle.
                     restorePlaybackInteraction(null, {retryDelays: [250, 700]});
@@ -17073,9 +17079,9 @@ function pluginYummyAnime() {
     var playbackWatcherGeneration = 0;
     var PLAYER_STARTUP_GRACE_MS = 120000;
     var NEXT_PREFETCH_LEAD = 90;
-    // Long enough for Lampa to finish tearing the closed player down before the
-    // next episode opens, short enough not to read as a pause between episodes.
-    var PLAYER_CLOSE_SETTLE_MS = 400;
+    var PLAYER_CLOSE_POLL_MS = 80;
+    var PLAYER_CLOSE_SETTLE_MS = 120;
+    var PLAYER_CLOSE_TIMEOUT_MS = 3500;
 
     function skipPreference() {
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_aniskip', 'off') : 'off';
@@ -17391,9 +17397,10 @@ function pluginYummyAnime() {
 
     function advancePlaybackWatcher(generation, context, state) {
         if (generation !== playbackWatcherGeneration || playbackWatcher !== state || !state.autoNext || state.advanced) return;
+        var closingVideo = state.video;
         state.advanced = true;
         stopPlaybackWatcher();
-        advanceToNextEpisode(context);
+        advanceToNextEpisode(context, closingVideo);
     }
 
     function bindPlaybackVideo(generation, context, state, video) {
@@ -17531,12 +17538,53 @@ function pluginYummyAnime() {
     // decoder, and after eight to ten of them the renderer died. Measured: each
     // advance added one live video and one live MediaSource, none of which were
     // ever closed, while a manual launch released both every time.
-    function closeInternalPlayer() {
+    function releasePlaybackVideo(video) {
+        if (!video) return;
+        try { video.pause(); } catch (ignorePause) {}
+        try {
+            video.removeAttribute('src');
+            Array.prototype.forEach.call(video.querySelectorAll('source'), function (source) {
+                source.removeAttribute('src');
+            });
+            if (video.load) video.load();
+        } catch (error) {
+            console.warn('[YummyAnime] Could not release the previous video element', error);
+        }
+    }
+
+    function waitForInternalPlayerTeardown(video) {
+        var started = Date.now();
+        return new Promise(function (resolve) {
+            function finish() {
+                setTimeout(resolve, PLAYER_CLOSE_SETTLE_MS);
+            }
+            function check() {
+                if (!video || !document.documentElement.contains(video)) {
+                    finish();
+                    return;
+                }
+                if (Date.now() - started >= PLAYER_CLOSE_TIMEOUT_MS) {
+                    // A few Lampa builds leave the closed video in the DOM on
+                    // slower devices. Explicitly clearing its source releases
+                    // the MediaSource and hardware decoder before the next one.
+                    releasePlaybackVideo(video);
+                    finish();
+                    return;
+                }
+                setTimeout(check, PLAYER_CLOSE_POLL_MS);
+            }
+            setTimeout(check, PLAYER_CLOSE_POLL_MS);
+        });
+    }
+
+    function closeInternalPlayer(video) {
+        var closingVideo = video || playerVideoElement();
         try {
             if (Lampa.Player && Lampa.Player.close) Lampa.Player.close();
         } catch (error) {
             console.warn('[YummyAnime] Could not close the player before advancing', error);
         }
+        return waitForInternalPlayerTeardown(closingVideo);
     }
 
     function titleAiredCount(card) {
@@ -17554,17 +17602,18 @@ function pluginYummyAnime() {
         return t('auto_next_last_voice');
     }
 
-    function finishAutoNextPlayback(context) {
+    function finishAutoNextPlayback(context, closingVideo) {
         Lampa.Noty.show(autoNextEndMessage(context));
         flushPlaybackProgress(true, context);
-        closeInternalPlayer();
-        restorePlaybackInteraction();
+        closeInternalPlayer(closingVideo).then(function () {
+            restorePlaybackInteraction();
+        });
     }
 
-    function advanceToNextEpisode(context) {
+    function advanceToNextEpisode(context, closingVideo) {
         var next = nextEpisodeVideo(context);
         if (!next) {
-            finishAutoNextPlayback(context);
+            finishAutoNextPlayback(context, closingVideo);
             return;
         }
         Lampa.Noty.show(t('auto_next_starting') + ' ' + (next.number || next.index || ''));
@@ -17572,10 +17621,11 @@ function pluginYummyAnime() {
         // focus restore back to the detail page, which must not fire while the
         // next episode is opening.
         beginPlaybackNavigation();
-        closeInternalPlayer();
-        setTimeout(function () {
+        var handoffSession = playbackReturnState.session;
+        closeInternalPlayer(closingVideo).then(function () {
+            if (playbackReturnState.session !== handoffSession || playbackContext !== context) return;
             launchVideo(context.card, context.group, context.videos, next, {autoAdvance: true});
-        }, PLAYER_CLOSE_SETTLE_MS);
+        });
     }
 
     function externalPlayablePlaylist(playlist) {

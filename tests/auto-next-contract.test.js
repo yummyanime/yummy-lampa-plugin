@@ -24,6 +24,7 @@ assert.match(source, /playerVideoElement\(state\.video\)/, 'each watcher must re
 assert.match(source, /if \(!element\.ended[\s\S]{0,100}return element/, 'a new watcher must ignore finished videos left in the DOM');
 assert.match(source, /flushPlaybackProgress\(true, callbackContext\)/, 'Lampa callbacks must be scoped to the episode that registered them');
 assert.match(source, /expectedContext !== playbackContext/, 'a stale player callback must not stop the next episode watcher');
+assert.match(source, /playbackReturnState\.session !== callbackSession/, 'a stale player callback must not restore focus over the next episode');
 assert.match(source, /autoNextEnabled\(\) && current \? \[current\] : playlist/, 'Lampa playlist autoplay must not skip an extra episode while plugin auto-next is on');
 
 const prefetchStart = source.indexOf('function prefetchNextEpisode');
@@ -52,21 +53,25 @@ const advanceStart = source.indexOf('function advanceToNextEpisode');
 const advanceEnd = source.indexOf('function externalPlayablePlaylist', advanceStart);
 const advancePolicy = source.slice(advanceStart, advanceEnd);
 assert.ok(advanceStart >= 0 && advanceEnd > advanceStart, 'the advance step must exist');
-assert.match(source, /function finishAutoNextPlayback\(context\)/);
-assert.match(source, /if \(!next\) \{\s*finishAutoNextPlayback\(context\);\s*return;/);
+assert.match(source, /function finishAutoNextPlayback\(context, closingVideo\)/);
+assert.match(source, /if \(!next\) \{\s*finishAutoNextPlayback\(context, closingVideo\);\s*return;/);
 assert.match(source, /t\('auto_next_last_voice'\)/);
 assert.match(source, /t\('auto_next_last_title'\)/);
-assert.ok(source.slice(source.indexOf('function finishAutoNextPlayback'), source.indexOf('function advanceToNextEpisode')).includes('closeInternalPlayer();'), 'the last episode must close the player');
+assert.ok(source.slice(source.indexOf('function finishAutoNextPlayback'), source.indexOf('function advanceToNextEpisode')).includes('closeInternalPlayer(closingVideo)'), 'the last episode must close the player');
 assert.ok(source.slice(source.indexOf('function finishAutoNextPlayback'), source.indexOf('function advanceToNextEpisode')).includes('restorePlaybackInteraction();'), 'the last episode must return to the title card');
-assert.ok(advancePolicy.includes('closeInternalPlayer();'), 'the running player must be closed before the next episode opens');
+assert.ok(advancePolicy.includes('closeInternalPlayer(closingVideo)'), 'the running player must be closed before the next episode opens');
 assert.ok(
-    advancePolicy.indexOf('closeInternalPlayer();') < advancePolicy.indexOf('launchVideo('),
+    advancePolicy.indexOf('closeInternalPlayer(closingVideo)') < advancePolicy.indexOf('launchVideo('),
     'the close must happen before the launch, not after it'
 );
 assert.ok(
-    advancePolicy.indexOf('beginPlaybackNavigation();') < advancePolicy.indexOf('closeInternalPlayer();'),
+    advancePolicy.indexOf('beginPlaybackNavigation();') < advancePolicy.indexOf('closeInternalPlayer(closingVideo)'),
     'the return session must be bumped first so closing does not steal focus back to the detail page'
 );
 assert.ok(source.includes('Lampa.Player.close'), 'closing must go through the player API');
+assert.match(source, /function waitForInternalPlayerTeardown/);
+assert.match(source, /document\.documentElement\.contains\(video\)/, 'the next episode must wait until the old video leaves the DOM');
+assert.match(source, /releasePlaybackVideo\(video\)/, 'a stuck old decoder must be released before the next episode starts');
+assert.doesNotMatch(advancePolicy, /setTimeout\(function \(\) \{[\s\S]{0,160}launchVideo/, 'auto-next must not rely on a fixed close delay');
 
 console.log('auto-next contract tests passed');

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.15 — 2026-08-30
+
+- Fix repeated episode player teardown 
+- Fix stale player callbacks restoring focus
+
 ## 0.46.14 — 2026-08-30
 
 - Fix CVH direct MP4 playback 
