@@ -3148,6 +3148,11 @@
             }).catch(function (error) {
                 setLoading(false);
                 console.warn('[YummyAnime] Stream resolve failed', error);
+                if (isVkPlaybackSource(url, group)) {
+                    Lampa.Noty.show(t('vk_stream_unavailable'));
+                    restorePlaybackInteraction();
+                    return;
+                }
                 launchResolvedVideo(card, group, videos, selected, url, options);
             });
             return;
@@ -3381,8 +3386,8 @@
             : false;
     }
 
-    var PLAYBACK_SOURCE_IDS = ['kodik', 'alloha', 'cvh', 'sibnet', 'aksor'];
-    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
+    var PLAYBACK_SOURCE_IDS = ['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'];
+    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', vk: 'VK', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
@@ -4001,6 +4006,11 @@
 
     function isAllohaUrl(url) {
         return /(^|\/\/)(?:www\.)?alloha(?:\.[a-z0-9-]+)+(?::\d+)?(?:[/:]|$)/i.test(url || '');
+    }
+
+    function isVkPlaybackSource(url, group) {
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        return /iframevk|vkvideo|vk\.com|video_ext\.php|(?:^|\s)vk(?:\s|$)/i.test(value);
     }
 
 

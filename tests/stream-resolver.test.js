@@ -55,6 +55,22 @@ global.fetch = async function (url) {
             text: async function () { return '<script>window.embedErrorCallback?.(8);</script>'; }
         };
     }
+    if (String(url).indexOf('ru.yummyani.me/iframeVK.html?token=opaque') >= 0) {
+        return {
+            ok: true,
+            text: async function () {
+                return '<iframe src="https:\/\/vk.com\/video_ext.php?oid=-228989270&amp;id=456239888"></iframe>';
+            }
+        };
+    }
+    if (String(url).indexOf('vk.com/video_ext.php?oid=-228989270&id=456239888') >= 0) {
+        return {
+            ok: true,
+            text: async function () {
+                return '<script>url1080 = "https:\/\/vkvd.test\/stream\/1080.mp4?token=opaque";</script>';
+            }
+        };
+    }
     throw new Error('Unexpected request: ' + url);
 };
 
@@ -64,13 +80,15 @@ assert.strictEqual(LampaYaniStreamResolver.canResolve('https://player.aksor.tv/v
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://video.sibnet.ru/shell.php?videoid=1502426'), true);
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://rutube.ru/play/embed/70e53a86c25f5dab63d1b1151bb8c619'), true);
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239999'), true);
+assert.strictEqual(LampaYaniStreamResolver.canResolve('https://ru.yummyani.me/iframeVK.html?token=opaque'), true);
 assert.strictEqual(LampaYaniStreamResolver.isDirectVideoUrl('https://cdn.example/video/master.mpd?token=1'), true);
 
 Promise.all([
     LampaYaniStreamResolver.resolve('https://player.aksor.tv/video/test-hash'),
     LampaYaniStreamResolver.resolve('https://video.sibnet.ru/shell.php?videoid=1502426'),
     LampaYaniStreamResolver.resolve('https://rutube.ru/play/embed/70e53a86c25f5dab63d1b1151bb8c619'),
-    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239999')
+    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239999'),
+    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?token=opaque')
 ]).then(function (results) {
     var result = results[0];
     assert.strictEqual(result.source, 'aksor');
@@ -93,6 +111,10 @@ Promise.all([
     assert.strictEqual(vk.qualities['360p'], 'https://cdn.vk.test/video-360.mp4?token=1&extra=2');
     assert.strictEqual(vk.url, 'https://cdn.vk.test/video-720.mp4?token=1');
     assert.strictEqual(vk.headers.Origin, 'https://vk.com');
+    var wrappedVk = results[4];
+    assert.strictEqual(wrappedVk.source, 'vk');
+    assert.strictEqual(wrappedVk.quality, '1080p');
+    assert.strictEqual(wrappedVk.url, 'https://vkvd.test/stream/1080.mp4?token=opaque');
     return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239022').then(function () {
         throw new Error('Unavailable VK video unexpectedly resolved');
     }, function (error) {
