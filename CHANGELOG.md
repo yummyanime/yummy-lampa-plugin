@@ -1,8 +1,13 @@
 # Changelog
 
+## 0.46.12 — 2026-08-30
+
+- Add live authorization status to settings
+
 ## 0.46.11 — 2026-08-30
 
-- Fix VK playback for wrapper and video_ext pages | Add VK source visibility setting
+- Fix VK playback for wrapper and video_ext pages
+- Add VK source visibility setting
 
 ## 0.46.10 — 2026-08-28
 

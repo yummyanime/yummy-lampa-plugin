@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.11',
+        version: '0.46.12',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -322,6 +322,7 @@ function pluginYummyAnime() {
     messages.ru.playback_target_internal = 'Внутренний плеер Lampa';
     messages.ru.playback_services = 'Сервисы и источники';
     messages.ru.settings_account_section = 'Аккаунт и синхронизация';
+    messages.ru.settings_auth_status = 'Статус';
     messages.ru.settings_interface_section = 'Интерфейс';
     messages.ru.settings_playback_section = 'Воспроизведение';
     messages.ru.settings_integrations_section = 'Дополнительные возможности';
@@ -409,6 +410,7 @@ function pluginYummyAnime() {
     messages.en.playback_target_internal = 'Internal Lampa player';
     messages.en.playback_services = 'Services and sources';
     messages.en.settings_account_section = 'Account and sync';
+    messages.en.settings_auth_status = 'Status';
     messages.en.settings_interface_section = 'Interface';
     messages.en.settings_playback_section = 'Playback';
     messages.en.settings_integrations_section = 'Additional integrations';
@@ -643,6 +645,7 @@ function pluginYummyAnime() {
     messages.uk.display_sources_description = 'Які відеосервіси показувати в списку озвучень під час перегляду';
     messages.uk.source_visibility_description = 'Показувати це джерело в списку озвучень';
     messages.uk.settings_account_section = 'Обліковий запис і синхронізація';
+    messages.uk.settings_auth_status = 'Статус';
     messages.uk.settings_interface_section = 'Інтерфейс';
     messages.uk.settings_playback_section = 'Відтворення';
     messages.uk.settings_integrations_section = 'Додаткові можливості';
@@ -9502,10 +9505,10 @@ function pluginYummyAnime() {
         function submit() {
             if (!login) return Lampa.Noty.show(deps.t('email_required')); if (!password) return Lampa.Noty.show(deps.t('password_required'));
             Lampa.Loading && Lampa.Loading.start && Lampa.Loading.start();
-            LampaYaniAuth.login(login, password).then(function () { return LampaYaniApi.profile().then(function (payload) { var profile = payload && payload.response ? payload.response : payload, current = LampaYaniAuth.get(); LampaYaniAuth.save({token: current.token, login: current.login, display_name: profile && (profile.nickname || profile.name) || current.login}); }).catch(function () {}); }).then(function () { password = ''; Lampa.Noty.show(deps.t('login_ok')); if (deps.onAuthorized) deps.onAuthorized(); deps.goBack(); }).catch(function (error) { console.error('[YummyAnime Auth]', error); Lampa.Noty.show(deps.t('login_error')); }).then(function () { Lampa.Loading && Lampa.Loading.stop && Lampa.Loading.stop(); });
+            LampaYaniAuth.login(login, password).then(function () { return LampaYaniApi.profile().then(function (payload) { var profile = payload && payload.response ? payload.response : payload, current = LampaYaniAuth.get(); LampaYaniAuth.save({token: current.token, login: current.login, display_name: profile && (profile.nickname || profile.name) || current.login}); }).catch(function () {}); }).then(function () { password = ''; Lampa.Noty.show(deps.t('login_ok')); if (deps.onAuthChanged) deps.onAuthChanged(); if (deps.onAuthorized) deps.onAuthorized(); deps.goBack(); }).catch(function (error) { console.error('[YummyAnime Auth]', error); Lampa.Noty.show(deps.t('login_error')); }).then(function () { Lampa.Loading && Lampa.Loading.stop && Lampa.Loading.stop(); });
         }
         function refresh() { LampaYaniAuth.refresh().then(function () { Lampa.Noty.show(deps.t('token_refreshed')); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_refresh_error')); }); }
-        function logout() { LampaYaniAuth.logout().then(function () { Lampa.Noty.show(deps.t('logged_out')); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_removed')); render(); }); }
+        function logout() { LampaYaniAuth.logout().then(function () { Lampa.Noty.show(deps.t('logged_out')); if (deps.onAuthChanged) deps.onAuthChanged(); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_removed')); if (deps.onAuthChanged) deps.onAuthChanged(); render(); }); }
         return {create: function () { render(); scroll.append(content); html.append(scroll.render(true)); ready = true; this.activity.loader(false); this.activity.toggle(); }, start: function () { Lampa.Controller.add('content', {toggle: refreshFocus, left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function () { Navigator.move('right'); }, up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, down: function () { LampaYaniNavigation.moveDown(scroll); }, back: deps.goBack}); Lampa.Controller.toggle('content'); }, render: function (js) { return js ? html[0] : html; }, destroy: function () { ready = false; scroll.destroy(); html.remove(); }};
     }
     window.LampaYani = window.LampaYani || {};
@@ -13668,6 +13671,7 @@ function pluginYummyAnime() {
         collection: null
     };
     var usagePolicyVisible = false;
+    var authSettingsParamDefinition = null;
     var tileNavigationKey = '';
     var tileNavigationAt = 0;
 
@@ -15891,6 +15895,7 @@ function pluginYummyAnime() {
             input: showYummyInput,
             goBack: goBack,
             hint: function () { return localizedAuthText('auth_hint'); },
+            onAuthChanged: syncSettingsAuthStatus,
             onAuthorized: function () {
                 ensureRemoteHistory(true).catch(function () {});
                 if (object && object.refresh_account_on_authorized) {
@@ -18114,12 +18119,16 @@ function pluginYummyAnime() {
 
         // Keep this row stable: the account page reads the token on every render,
         // so sign-in and sign-out never leave stale conditional settings behind.
-        Lampa.SettingsApi.addParam({
+        authSettingsParamDefinition = {
             component: 'yani',
             param: {name: 'yani_account_state', type: 'button'},
-            field: {name: t('auth_title'), description: localizedAuthText('auth_manage_description')},
+            field: {name: t('auth_title'), description: settingsAuthDescription()},
+            onRender: function (item) {
+                syncSettingsAuthStatus(item);
+            },
             onChange: openSettingsLogin
-        });
+        };
+        Lampa.SettingsApi.addParam(authSettingsParamDefinition);
         Lampa.SettingsApi.addParam({
             component: 'yani',
             param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
@@ -18376,6 +18385,25 @@ function pluginYummyAnime() {
     function localizedAuthText(key) {
         return String(t(key) || '').replace(/\{site\}/g, yummyWebsiteUrl());
     }
+
+    function settingsAuthDescription() {
+        var status = LampaYaniAuth.token() ? t('auth_authorized') : t('auth_not_authorized');
+        return t('settings_auth_status') + ': ' + status + ' · ' + localizedAuthText('auth_manage_description');
+    }
+
+    function syncSettingsAuthStatus(renderedItem) {
+        var description = settingsAuthDescription();
+        var authorized = Boolean(LampaYaniAuth.token());
+        if (authSettingsParamDefinition) authSettingsParamDefinition.field.description = description;
+        var rows = renderedItem && renderedItem.length ? renderedItem : $('.settings-param[data-name="yani_account_state"]');
+        rows.each(function () {
+            var row = $(this);
+            var target = row.find('.settings-param__descr');
+            if (target.length) target.text(description);
+            else row.append($('<div class="settings-param__descr"></div>').text(description));
+            row.toggleClass('yani-settings-auth--authorized', authorized);
+        });
+    }
     function yummyTitleUrl(card) {
         var slug = card && card.yani_url;
         if (!slug || typeof slug !== 'string') return '';
@@ -18421,6 +18449,7 @@ function pluginYummyAnime() {
             Lampa.Noty.show(t('token_removed'));
         }).then(function () {
             accountLogoutPending = false;
+            syncSettingsAuthStatus();
             Lampa.Activity.replace({url: 'yani/account', title: 'YummyAnime ' + t('account'), component: 'yani_account'});
         });
     }

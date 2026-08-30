@@ -292,6 +292,7 @@
     messages.ru.playback_target_internal = 'Внутренний плеер Lampa';
     messages.ru.playback_services = 'Сервисы и источники';
     messages.ru.settings_account_section = 'Аккаунт и синхронизация';
+    messages.ru.settings_auth_status = 'Статус';
     messages.ru.settings_interface_section = 'Интерфейс';
     messages.ru.settings_playback_section = 'Воспроизведение';
     messages.ru.settings_integrations_section = 'Дополнительные возможности';
@@ -379,6 +380,7 @@
     messages.en.playback_target_internal = 'Internal Lampa player';
     messages.en.playback_services = 'Services and sources';
     messages.en.settings_account_section = 'Account and sync';
+    messages.en.settings_auth_status = 'Status';
     messages.en.settings_interface_section = 'Interface';
     messages.en.settings_playback_section = 'Playback';
     messages.en.settings_integrations_section = 'Additional integrations';
@@ -613,6 +615,7 @@
     messages.uk.display_sources_description = 'Які відеосервіси показувати в списку озвучень під час перегляду';
     messages.uk.source_visibility_description = 'Показувати це джерело в списку озвучень';
     messages.uk.settings_account_section = 'Обліковий запис і синхронізація';
+    messages.uk.settings_auth_status = 'Статус';
     messages.uk.settings_interface_section = 'Інтерфейс';
     messages.uk.settings_playback_section = 'Відтворення';
     messages.uk.settings_integrations_section = 'Додаткові можливості';

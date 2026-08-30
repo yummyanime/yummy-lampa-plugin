@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.10',
+        version: '0.46.12',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -322,6 +322,7 @@ function pluginYummyAnime() {
     messages.ru.playback_target_internal = 'Внутренний плеер Lampa';
     messages.ru.playback_services = 'Сервисы и источники';
     messages.ru.settings_account_section = 'Аккаунт и синхронизация';
+    messages.ru.settings_auth_status = 'Статус';
     messages.ru.settings_interface_section = 'Интерфейс';
     messages.ru.settings_playback_section = 'Воспроизведение';
     messages.ru.settings_integrations_section = 'Дополнительные возможности';
@@ -344,6 +345,7 @@ function pluginYummyAnime() {
     messages.ru.lampac_unavailable = 'Модуль Lampac недоступен';
     messages.ru.not_configured = 'не настроен';
     messages.ru.alloha_direct_required = 'Alloha недоступен во внутреннем и внешнем плеере без прямого потока. Настройте сервер Lampac или выберите другой источник';
+    messages.ru.vk_stream_unavailable = 'Не удалось получить видеопоток VK. Видео может быть недоступно, ограничено владельцем или требовать авторизацию VK';
     messages.ru.detail_load_error = 'Не удалось загрузить данные YummyAnime';
     messages.ru.aniskip = 'Пропуск опенинга и эндинга';
     messages.ru.aniskip_description = 'Тайминги берутся из AniSkip по идентификатору MyAnimeList. Режим «Предлагать пропуск» показывает кнопку в плеере вместо автоперемотки — так безопаснее, если озвучка другой длительности. Работает только во внутреннем плеере Lampa';
@@ -408,6 +410,7 @@ function pluginYummyAnime() {
     messages.en.playback_target_internal = 'Internal Lampa player';
     messages.en.playback_services = 'Services and sources';
     messages.en.settings_account_section = 'Account and sync';
+    messages.en.settings_auth_status = 'Status';
     messages.en.settings_interface_section = 'Interface';
     messages.en.settings_playback_section = 'Playback';
     messages.en.settings_integrations_section = 'Additional integrations';
@@ -430,6 +433,7 @@ function pluginYummyAnime() {
     messages.en.lampac_unavailable = 'Lampac module is unavailable';
     messages.en.not_configured = 'not configured';
     messages.en.alloha_direct_required = 'Alloha cannot use the internal or external player without a direct stream. Configure a Lampac server or choose another source';
+    messages.en.vk_stream_unavailable = 'Could not obtain the VK video stream. The video may be unavailable, restricted by its owner, or require VK authorization';
     messages.en.detail_load_error = 'Failed to load YummyAnime details';
     messages.en.aniskip = 'Skip openings and endings';
     messages.en.aniskip_description = 'Timestamps come from AniSkip by MyAnimeList id. “Suggest skip” shows a player button instead of auto-seeking — safer when a dub has a different runtime. Works in the internal Lampa player only';
@@ -641,6 +645,7 @@ function pluginYummyAnime() {
     messages.uk.display_sources_description = 'Які відеосервіси показувати в списку озвучень під час перегляду';
     messages.uk.source_visibility_description = 'Показувати це джерело в списку озвучень';
     messages.uk.settings_account_section = 'Обліковий запис і синхронізація';
+    messages.uk.settings_auth_status = 'Статус';
     messages.uk.settings_interface_section = 'Інтерфейс';
     messages.uk.settings_playback_section = 'Відтворення';
     messages.uk.settings_integrations_section = 'Додаткові можливості';
@@ -812,6 +817,7 @@ function pluginYummyAnime() {
     messages.uk.lampac_unavailable = 'Модуль Lampac недоступний';
     messages.uk.not_configured = 'не налаштовано';
     messages.uk.alloha_direct_required = 'Alloha недоступний у внутрішньому та зовнішньому плеєрі без прямого потоку. Налаштуйте сервер Lampac або виберіть інше джерело';
+    messages.uk.vk_stream_unavailable = 'Не вдалося отримати відеопотік VK. Відео може бути недоступне, обмежене власником або вимагати авторизацію VK';
     messages.uk.detail_load_error = 'Не вдалося завантажити дані YummyAnime';
     messages.uk.aniskip = 'Пропуск опенінга та ендінга';
     messages.uk.aniskip_description = 'Тайминги беруться з AniSkip за ідентифікатором MyAnimeList. Режим «Пропонувати пропуск» показує кнопку в плеєрі замість автоперемотування — так безпечніше, якщо озвучення іншої тривалості. Працює лише у внутрішньому плеєрі Lampa';
@@ -2374,12 +2380,14 @@ function pluginYummyAnime() {
             .replace(/\\u003a/gi, ':')
             .replace(/\\u003d/gi, '=')
             .replace(/\\u002f/gi, '/')
+            .replace(/\\u002d/gi, '-')
             .replace(/\\x26/gi, '&');
     }
 
     function addVkQuality(qualities, label, value, baseUrl) {
         var streamUrl = absoluteUrl(decodeVkPayload(value), baseUrl);
-        if (!streamUrl || !/^https?:\/\//i.test(streamUrl) || !/\.(?:m3u8|mp4)(?:[?#]|$)/i.test(streamUrl)) return;
+        var knownVkCdn = /(?:okcdn\.ru|vkuser|userapi\.com|vkvd)/i.test(streamUrl);
+        if (!streamUrl || !/^https?:\/\//i.test(streamUrl) || (!/\.(?:m3u8|mp4)(?:[?#]|$)/i.test(streamUrl) && !(label !== 'auto' && knownVkCdn))) return;
         if (!qualities[label]) qualities[label] = streamUrl;
     }
 
@@ -2387,11 +2395,14 @@ function pluginYummyAnime() {
         var text = decodeVkPayload(String(html || ''));
         var qualities = {};
         var match;
-        var qualityPattern = /["'](?:url|mp4_)(2160|1440|1080|720|480|360|240)["']\s*:\s*["']([^"']+)["']/gi;
+        var qualityPattern = /["']?(?:url|mp4_)(2160|1440|1080|720|480|360|240)["']?\s*[:=]\s*["']([^"']+)["']/gi;
         while ((match = qualityPattern.exec(text))) addVkQuality(qualities, match[1] + 'p', match[2], baseUrl);
 
-        var hlsPattern = /["'](?:hls_fmp4|hls|url_hls)["']\s*:\s*["']([^"']+)["']/gi;
+        var hlsPattern = /["']?(?:hls_fmp4|hls|url_hls|url)["']?\s*[:=]\s*["']([^"']+)["']/gi;
         while ((match = hlsPattern.exec(text))) addVkQuality(qualities, 'auto', match[1], baseUrl);
+
+        var attributePattern = /(?:data-video(?:-src|Src)|<source[^>]+src)\s*=\s*["']([^"']+)["']/gi;
+        while ((match = attributePattern.exec(text))) addVkQuality(qualities, 'auto', match[1], baseUrl);
 
         if (!Object.keys(qualities).length) {
             var directPattern = /(https?:\/\/[^\s"'<>\\]+\.(?:m3u8|mp4)(?:\?[^\s"'<>\\]*)?)/gi;
@@ -2407,36 +2418,64 @@ function pluginYummyAnime() {
         return ordered;
     }
 
+    function vkVideoExtUrl(pageHtml, iframeUrl) {
+        var normalized = normalizeUrl(iframeUrl);
+        if (/video_ext\.php/i.test(normalized)) return normalized;
+        var pair = vkVideoPair(normalized) || vkVideoPair(decodeVkPayload(pageHtml));
+        if (pair) return 'https://vk.com/video_ext.php?oid=' + encodeURIComponent(pair.owner) + '&id=' + encodeURIComponent(pair.video) + '&hd=1';
+        var match = /(?:https?:)?\\?\/\\?\/(?:www\.)?vk\.com\/video_ext\.php[^"'<>\s]*?[?&]oid=([^&"'<>\s]+)(?:&|&amp;|\\u0026)id=([^&"'<>\s]+)/i.exec(String(pageHtml || ''));
+        if (!match) match = /video_ext\.php[^"']*?[?&]oid=([^&"']+)(?:&|&amp;|\\u0026)id=([^&"']+)/i.exec(String(pageHtml || ''));
+        if (!match) return '';
+        return 'https://vk.com/video_ext.php?oid=' + encodeURIComponent(decodeVkPayload(match[1])) + '&id=' + encodeURIComponent(decodeVkPayload(match[2])) + '&hd=1';
+    }
+
+    function vkResolvedResult(cacheKey, html, sourceUrl) {
+        if (/embedErrorCallback\s*\?\.?\s*\(\s*8\s*\)/i.test(String(html || ''))) throw new Error('VK video unavailable');
+        var qualities = vkQualityMap(html, sourceUrl);
+        var labels = Object.keys(qualities);
+        if (!labels.length) throw new Error('VK stream links not found');
+        var playableLabels = labels.filter(function (label) { return label !== 'auto'; });
+        var label = playableLabels.length ? playableLabels[playableLabels.length - 1] : labels[labels.length - 1];
+        return cacheResult(cacheKey, {
+            url: qualities[label],
+            quality: label,
+            qualities: qualities,
+            source: 'vk',
+            direct: true,
+            headers: {
+                Referer: sourceUrl,
+                Origin: 'https://vk.com',
+                'User-Agent': CHROME_UA
+            }
+        });
+    }
+
     function resolveVk(iframeUrl) {
         var fullUrl = normalizeUrl(iframeUrl);
         var hit = cached(fullUrl);
         if (hit) return Promise.resolve(hit);
         var pair = vkVideoPair(fullUrl);
-        if (!pair) return Promise.reject(new Error('VK video id not found'));
-        var playerUrl = 'https://vk.com/video_ext.php?oid=' + encodeURIComponent(pair.owner) + '&id=' + encodeURIComponent(pair.video) + '&hd=1';
-        var requestHeaders = {
-            Referer: fullUrl,
-            'User-Agent': CHROME_UA,
-            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-        };
-        return requestText(playerUrl, {headers: requestHeaders}).then(function (html) {
-            if (/embedErrorCallback\s*\?\.?\s*\(\s*8\s*\)/i.test(String(html || ''))) throw new Error('VK video unavailable');
-            var qualities = vkQualityMap(html, playerUrl);
-            var labels = Object.keys(qualities);
-            if (!labels.length) throw new Error('VK stream links not found');
-            var playableLabels = labels.filter(function (label) { return label !== 'auto'; });
-            var label = playableLabels.length ? playableLabels[playableLabels.length - 1] : labels[labels.length - 1];
-            return cacheResult(fullUrl, {
-                url: qualities[label],
-                quality: label,
-                qualities: qualities,
-                source: 'vk',
-                direct: true,
-                headers: {
-                    Referer: playerUrl,
-                    Origin: 'https://vk.com',
-                    'User-Agent': CHROME_UA
-                }
+        var playerUrl = pair ? 'https://vk.com/video_ext.php?oid=' + encodeURIComponent(pair.owner) + '&id=' + encodeURIComponent(pair.video) + '&hd=1' : '';
+        function headers(referer) {
+            return {
+                Referer: referer || fullUrl,
+                'User-Agent': CHROME_UA,
+                Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            };
+        }
+        if (playerUrl || /video_ext\.php/i.test(fullUrl)) {
+            playerUrl = playerUrl || fullUrl;
+            return requestText(playerUrl, {headers: headers(fullUrl)}).then(function (html) {
+                return vkResolvedResult(fullUrl, html, playerUrl);
+            });
+        }
+        return requestText(fullUrl, {headers: headers(fullUrl)}).then(function (iframeHtml) {
+            var discoveredUrl = vkVideoExtUrl(iframeHtml, fullUrl);
+            if (!discoveredUrl || discoveredUrl === fullUrl) return vkResolvedResult(fullUrl, iframeHtml, fullUrl);
+            return requestText(discoveredUrl, {headers: headers(fullUrl)}).then(function (playerHtml) {
+                return vkResolvedResult(fullUrl, playerHtml, discoveredUrl);
+            }).catch(function () {
+                return vkResolvedResult(fullUrl, iframeHtml, fullUrl);
             });
         });
     }
@@ -9466,10 +9505,10 @@ function pluginYummyAnime() {
         function submit() {
             if (!login) return Lampa.Noty.show(deps.t('email_required')); if (!password) return Lampa.Noty.show(deps.t('password_required'));
             Lampa.Loading && Lampa.Loading.start && Lampa.Loading.start();
-            LampaYaniAuth.login(login, password).then(function () { return LampaYaniApi.profile().then(function (payload) { var profile = payload && payload.response ? payload.response : payload, current = LampaYaniAuth.get(); LampaYaniAuth.save({token: current.token, login: current.login, display_name: profile && (profile.nickname || profile.name) || current.login}); }).catch(function () {}); }).then(function () { password = ''; Lampa.Noty.show(deps.t('login_ok')); if (deps.onAuthorized) deps.onAuthorized(); deps.goBack(); }).catch(function (error) { console.error('[YummyAnime Auth]', error); Lampa.Noty.show(deps.t('login_error')); }).then(function () { Lampa.Loading && Lampa.Loading.stop && Lampa.Loading.stop(); });
+            LampaYaniAuth.login(login, password).then(function () { return LampaYaniApi.profile().then(function (payload) { var profile = payload && payload.response ? payload.response : payload, current = LampaYaniAuth.get(); LampaYaniAuth.save({token: current.token, login: current.login, display_name: profile && (profile.nickname || profile.name) || current.login}); }).catch(function () {}); }).then(function () { password = ''; Lampa.Noty.show(deps.t('login_ok')); if (deps.onAuthChanged) deps.onAuthChanged(); if (deps.onAuthorized) deps.onAuthorized(); deps.goBack(); }).catch(function (error) { console.error('[YummyAnime Auth]', error); Lampa.Noty.show(deps.t('login_error')); }).then(function () { Lampa.Loading && Lampa.Loading.stop && Lampa.Loading.stop(); });
         }
         function refresh() { LampaYaniAuth.refresh().then(function () { Lampa.Noty.show(deps.t('token_refreshed')); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_refresh_error')); }); }
-        function logout() { LampaYaniAuth.logout().then(function () { Lampa.Noty.show(deps.t('logged_out')); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_removed')); render(); }); }
+        function logout() { LampaYaniAuth.logout().then(function () { Lampa.Noty.show(deps.t('logged_out')); if (deps.onAuthChanged) deps.onAuthChanged(); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_removed')); if (deps.onAuthChanged) deps.onAuthChanged(); render(); }); }
         return {create: function () { render(); scroll.append(content); html.append(scroll.render(true)); ready = true; this.activity.loader(false); this.activity.toggle(); }, start: function () { Lampa.Controller.add('content', {toggle: refreshFocus, left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function () { Navigator.move('right'); }, up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, down: function () { LampaYaniNavigation.moveDown(scroll); }, back: deps.goBack}); Lampa.Controller.toggle('content'); }, render: function (js) { return js ? html[0] : html; }, destroy: function () { ready = false; scroll.destroy(); html.remove(); }};
     }
     window.LampaYani = window.LampaYani || {};
@@ -13632,6 +13671,7 @@ function pluginYummyAnime() {
         collection: null
     };
     var usagePolicyVisible = false;
+    var authSettingsParamDefinition = null;
     var tileNavigationKey = '';
     var tileNavigationAt = 0;
 
@@ -15855,6 +15895,7 @@ function pluginYummyAnime() {
             input: showYummyInput,
             goBack: goBack,
             hint: function () { return localizedAuthText('auth_hint'); },
+            onAuthChanged: syncSettingsAuthStatus,
             onAuthorized: function () {
                 ensureRemoteHistory(true).catch(function () {});
                 if (object && object.refresh_account_on_authorized) {
@@ -16606,6 +16647,11 @@ function pluginYummyAnime() {
             }).catch(function (error) {
                 setLoading(false);
                 console.warn('[YummyAnime] Stream resolve failed', error);
+                if (isVkPlaybackSource(url, group)) {
+                    Lampa.Noty.show(t('vk_stream_unavailable'));
+                    restorePlaybackInteraction();
+                    return;
+                }
                 launchResolvedVideo(card, group, videos, selected, url, options);
             });
             return;
@@ -16839,8 +16885,8 @@ function pluginYummyAnime() {
             : false;
     }
 
-    var PLAYBACK_SOURCE_IDS = ['kodik', 'alloha', 'cvh', 'sibnet', 'aksor'];
-    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
+    var PLAYBACK_SOURCE_IDS = ['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'];
+    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', vk: 'VK', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
@@ -17461,6 +17507,11 @@ function pluginYummyAnime() {
         return /(^|\/\/)(?:www\.)?alloha(?:\.[a-z0-9-]+)+(?::\d+)?(?:[/:]|$)/i.test(url || '');
     }
 
+    function isVkPlaybackSource(url, group) {
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        return /iframevk|vkvideo|vk\.com|video_ext\.php|(?:^|\s)vk(?:\s|$)/i.test(value);
+    }
+
 
     function videoQualityLabel(video) {
         var data = LampaYaniUiUtils.videoData(video);
@@ -18068,12 +18119,16 @@ function pluginYummyAnime() {
 
         // Keep this row stable: the account page reads the token on every render,
         // so sign-in and sign-out never leave stale conditional settings behind.
-        Lampa.SettingsApi.addParam({
+        authSettingsParamDefinition = {
             component: 'yani',
             param: {name: 'yani_account_state', type: 'button'},
-            field: {name: t('auth_title'), description: localizedAuthText('auth_manage_description')},
+            field: {name: t('auth_title'), description: settingsAuthDescription()},
+            onRender: function (item) {
+                syncSettingsAuthStatus(item);
+            },
             onChange: openSettingsLogin
-        });
+        };
+        Lampa.SettingsApi.addParam(authSettingsParamDefinition);
         Lampa.SettingsApi.addParam({
             component: 'yani',
             param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
@@ -18330,6 +18385,25 @@ function pluginYummyAnime() {
     function localizedAuthText(key) {
         return String(t(key) || '').replace(/\{site\}/g, yummyWebsiteUrl());
     }
+
+    function settingsAuthDescription() {
+        var status = LampaYaniAuth.token() ? t('auth_authorized') : t('auth_not_authorized');
+        return t('settings_auth_status') + ': ' + status + ' · ' + localizedAuthText('auth_manage_description');
+    }
+
+    function syncSettingsAuthStatus(renderedItem) {
+        var description = settingsAuthDescription();
+        var authorized = Boolean(LampaYaniAuth.token());
+        if (authSettingsParamDefinition) authSettingsParamDefinition.field.description = description;
+        var rows = renderedItem && renderedItem.length ? renderedItem : $('.settings-param[data-name="yani_account_state"]');
+        rows.each(function () {
+            var row = $(this);
+            var target = row.find('.settings-param__descr');
+            if (target.length) target.text(description);
+            else row.append($('<div class="settings-param__descr"></div>').text(description));
+            row.toggleClass('yani-settings-auth--authorized', authorized);
+        });
+    }
     function yummyTitleUrl(card) {
         var slug = card && card.yani_url;
         if (!slug || typeof slug !== 'string') return '';
@@ -18375,6 +18449,7 @@ function pluginYummyAnime() {
             Lampa.Noty.show(t('token_removed'));
         }).then(function () {
             accountLogoutPending = false;
+            syncSettingsAuthStatus();
             Lampa.Activity.replace({url: 'yani/account', title: 'YummyAnime ' + t('account'), component: 'yani_account'});
         });
     }

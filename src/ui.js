@@ -174,6 +174,7 @@
         collection: null
     };
     var usagePolicyVisible = false;
+    var authSettingsParamDefinition = null;
     var tileNavigationKey = '';
     var tileNavigationAt = 0;
 
@@ -2397,6 +2398,7 @@
             input: showYummyInput,
             goBack: goBack,
             hint: function () { return localizedAuthText('auth_hint'); },
+            onAuthChanged: syncSettingsAuthStatus,
             onAuthorized: function () {
                 ensureRemoteHistory(true).catch(function () {});
                 if (object && object.refresh_account_on_authorized) {
@@ -4620,12 +4622,16 @@
 
         // Keep this row stable: the account page reads the token on every render,
         // so sign-in and sign-out never leave stale conditional settings behind.
-        Lampa.SettingsApi.addParam({
+        authSettingsParamDefinition = {
             component: 'yani',
             param: {name: 'yani_account_state', type: 'button'},
-            field: {name: t('auth_title'), description: localizedAuthText('auth_manage_description')},
+            field: {name: t('auth_title'), description: settingsAuthDescription()},
+            onRender: function (item) {
+                syncSettingsAuthStatus(item);
+            },
             onChange: openSettingsLogin
-        });
+        };
+        Lampa.SettingsApi.addParam(authSettingsParamDefinition);
         Lampa.SettingsApi.addParam({
             component: 'yani',
             param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
@@ -4882,6 +4888,25 @@
     function localizedAuthText(key) {
         return String(t(key) || '').replace(/\{site\}/g, yummyWebsiteUrl());
     }
+
+    function settingsAuthDescription() {
+        var status = LampaYaniAuth.token() ? t('auth_authorized') : t('auth_not_authorized');
+        return t('settings_auth_status') + ': ' + status + ' · ' + localizedAuthText('auth_manage_description');
+    }
+
+    function syncSettingsAuthStatus(renderedItem) {
+        var description = settingsAuthDescription();
+        var authorized = Boolean(LampaYaniAuth.token());
+        if (authSettingsParamDefinition) authSettingsParamDefinition.field.description = description;
+        var rows = renderedItem && renderedItem.length ? renderedItem : $('.settings-param[data-name="yani_account_state"]');
+        rows.each(function () {
+            var row = $(this);
+            var target = row.find('.settings-param__descr');
+            if (target.length) target.text(description);
+            else row.append($('<div class="settings-param__descr"></div>').text(description));
+            row.toggleClass('yani-settings-auth--authorized', authorized);
+        });
+    }
     function yummyTitleUrl(card) {
         var slug = card && card.yani_url;
         if (!slug || typeof slug !== 'string') return '';
@@ -4927,6 +4952,7 @@
             Lampa.Noty.show(t('token_removed'));
         }).then(function () {
             accountLogoutPending = false;
+            syncSettingsAuthStatus();
             Lampa.Activity.replace({url: 'yani/account', title: 'YummyAnime ' + t('account'), component: 'yani_account'});
         });
     }
