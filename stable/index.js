@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.21',
+        version: '0.46.22',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -2194,6 +2194,11 @@ function pluginYummyAnime() {
         }
     }
 
+    function cvhUserAgent() {
+        var own = window.navigator && window.navigator.userAgent;
+        return typeof own === 'string' && own ? own : CHROME_UA;
+    }
+
     function resolveCvh(iframeUrl) {
         var fullUrl = normalizeUrl(iframeUrl);
         var hit = cached(fullUrl);
@@ -2204,9 +2209,18 @@ function pluginYummyAnime() {
         var dubbingCode = String(params.dubbing_code || '').toLowerCase();
         if (!animeId) return Promise.reject(new Error('CVH anime id not found'));
 
+        // CVH signs its CDN links for whichever agent asked for them - the
+        // signed URL carries `srcAg=CHROME`, `srcAg=CHROME_ANDROID_TABLET` and
+        // so on - and the CDN then answers 400 when playback comes from a
+        // different agent. Asking with a desktop agent therefore produced a
+        // link the device's own player could never fetch: the internal Android
+        // player, which is a <video> in the WebView and cannot send custom
+        // headers, always requests with the WebView's agent. Ask with the agent
+        // that will actually play, so the signature matches either way.
+        var playbackUserAgent = cvhUserAgent();
         var headers = {
             Referer: 'https://ru.yummyani.me/',
-            'User-Agent': CHROME_UA,
+            'User-Agent': playbackUserAgent,
             Accept: 'application/json'
         };
         var playlistUrl = 'https://plapi.cdnvideohub.com/api/v1/player/sv/playlist?pub=745&id=' + encodeURIComponent(animeId) + '&aggr=mali';
@@ -2240,7 +2254,9 @@ function pluginYummyAnime() {
                 url: qualities[label],
                 quality: label,
                 qualities: qualities,
-                headers: {'User-Agent': CHROME_UA},
+                // External players honour these headers; the internal one sends
+                // the same agent by itself. Both then match the signature.
+                headers: {'User-Agent': playbackUserAgent},
                 source: 'cvh',
                 direct: true
             });

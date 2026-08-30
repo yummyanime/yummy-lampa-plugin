@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.22 — 2026-08-30
+
+- Fix CVH streams failing in the internal Android player by signing the CDN link for the agent that plays it
+
 ## 0.46.21 — 2026-08-30
 
 - Fix Android TV CVH internal playback CORS

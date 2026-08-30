@@ -163,3 +163,23 @@ Promise.all([
     console.error(error);
     process.exitCode = 1;
 });
+
+// CVH signs its CDN links for the agent that requested them, and the CDN then
+// refuses playback from any other agent. The internal Android player is a
+// <video> in the WebView and cannot send custom headers, so it always requests
+// with the WebView's own agent: asking CVH with a hardcoded desktop agent
+// produced links that player could never fetch.
+const cvhSource = fs.readFileSync('src/stream-resolver.js', 'utf8');
+assert.match(cvhSource, /function cvhUserAgent\(\)/, 'CVH must resolve the playing agent');
+assert.match(cvhSource, /window\.navigator && window\.navigator\.userAgent/, 'the device agent is the one that plays');
+const cvhStart = cvhSource.indexOf('function resolveCvh');
+const cvhEnd = cvhSource.indexOf('function resolveAksor', cvhStart);
+assert.ok(cvhStart >= 0 && cvhEnd > cvhStart, 'the CVH resolver must exist');
+const cvhBody = cvhSource.slice(cvhStart, cvhEnd);
+assert.ok(!/'User-Agent': CHROME_UA/.test(cvhBody), 'CVH must not sign its links for a hardcoded desktop agent');
+assert.ok(cvhBody.includes("'User-Agent': playbackUserAgent"), 'the request and the playback headers must use one agent');
+assert.strictEqual(
+    (cvhBody.match(/playbackUserAgent/g) || []).length,
+    3,
+    'the agent is declared once and used for both the request and the playback headers'
+);
