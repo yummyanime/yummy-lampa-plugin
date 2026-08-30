@@ -3,7 +3,36 @@ const fs = require('fs');
 
 global.window = global;
 global.LampaYaniConfig = {requestTimeout: 1000};
+global.LampaYaniEpisode = {
+    normalize: function (value) { return String(value == null ? '' : value).trim(); },
+    same: function (left, right) { return Number(left) === Number(right); }
+};
 global.fetch = async function (url) {
+    if (String(url).indexOf('plapi.cdnvideohub.com/api/v1/player/sv/playlist') >= 0) {
+        return {
+            ok: true,
+            text: async function () {
+                return JSON.stringify({items: [
+                    {episode: 2, voiceStudio: 'AniLibria', vkId: 'cvh-video-2'}
+                ]});
+            }
+        };
+    }
+    if (String(url).indexOf('plapi.cdnvideohub.com/api/v1/player/sv/video/cvh-video-2') >= 0) {
+        return {
+            ok: true,
+            text: async function () {
+                return JSON.stringify({
+                    failoverHost: 'vd.example.test',
+                    sources: {
+                        mpegMediumUrl: 'https://vd.example.test/?type=2&token=480',
+                        mpegHighUrl: 'https://vd.example.test/?type=3&token=720',
+                        mpegFullHdUrl: 'https://vd.example.test/?type=5&token=1080'
+                    }
+                });
+            }
+        };
+    }
     if (String(url).indexOf('player.aksor.tv/api/video/test-hash') >= 0) {
         return {
             ok: true,
@@ -81,6 +110,7 @@ assert.strictEqual(LampaYaniStreamResolver.canResolve('https://video.sibnet.ru/s
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://rutube.ru/play/embed/70e53a86c25f5dab63d1b1151bb8c619'), true);
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239999'), true);
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://ru.yummyani.me/iframeVK.html?token=opaque'), true);
+assert.strictEqual(LampaYaniStreamResolver.canResolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=AniLibria&anime_id=31240&episode=2'), true);
 assert.strictEqual(LampaYaniStreamResolver.isDirectVideoUrl('https://cdn.example/video/master.mpd?token=1'), true);
 
 Promise.all([
@@ -88,7 +118,8 @@ Promise.all([
     LampaYaniStreamResolver.resolve('https://video.sibnet.ru/shell.php?videoid=1502426'),
     LampaYaniStreamResolver.resolve('https://rutube.ru/play/embed/70e53a86c25f5dab63d1b1151bb8c619'),
     LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239999'),
-    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?token=opaque')
+    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?token=opaque'),
+    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=AniLibria&anime_id=31240&episode=2')
 ]).then(function (results) {
     var result = results[0];
     assert.strictEqual(result.source, 'aksor');
@@ -115,6 +146,13 @@ Promise.all([
     assert.strictEqual(wrappedVk.source, 'vk');
     assert.strictEqual(wrappedVk.quality, '1080p');
     assert.strictEqual(wrappedVk.url, 'https://vkvd.test/stream/1080.mp4?token=opaque');
+    var cvh = results[5];
+    assert.strictEqual(cvh.source, 'cvh');
+    assert.strictEqual(cvh.direct, true);
+    assert.strictEqual(cvh.quality, '1080p');
+    assert.strictEqual(cvh.url, 'https://vd.example.test/?type=5&token=1080');
+    assert.strictEqual(cvh.qualities['720p'], 'https://vd.example.test/?type=3&token=720');
+    assert.match(cvh.headers['User-Agent'], /Chrome\/149/);
     return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239022').then(function () {
         throw new Error('Unavailable VK video unexpectedly resolved');
     }, function (error) {

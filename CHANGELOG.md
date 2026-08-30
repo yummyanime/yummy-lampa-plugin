@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.14 — 2026-08-30
+
+- Fix CVH direct MP4 playback 
+- Refactor CVH default for Android
+
 ## 0.46.13 — 2026-08-30
 
 - Refactor Alloha web playback

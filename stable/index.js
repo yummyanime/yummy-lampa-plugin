@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.12',
+        version: '0.46.14',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -346,6 +346,9 @@ function pluginYummyAnime() {
     messages.ru.not_configured = 'не настроен';
     messages.ru.alloha_direct_required = 'Alloha недоступен во внутреннем и внешнем плеере без прямого потока. Настройте сервер Lampac или выберите другой источник';
     messages.ru.vk_stream_unavailable = 'Не удалось получить видеопоток VK. Видео может быть недоступно, ограничено владельцем или требовать авторизацию VK';
+    messages.ru.cvh_stream_unavailable = 'Не удалось получить прямой поток CVH. Выберите другую озвучку или источник';
+    messages.ru.cvh_source_description = 'Прямой MP4-поток. На Android и Android TV включён по умолчанию; на браузерных платформах доступ может блокироваться CORS';
+    messages.ru.cvh_source_warning = 'CVH включён. Расширение использует прямой MP4-поток; доступность зависит от сервиса CVH и платформы устройства.';
     messages.ru.detail_load_error = 'Не удалось загрузить данные YummyAnime';
     messages.ru.aniskip = 'Пропуск опенинга и эндинга';
     messages.ru.aniskip_description = 'Тайминги берутся из AniSkip по идентификатору MyAnimeList. Режим «Предлагать пропуск» показывает кнопку в плеере вместо автоперемотки — так безопаснее, если озвучка другой длительности. Работает только во внутреннем плеере Lampa';
@@ -375,8 +378,14 @@ function pluginYummyAnime() {
     messages.ru.resolver_check_description = 'Запросить /health у настроенного сервера';
     messages.ru.resolver_ok = 'Резолвер доступен';
     messages.ru.resolver_error = 'Резолвер недоступен';
-    messages.ru.alloha_iframe = 'Alloha: встроенный плеер сайта';
-    messages.ru.alloha_iframe_description = 'Если прямой поток получить не удалось, открывать оригинальный плеер Alloha внутри Lampa. Таймлайн Lampa и внешний плеер при этом недоступны';
+    messages.ru.alloha_iframe = 'Alloha: веб-плеер источника';
+    messages.ru.alloha_iframe_description = 'Открывать оригинальный веб-плеер Alloha внутри Lampa, когда прямой поток недоступен. Дополнительное приложение не требуется; таймлайн Lampa и внешние плееры недоступны';
+    messages.ru.alloha_playback_title = 'Как открыть Alloha';
+    messages.ru.alloha_watch_lampa = 'Смотреть в плеере Lampa';
+    messages.ru.alloha_watch_lampa_description = 'Получить прямой поток через настроенный resolver и сохранить функции Lampa';
+    messages.ru.alloha_watch_web = 'Открыть веб-плеер Alloha';
+    messages.ru.alloha_watch_web_description = 'Открыть плеер источника внутри Lampa без дополнительных приложений';
+    messages.ru.alloha_web_player_notice = 'Веб-плеер Alloha работает без дополнительного приложения, но не поддерживает таймлайн Lampa, внешний плеер и точное отслеживание прогресса';
     messages.ru.usage_policy_title = 'Политика использования';
     messages.ru.usage_policy_as_is = 'Расширение YummyAnime предоставляется «как есть», без каких-либо явных или подразумеваемых гарантий.';
     messages.ru.usage_policy_information = 'Расширение предназначено исключительно для ознакомительных и информационных целей.';
@@ -434,6 +443,9 @@ function pluginYummyAnime() {
     messages.en.not_configured = 'not configured';
     messages.en.alloha_direct_required = 'Alloha cannot use the internal or external player without a direct stream. Configure a Lampac server or choose another source';
     messages.en.vk_stream_unavailable = 'Could not obtain the VK video stream. The video may be unavailable, restricted by its owner, or require VK authorization';
+    messages.en.cvh_stream_unavailable = 'Could not obtain a direct CVH stream. Choose another dubbing or source';
+    messages.en.cvh_source_description = 'Direct MP4 stream. Enabled by default on Android and Android TV; browser-only platforms may be blocked by CORS';
+    messages.en.cvh_source_warning = 'CVH is enabled. The extension uses a direct MP4 stream; availability depends on the CVH service and device platform.';
     messages.en.detail_load_error = 'Failed to load YummyAnime details';
     messages.en.aniskip = 'Skip openings and endings';
     messages.en.aniskip_description = 'Timestamps come from AniSkip by MyAnimeList id. “Suggest skip” shows a player button instead of auto-seeking — safer when a dub has a different runtime. Works in the internal Lampa player only';
@@ -463,8 +475,14 @@ function pluginYummyAnime() {
     messages.en.resolver_check_description = 'Request /health from the configured server';
     messages.en.resolver_ok = 'Resolver is reachable';
     messages.en.resolver_error = 'Resolver is unreachable';
-    messages.en.alloha_iframe = 'Alloha: embedded site player';
-    messages.en.alloha_iframe_description = 'When no direct stream can be resolved, open the original Alloha player inside Lampa. The Lampa timeline and external players stay unavailable';
+    messages.en.alloha_iframe = 'Alloha: source web player';
+    messages.en.alloha_iframe_description = 'Open the original Alloha web player inside Lampa when no direct stream is available. No companion app is required; the Lampa timeline and external players remain unavailable';
+    messages.en.alloha_playback_title = 'How to open Alloha';
+    messages.en.alloha_watch_lampa = 'Watch in the Lampa player';
+    messages.en.alloha_watch_lampa_description = 'Resolve a direct stream through the configured service and keep Lampa playback features';
+    messages.en.alloha_watch_web = 'Open the Alloha web player';
+    messages.en.alloha_watch_web_description = 'Open the source player inside Lampa without installing another app';
+    messages.en.alloha_web_player_notice = 'The Alloha web player needs no companion app, but it cannot use the Lampa timeline, external players, or precise progress tracking';
     messages.en.usage_policy_title = 'Usage policy';
     messages.en.usage_policy_as_is = 'The YummyAnime extension is provided “as is”, without warranties of any kind, express or implied.';
     messages.en.usage_policy_information = 'The extension is intended solely for informational and introductory purposes.';
@@ -818,6 +836,9 @@ function pluginYummyAnime() {
     messages.uk.not_configured = 'не налаштовано';
     messages.uk.alloha_direct_required = 'Alloha недоступний у внутрішньому та зовнішньому плеєрі без прямого потоку. Налаштуйте сервер Lampac або виберіть інше джерело';
     messages.uk.vk_stream_unavailable = 'Не вдалося отримати відеопотік VK. Відео може бути недоступне, обмежене власником або вимагати авторизацію VK';
+    messages.uk.cvh_stream_unavailable = 'Не вдалося отримати прямий потік CVH. Виберіть інше озвучення або джерело';
+    messages.uk.cvh_source_description = 'Прямий MP4-потік. На Android та Android TV увімкнено за замовчуванням; на браузерних платформах доступ може блокуватися CORS';
+    messages.uk.cvh_source_warning = 'CVH увімкнено. Розширення використовує прямий MP4-потік; доступність залежить від сервісу CVH і платформи пристрою.';
     messages.uk.detail_load_error = 'Не вдалося завантажити дані YummyAnime';
     messages.uk.aniskip = 'Пропуск опенінга та ендінга';
     messages.uk.aniskip_description = 'Тайминги беруться з AniSkip за ідентифікатором MyAnimeList. Режим «Пропонувати пропуск» показує кнопку в плеєрі замість автоперемотування — так безпечніше, якщо озвучення іншої тривалості. Працює лише у внутрішньому плеєрі Lampa';
@@ -847,8 +868,14 @@ function pluginYummyAnime() {
     messages.uk.resolver_check_description = 'Запитати /health у налаштованого сервера';
     messages.uk.resolver_ok = 'Резолвер доступний';
     messages.uk.resolver_error = 'Резолвер недоступний';
-    messages.uk.alloha_iframe = 'Alloha: вбудований плеєр сайту';
-    messages.uk.alloha_iframe_description = 'Якщо прямий потік отримати не вдалося, відкривати оригінальний плеєр Alloha всередині Lampa. Таймлайн Lampa та зовнішній плеєр при цьому недоступні';
+    messages.uk.alloha_iframe = 'Alloha: вебплеєр джерела';
+    messages.uk.alloha_iframe_description = 'Відкривати оригінальний вебплеєр Alloha всередині Lampa, коли прямий потік недоступний. Додатковий застосунок не потрібен; таймлайн Lampa та зовнішні плеєри недоступні';
+    messages.uk.alloha_playback_title = 'Як відкрити Alloha';
+    messages.uk.alloha_watch_lampa = 'Дивитися у плеєрі Lampa';
+    messages.uk.alloha_watch_lampa_description = 'Отримати прямий потік через налаштований resolver і зберегти функції Lampa';
+    messages.uk.alloha_watch_web = 'Відкрити вебплеєр Alloha';
+    messages.uk.alloha_watch_web_description = 'Відкрити плеєр джерела всередині Lampa без додаткових застосунків';
+    messages.uk.alloha_web_player_notice = 'Вебплеєр Alloha працює без додаткового застосунку, але не підтримує таймлайн Lampa, зовнішні плеєри та точне відстеження прогресу';
     messages.uk.usage_policy_title = 'Політика використання';
     messages.uk.usage_policy_as_is = 'Розширення YummyAnime надається «як є», без будь-яких прямих або непрямих гарантій.';
     messages.uk.usage_policy_information = 'Розширення призначене виключно для ознайомлювальних та інформаційних цілей.';
@@ -1825,7 +1852,7 @@ function pluginYummyAnime() {
 (function (window) {
     'use strict';
 
-    var CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+    var CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36';
     var QUALITY_ORDER = [240, 360, 480, 720, 1080];
     var HLS_QUALITY_MANIFEST_PATTERN = /\/(\d+)\.mp4:hls:manifest\.m3u8(?=$|[?#])/i;
     var cache = {};
@@ -2209,7 +2236,14 @@ function pluginYummyAnime() {
             var labels = Object.keys(qualities);
             if (!labels.length) throw new Error('CVH stream links not found');
             var label = labels[labels.length - 1];
-            return cacheResult(fullUrl, {url: qualities[label], quality: label, qualities: qualities, source: 'cvh', direct: true});
+            return cacheResult(fullUrl, {
+                url: qualities[label],
+                quality: label,
+                qualities: qualities,
+                headers: {'User-Agent': CHROME_UA},
+                source: 'cvh',
+                direct: true
+            });
         });
     }
 
@@ -9583,8 +9617,20 @@ function pluginYummyAnime() {
 (function (window) {
     'use strict';
     function create(object, deps) {
-        var html = $('<div class="yani-player"></div>'), iframe = $('<iframe class="yani-player__iframe" frameborder="0" allowfullscreen></iframe>'), back = $('<div class="yani-player__back selector"></div>').text(deps.t('back_to_lampa')).on('hover:enter click', deps.goBack);
-        return {create: function () { iframe.attr('src', deps.sourceUrl(object)).attr('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture; payment'); html.append(iframe, back); this.activity.loader(false); this.activity.toggle(); }, start: function () { Lampa.Controller.add('content', {toggle: function () { Lampa.Controller.collectionSet(html, false, true); Lampa.Controller.collectionFocus(back, html, true); }, left: function () {}, right: function () {}, up: function () { Lampa.Controller.toggle('head'); }, down: function () {}, back: deps.goBack}); Lampa.Controller.toggle('content'); }, render: function (js) { return js ? html[0] : html; }, destroy: function () { iframe.attr('src', 'about:blank'); iframe.remove(); back.remove(); html.remove(); }};
+        var closing = false;
+        var html = $('<div class="yani-player"></div>');
+        var iframe = $('<iframe class="yani-player__iframe" frameborder="0" allowfullscreen></iframe>');
+        function close() {
+            if (closing) return;
+            closing = true;
+            // Stop the remote page before restoring the previous Lampa
+            // controller. This prevents its media and key handlers surviving
+            // behind the title card after Back.
+            iframe.attr('src', 'about:blank');
+            if (deps.goBack) deps.goBack();
+        }
+        var back = $('<div class="yani-player__back selector"></div>').text(deps.t('back_to_lampa')).on('hover:enter click', close);
+        return {create: function () { iframe.attr('src', deps.sourceUrl(object)).attr('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture; payment'); html.append(iframe, back); this.activity.loader(false); this.activity.toggle(); }, start: function () { Lampa.Controller.add('content', {toggle: function () { Lampa.Controller.collectionSet(html, false, true); Lampa.Controller.collectionFocus(back, html, true); }, left: function () {}, right: function () {}, up: function () { Lampa.Controller.toggle('head'); }, down: function () {}, back: close}); Lampa.Controller.toggle('content'); }, render: function (js) { return js ? html[0] : html; }, destroy: function () { closing = true; iframe.attr('src', 'about:blank'); iframe.remove(); back.off().remove(); html.remove(); }};
     }
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Player = window.LampaYaniPlayer = {create: create};
@@ -16627,10 +16673,11 @@ function pluginYummyAnime() {
             restorePlaybackInteraction();
             return;
         }
-        var allohaSource = isAllohaUrl(url) || /alloha/i.test(String(group && (group.player || group.title) || ''));
+        var allohaPageUrl = selected.yani_alloha_iframe_url || (isAllohaUrl(selected.iframe_url) ? selected.iframe_url : url);
+        var allohaSource = isAllohaUrl(allohaPageUrl) || /alloha/i.test(String(group && (group.player || group.title) || ''));
         var resolvedAlloha = ALLOHA_RESOLVED_SOURCES.indexOf(String(selected.yani_stream_source || '').toLowerCase()) >= 0;
-        if (allohaSource && !resolvedAlloha) {
-            return launchAllohaPlayer(card, group, selected, url);
+        if (allohaSource && (!resolvedAlloha || !options.autoAdvance)) {
+            return launchAllohaPlayer(card, group, selected, allohaPageUrl, options);
         }
         if (!isExternalPlayableUrl(url, selected) && window.LampaYaniStreamResolver && LampaYaniStreamResolver.canResolve(url)) {
             setLoading(true);
@@ -16649,6 +16696,11 @@ function pluginYummyAnime() {
                 console.warn('[YummyAnime] Stream resolve failed', error);
                 if (isVkPlaybackSource(url, group)) {
                     Lampa.Noty.show(t('vk_stream_unavailable'));
+                    restorePlaybackInteraction();
+                    return;
+                }
+                if (isCvhPlaybackSource(url, group)) {
+                    Lampa.Noty.show(t('cvh_stream_unavailable'));
                     restorePlaybackInteraction();
                     return;
                 }
@@ -16738,9 +16790,7 @@ function pluginYummyAnime() {
         });
     }
 
-    function launchAllohaPlayer(card, group, selected, url) {
-        var chain = allohaResolvers(card, group, selected, url);
-        if (!chain.length) return blockAllohaPlayback(card, group, selected, url);
+    function launchAllohaDirect(card, group, selected, url, chain, options) {
         setLoading(true);
         resolveInOrder(chain).then(function (result) {
             setLoading(false);
@@ -16749,12 +16799,51 @@ function pluginYummyAnime() {
             selected.yani_stream_qualities = result.qualities || null;
             selected.yani_stream_headers = result.headers || null;
             selected.yani_stream_source = result.source || 'lampac-alloha';
-            launchResolvedVideo(card, group, group.videos || [selected], selected, result.url);
+            launchResolvedVideo(card, group, group.videos || [selected], selected, result.url, options);
         }).catch(function (error) {
             setLoading(false);
             console.warn('[YummyAnime] Alloha resolve failed; playback blocked', error);
             blockAllohaPlayback(card, group, selected, url);
         });
+        return true;
+    }
+
+    function launchAllohaPlayer(card, group, selected, url, options) {
+        options = options || {};
+        if (selected && isAllohaUrl(url)) selected.yani_alloha_iframe_url = url;
+        var chain = allohaResolvers(card, group, selected, url);
+        var webAvailable = allohaIframeEnabled();
+        if (!chain.length) return blockAllohaPlayback(card, group, selected, url);
+
+        // Auto-next must stay uninterrupted. The direct resolver is the only
+        // Alloha route that can preserve Lampa's playlist and progress model.
+        if (options.autoAdvance || !webAvailable) {
+            return launchAllohaDirect(card, group, selected, url, chain, options);
+        }
+
+        var shown = showPlaybackSelect({
+            title: t('alloha_playback_title'),
+            items: [
+                {
+                    title: t('alloha_watch_lampa'),
+                    subtitle: t('alloha_watch_lampa_description'),
+                    action: 'direct'
+                },
+                {
+                    title: t('alloha_watch_web'),
+                    subtitle: t('alloha_watch_web_description'),
+                    action: 'web'
+                }
+            ],
+            onSelect: function (item) {
+                if (item && item.action === 'web') {
+                    openAllohaWebPlayer(card, group, selected, url);
+                    return;
+                }
+                launchAllohaDirect(card, group, selected, url, chain, options);
+            }
+        });
+        if (!shown) return launchAllohaDirect(card, group, selected, url, chain, options);
         return true;
     }
 
@@ -16770,10 +16859,22 @@ function pluginYummyAnime() {
     }
 
     function blockAllohaPlayback(card, group, selected, url) {
-        if (url && allohaIframeEnabled() && openAllohaEmbed(card, group, selected, url)) return true;
+        if (url && allohaIframeEnabled() && openAllohaWebPlayer(card, group, selected, url)) return true;
         Lampa.Noty.show(t('alloha_direct_required'));
         restorePlaybackInteraction();
         return true;
+    }
+
+    function acknowledgeAllohaWebNotice() {
+        if (!Lampa.Storage || !Lampa.Storage.get || !Lampa.Storage.set) return;
+        if (Lampa.Storage.get('yani_alloha_web_notice_seen', false)) return;
+        Lampa.Storage.set('yani_alloha_web_notice_seen', true);
+        Lampa.Noty.show(t('alloha_web_player_notice'));
+    }
+
+    function openAllohaWebPlayer(card, group, selected, url) {
+        acknowledgeAllohaWebNotice();
+        return openAllohaEmbed(card, group, selected, url);
     }
 
     function openEmbeddedEpisode(card, group, selected, url) {
@@ -16785,14 +16886,12 @@ function pluginYummyAnime() {
             // Only the start can be reported: the page plays inside an iframe
             // this plugin cannot read a position from.
             syncServerProgress(selected);
-            // Activity owns the back stack for the embedded page and will
-            // restart the detail controller itself.
-            clearPlaybackReturn();
             Lampa.Activity.push({
                 url: 'yani/player',
                 title: (card && card.title || 'YummyAnime') + ' · ' + t('episode') + ' ' + ((selected && (selected.number || selected.index)) || '?'),
                 component: 'yani_player',
-                iframe_url: url
+                iframe_url: url,
+                return_snapshot: playbackReturnSnapshot()
             });
             return true;
         } catch (error) {
@@ -16832,7 +16931,7 @@ function pluginYummyAnime() {
     function playInternalDirectVideo(current, playlist) {
         if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas) return false;
         var callbackContext = playbackContext;
-        var directPlaylist = (playlist || []).filter(function (item) { return isDirectVideoUrl(item.url); }).map(function (item) {
+        var directPlaylist = (playlist || []).filter(function (item) { return isExternalPlayableUrl(item.url, item.source); }).map(function (item) {
             return LampaYaniUiUtils.internalPlayerItem({
                 title: item.title,
                 url: item.url,
@@ -16890,6 +16989,10 @@ function pluginYummyAnime() {
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
+        // CVH exposes direct MP4 streams but its JSON endpoints have no CORS
+        // headers. Android's native Lampa bridge can fetch them reliably;
+        // browser-only platforms keep the source opt-in.
+        if (sourceId === 'cvh') return isAndroidPlatform();
         return EXPERIMENTAL_PLAYBACK_SOURCE_IDS.indexOf(sourceId) < 0;
     }
 
@@ -16958,7 +17061,7 @@ function pluginYummyAnime() {
         // ends. If this plugin already owns auto-next, a multi-item playlist
         // would skip one extra episode.
         var items = autoNextEnabled() && current ? [current] : playlist;
-        var started = isDirectVideoUrl(current && current.url) && playInternalDirectVideo(current, items);
+        var started = isExternalPlayableUrl(current && current.url, current && current.source) && playInternalDirectVideo(current, items);
         if (started) startPlaybackWatcher(playbackContext);
         return started;
     }
@@ -17512,6 +17615,11 @@ function pluginYummyAnime() {
         return /iframevk|vkvideo|vk\.com|video_ext\.php|(?:^|\s)vk(?:\s|$)/i.test(value);
     }
 
+    function isCvhPlaybackSource(url, group) {
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        return /iframecvh|cdnvideohub|(?:^|\s)cvh(?:\s|$)/i.test(value);
+    }
+
 
     function videoQualityLabel(video) {
         var data = LampaYaniUiUtils.videoData(video);
@@ -17563,7 +17671,12 @@ function pluginYummyAnime() {
     function IframePlayer(object) {
         return LampaYaniPlayer.create(object, {
             sourceUrl: function (item) { return videoSourceUrl(item) || item && item.iframe_url || ''; },
-            goBack: goBack
+            goBack: function () {
+                goBack();
+                setTimeout(function () {
+                    restorePlaybackInteraction(object && object.return_snapshot, {retryDelays: [250, 700]});
+                }, 80);
+            }
         });
     }
 
@@ -18229,11 +18342,12 @@ function pluginYummyAnime() {
                 param: {name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled(sourceId)},
                 field: {
                     name: label,
-                    description: experimental ? t('source_external_support_description') : t('source_visibility_description')
+                    description: sourceId === 'cvh' ? t('cvh_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
                 },
                 onChange: function (value) {
                     if (experimental && triggerSettingEnabled(value, storageKey, false)) {
-                        Lampa.Noty.show(String(t('source_external_support_warning')).replace(/\{source\}/g, label));
+                        var warning = sourceId === 'cvh' ? t('cvh_source_warning') : t('source_external_support_warning');
+                        Lampa.Noty.show(String(warning).replace(/\{source\}/g, label));
                     }
                 }
             });
@@ -18294,7 +18408,10 @@ function pluginYummyAnime() {
         Lampa.SettingsApi.addParam({
             component: 'yani',
             param: {name: 'yani_alloha_iframe', type: 'trigger', default: false},
-            field: {name: t('alloha_iframe'), description: t('alloha_iframe_description')}
+            field: {name: t('alloha_iframe'), description: t('alloha_iframe_description')},
+            onChange: function (value) {
+                if (value === true || value === 'true') acknowledgeAllohaWebNotice();
+            }
         });
 
         Lampa.SettingsApi.addParam({

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.13',
+        version: '0.46.14',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -346,6 +346,9 @@ function pluginYummyAnime() {
     messages.ru.not_configured = 'не настроен';
     messages.ru.alloha_direct_required = 'Alloha недоступен во внутреннем и внешнем плеере без прямого потока. Настройте сервер Lampac или выберите другой источник';
     messages.ru.vk_stream_unavailable = 'Не удалось получить видеопоток VK. Видео может быть недоступно, ограничено владельцем или требовать авторизацию VK';
+    messages.ru.cvh_stream_unavailable = 'Не удалось получить прямой поток CVH. Выберите другую озвучку или источник';
+    messages.ru.cvh_source_description = 'Прямой MP4-поток. На Android и Android TV включён по умолчанию; на браузерных платформах доступ может блокироваться CORS';
+    messages.ru.cvh_source_warning = 'CVH включён. Расширение использует прямой MP4-поток; доступность зависит от сервиса CVH и платформы устройства.';
     messages.ru.detail_load_error = 'Не удалось загрузить данные YummyAnime';
     messages.ru.aniskip = 'Пропуск опенинга и эндинга';
     messages.ru.aniskip_description = 'Тайминги берутся из AniSkip по идентификатору MyAnimeList. Режим «Предлагать пропуск» показывает кнопку в плеере вместо автоперемотки — так безопаснее, если озвучка другой длительности. Работает только во внутреннем плеере Lampa';
@@ -440,6 +443,9 @@ function pluginYummyAnime() {
     messages.en.not_configured = 'not configured';
     messages.en.alloha_direct_required = 'Alloha cannot use the internal or external player without a direct stream. Configure a Lampac server or choose another source';
     messages.en.vk_stream_unavailable = 'Could not obtain the VK video stream. The video may be unavailable, restricted by its owner, or require VK authorization';
+    messages.en.cvh_stream_unavailable = 'Could not obtain a direct CVH stream. Choose another dubbing or source';
+    messages.en.cvh_source_description = 'Direct MP4 stream. Enabled by default on Android and Android TV; browser-only platforms may be blocked by CORS';
+    messages.en.cvh_source_warning = 'CVH is enabled. The extension uses a direct MP4 stream; availability depends on the CVH service and device platform.';
     messages.en.detail_load_error = 'Failed to load YummyAnime details';
     messages.en.aniskip = 'Skip openings and endings';
     messages.en.aniskip_description = 'Timestamps come from AniSkip by MyAnimeList id. “Suggest skip” shows a player button instead of auto-seeking — safer when a dub has a different runtime. Works in the internal Lampa player only';
@@ -830,6 +836,9 @@ function pluginYummyAnime() {
     messages.uk.not_configured = 'не налаштовано';
     messages.uk.alloha_direct_required = 'Alloha недоступний у внутрішньому та зовнішньому плеєрі без прямого потоку. Налаштуйте сервер Lampac або виберіть інше джерело';
     messages.uk.vk_stream_unavailable = 'Не вдалося отримати відеопотік VK. Відео може бути недоступне, обмежене власником або вимагати авторизацію VK';
+    messages.uk.cvh_stream_unavailable = 'Не вдалося отримати прямий потік CVH. Виберіть інше озвучення або джерело';
+    messages.uk.cvh_source_description = 'Прямий MP4-потік. На Android та Android TV увімкнено за замовчуванням; на браузерних платформах доступ може блокуватися CORS';
+    messages.uk.cvh_source_warning = 'CVH увімкнено. Розширення використовує прямий MP4-потік; доступність залежить від сервісу CVH і платформи пристрою.';
     messages.uk.detail_load_error = 'Не вдалося завантажити дані YummyAnime';
     messages.uk.aniskip = 'Пропуск опенінга та ендінга';
     messages.uk.aniskip_description = 'Тайминги беруться з AniSkip за ідентифікатором MyAnimeList. Режим «Пропонувати пропуск» показує кнопку в плеєрі замість автоперемотування — так безпечніше, якщо озвучення іншої тривалості. Працює лише у внутрішньому плеєрі Lampa';
@@ -1843,7 +1852,7 @@ function pluginYummyAnime() {
 (function (window) {
     'use strict';
 
-    var CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+    var CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36';
     var QUALITY_ORDER = [240, 360, 480, 720, 1080];
     var HLS_QUALITY_MANIFEST_PATTERN = /\/(\d+)\.mp4:hls:manifest\.m3u8(?=$|[?#])/i;
     var cache = {};
@@ -2227,7 +2236,14 @@ function pluginYummyAnime() {
             var labels = Object.keys(qualities);
             if (!labels.length) throw new Error('CVH stream links not found');
             var label = labels[labels.length - 1];
-            return cacheResult(fullUrl, {url: qualities[label], quality: label, qualities: qualities, source: 'cvh', direct: true});
+            return cacheResult(fullUrl, {
+                url: qualities[label],
+                quality: label,
+                qualities: qualities,
+                headers: {'User-Agent': CHROME_UA},
+                source: 'cvh',
+                direct: true
+            });
         });
     }
 
@@ -16683,6 +16699,11 @@ function pluginYummyAnime() {
                     restorePlaybackInteraction();
                     return;
                 }
+                if (isCvhPlaybackSource(url, group)) {
+                    Lampa.Noty.show(t('cvh_stream_unavailable'));
+                    restorePlaybackInteraction();
+                    return;
+                }
                 launchResolvedVideo(card, group, videos, selected, url, options);
             });
             return;
@@ -16910,7 +16931,7 @@ function pluginYummyAnime() {
     function playInternalDirectVideo(current, playlist) {
         if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas) return false;
         var callbackContext = playbackContext;
-        var directPlaylist = (playlist || []).filter(function (item) { return isDirectVideoUrl(item.url); }).map(function (item) {
+        var directPlaylist = (playlist || []).filter(function (item) { return isExternalPlayableUrl(item.url, item.source); }).map(function (item) {
             return LampaYaniUiUtils.internalPlayerItem({
                 title: item.title,
                 url: item.url,
@@ -16968,6 +16989,10 @@ function pluginYummyAnime() {
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
+        // CVH exposes direct MP4 streams but its JSON endpoints have no CORS
+        // headers. Android's native Lampa bridge can fetch them reliably;
+        // browser-only platforms keep the source opt-in.
+        if (sourceId === 'cvh') return isAndroidPlatform();
         return EXPERIMENTAL_PLAYBACK_SOURCE_IDS.indexOf(sourceId) < 0;
     }
 
@@ -17036,7 +17061,7 @@ function pluginYummyAnime() {
         // ends. If this plugin already owns auto-next, a multi-item playlist
         // would skip one extra episode.
         var items = autoNextEnabled() && current ? [current] : playlist;
-        var started = isDirectVideoUrl(current && current.url) && playInternalDirectVideo(current, items);
+        var started = isExternalPlayableUrl(current && current.url, current && current.source) && playInternalDirectVideo(current, items);
         if (started) startPlaybackWatcher(playbackContext);
         return started;
     }
@@ -17588,6 +17613,11 @@ function pluginYummyAnime() {
     function isVkPlaybackSource(url, group) {
         var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
         return /iframevk|vkvideo|vk\.com|video_ext\.php|(?:^|\s)vk(?:\s|$)/i.test(value);
+    }
+
+    function isCvhPlaybackSource(url, group) {
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        return /iframecvh|cdnvideohub|(?:^|\s)cvh(?:\s|$)/i.test(value);
     }
 
 
@@ -18312,11 +18342,12 @@ function pluginYummyAnime() {
                 param: {name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled(sourceId)},
                 field: {
                     name: label,
-                    description: experimental ? t('source_external_support_description') : t('source_visibility_description')
+                    description: sourceId === 'cvh' ? t('cvh_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
                 },
                 onChange: function (value) {
                     if (experimental && triggerSettingEnabled(value, storageKey, false)) {
-                        Lampa.Noty.show(String(t('source_external_support_warning')).replace(/\{source\}/g, label));
+                        var warning = sourceId === 'cvh' ? t('cvh_source_warning') : t('source_external_support_warning');
+                        Lampa.Noty.show(String(warning).replace(/\{source\}/g, label));
                     }
                 }
             });

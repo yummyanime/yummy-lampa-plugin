@@ -3156,6 +3156,11 @@
                     restorePlaybackInteraction();
                     return;
                 }
+                if (isCvhPlaybackSource(url, group)) {
+                    Lampa.Noty.show(t('cvh_stream_unavailable'));
+                    restorePlaybackInteraction();
+                    return;
+                }
                 launchResolvedVideo(card, group, videos, selected, url, options);
             });
             return;
@@ -3383,7 +3388,7 @@
     function playInternalDirectVideo(current, playlist) {
         if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas) return false;
         var callbackContext = playbackContext;
-        var directPlaylist = (playlist || []).filter(function (item) { return isDirectVideoUrl(item.url); }).map(function (item) {
+        var directPlaylist = (playlist || []).filter(function (item) { return isExternalPlayableUrl(item.url, item.source); }).map(function (item) {
             return LampaYaniUiUtils.internalPlayerItem({
                 title: item.title,
                 url: item.url,
@@ -3441,6 +3446,10 @@
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
+        // CVH exposes direct MP4 streams but its JSON endpoints have no CORS
+        // headers. Android's native Lampa bridge can fetch them reliably;
+        // browser-only platforms keep the source opt-in.
+        if (sourceId === 'cvh') return isAndroidPlatform();
         return EXPERIMENTAL_PLAYBACK_SOURCE_IDS.indexOf(sourceId) < 0;
     }
 
@@ -3509,7 +3518,7 @@
         // ends. If this plugin already owns auto-next, a multi-item playlist
         // would skip one extra episode.
         var items = autoNextEnabled() && current ? [current] : playlist;
-        var started = isDirectVideoUrl(current && current.url) && playInternalDirectVideo(current, items);
+        var started = isExternalPlayableUrl(current && current.url, current && current.source) && playInternalDirectVideo(current, items);
         if (started) startPlaybackWatcher(playbackContext);
         return started;
     }
@@ -4061,6 +4070,11 @@
     function isVkPlaybackSource(url, group) {
         var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
         return /iframevk|vkvideo|vk\.com|video_ext\.php|(?:^|\s)vk(?:\s|$)/i.test(value);
+    }
+
+    function isCvhPlaybackSource(url, group) {
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        return /iframecvh|cdnvideohub|(?:^|\s)cvh(?:\s|$)/i.test(value);
     }
 
 
@@ -4785,11 +4799,12 @@
                 param: {name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled(sourceId)},
                 field: {
                     name: label,
-                    description: experimental ? t('source_external_support_description') : t('source_visibility_description')
+                    description: sourceId === 'cvh' ? t('cvh_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
                 },
                 onChange: function (value) {
                     if (experimental && triggerSettingEnabled(value, storageKey, false)) {
-                        Lampa.Noty.show(String(t('source_external_support_warning')).replace(/\{source\}/g, label));
+                        var warning = sourceId === 'cvh' ? t('cvh_source_warning') : t('source_external_support_warning');
+                        Lampa.Noty.show(String(warning).replace(/\{source\}/g, label));
                     }
                 }
             });

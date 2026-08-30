@@ -1,7 +1,7 @@
 (function (window) {
     'use strict';
 
-    var CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+    var CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36';
     var QUALITY_ORDER = [240, 360, 480, 720, 1080];
     var HLS_QUALITY_MANIFEST_PATTERN = /\/(\d+)\.mp4:hls:manifest\.m3u8(?=$|[?#])/i;
     var cache = {};
@@ -385,7 +385,14 @@
             var labels = Object.keys(qualities);
             if (!labels.length) throw new Error('CVH stream links not found');
             var label = labels[labels.length - 1];
-            return cacheResult(fullUrl, {url: qualities[label], quality: label, qualities: qualities, source: 'cvh', direct: true});
+            return cacheResult(fullUrl, {
+                url: qualities[label],
+                quality: label,
+                qualities: qualities,
+                headers: {'User-Agent': CHROME_UA},
+                source: 'cvh',
+                direct: true
+            });
         });
     }
 
