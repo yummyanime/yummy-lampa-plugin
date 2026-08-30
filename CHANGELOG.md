@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.18 — 2026-08-30
+
+- Fix episode grouping and numeric ordering 
+- Refactor Android TV CVH media metadata
+
 ## 0.46.17 — 2026-08-30
 
 - Refactor CVH platform defaults for LG WebOS 

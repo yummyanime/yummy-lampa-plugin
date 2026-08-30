@@ -3399,7 +3399,9 @@
             quality: item.quality || videoStreamQualities(item.source),
             headers: item.headers || videoStreamHeaders(item.source),
             poster: item.poster || '',
-            extensionHint: internalPlayerExtensionHint(item)
+            extensionHint: internalPlayerExtensionHint(item),
+            extension: internalPlayerExtensionHint(item),
+            mime: internalPlayerExtensionHint(item) === 'mp4' ? 'video/mp4' : ''
         });
     }
 

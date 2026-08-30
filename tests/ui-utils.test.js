@@ -133,11 +133,15 @@ const hintedInternalItem = utils.internalPlayerItem({
         '720p': 'https://vd.example.test/?id=1&type=4',
         '1080p': 'https://vd.example.test/?id=1&type=5'
     },
-    extensionHint: 'mp4'
+    extensionHint: 'mp4',
+    extension: 'mp4',
+    mime: 'video/mp4'
 });
 assert.strictEqual(hintedInternalItem.url, 'https://vd.example.test/?id=1&type=5#yani.mp4');
 assert.strictEqual(hintedInternalItem.quality['720p'], 'https://vd.example.test/?id=1&type=4#yani.mp4');
 assert.strictEqual(hintedInternalItem.quality['1080p'], 'https://vd.example.test/?id=1&type=5#yani.mp4');
+assert.strictEqual(hintedInternalItem.extension, 'mp4');
+assert.strictEqual(hintedInternalItem.mime, 'video/mp4');
 assert.strictEqual(utils.mediaExtensionHint('https://cdn.example/video.mp4?token=1', 'mp4'), 'https://cdn.example/video.mp4?token=1');
 assert.strictEqual(utils.detailRouteId({yani_id: 10551}), '10551');
 assert.strictEqual(utils.detailRouteId({component: 'yani_detail', card: {anime_id: 23365}}), '23365');

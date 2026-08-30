@@ -286,6 +286,36 @@
             });
         }
 
+        function groupPart(value) {
+            return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+        }
+
+        function groupVideos(videos) {
+            var groups = {};
+            (videos || []).forEach(function (video) {
+                var data = LampaYaniUiUtils.videoData(video);
+                var title = data.dubbing || data.translation || data.voice || data.player || t('source');
+                var source = LampaYaniUiUtils.videoHost(videoSourceUrl(video));
+                // Quality belongs to an episode, not to a dubbing/source. The
+                // same source can expose different quality labels per episode;
+                // using quality in this key used to split e.g. 2 episodes out
+                // of a 12-episode group into a separate picker entry.
+                var provider = data.player_id || data.player || data.source || data.service || source;
+                var key = groupPart(title) + '|' + groupPart(provider);
+                if (!groups[key]) {
+                    groups[key] = {
+                        title: title,
+                        player: data.player || data.source || data.service || '',
+                        quality: videoQualityLabel(video),
+                        source: source,
+                        videos: []
+                    };
+                }
+                groups[key].videos.push(video);
+            });
+            return groups;
+        }
+
         function openVideos(card, resume) {
             beginPlaybackNavigation();
             if (!card || !card.yani_id) {
@@ -312,15 +342,7 @@
                     return;
                 }
 
-                var groups = {};
-                videos.forEach(function (video) {
-                    var data = LampaYaniUiUtils.videoData(video);
-                    var title = data.dubbing || data.player || t('source');
-                    var quality = videoQualityLabel(video);
-                    var key = title + '|' + String(data.player_id || data.player || '') + '|' + quality;
-                    if (!groups[key]) groups[key] = {title: title, player: data.player || '', quality: quality, source: LampaYaniUiUtils.videoHost(videoSourceUrl(video)), videos: []};
-                    groups[key].videos.push(video);
-                });
+                var groups = groupVideos(videos);
 
                 var voices = Object.keys(groups).map(function (key) {
                     var group = groups[key];
@@ -410,13 +432,15 @@
 
         function chooseEpisode(card, group) {
             var videos = group.videos.slice().sort(function (a, b) {
+                var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
+                var numberB = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(b));
+                if (isFinite(numberA) && isFinite(numberB) && numberA !== numberB) return numberA - numberB;
+                if (isFinite(numberA) !== isFinite(numberB)) return isFinite(numberA) ? -1 : 1;
                 if (!allohaIframeEnabled()) {
                     var playableA = videoPlaybackPriority(a, group);
                     var playableB = videoPlaybackPriority(b, group);
                     if (playableA !== playableB) return playableB - playableA;
                 }
-                var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
-                var numberB = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(b));
                 if (isFinite(numberA) && isFinite(numberB)) return numberA - numberB;
                 return Number(a.index || 0) - Number(b.index || 0);
             });
@@ -514,7 +538,8 @@
             openVideos: openVideos,
             chooseEpisode: chooseEpisode,
             showDirectPlaybackOptions: showDirectPlaybackOptions,
-            openTitlePlaybackOptions: openTitlePlaybackOptions
+            openTitlePlaybackOptions: openTitlePlaybackOptions,
+            groupVideos: groupVideos
         };
     }
 

@@ -408,6 +408,8 @@
             time: Math.max(0, Number(item.time || 0)),
             isonline: true
         };
+        if (item.extension) result.extension = String(item.extension).replace(/^\./, '').toLowerCase();
+        if (item.mime) result.mime = String(item.mime);
         if (item.quality && typeof item.quality === 'object') result.quality = hintedQualities(item.quality, item.extensionHint);
         if (item.headers && typeof item.headers === 'object') result.headers = item.headers;
         if (item.poster) result.poster = item.poster;

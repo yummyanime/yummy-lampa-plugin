@@ -12,7 +12,7 @@ assert.match(menu, /function loadVideosForPlayback/);
 assert.match(ui, /function openEmbeddedEpisode/);
 assert.doesNotMatch(ui, /function restoreExternalFocus\(\)[\s\S]{0,300}if \(playbackReturnState\.active\) \{\s*cancelExternalRestore\(\)/,
     'an active YummyTV return session must be restored, not cancelled');
-assert.match(menu, /function chooseEpisode[\s\S]{0,1200}showPlaybackSelect\(\{/);
+assert.match(menu, /function chooseEpisode[\s\S]{0,1800}showPlaybackSelect\(\{/);
 assert.match(menu, /function openVideos[\s\S]{0,8000}showPlaybackSelect\(\{/);
 assert.match(menu, /function showDirectPlaybackOptions[\s\S]{0,2200}showPlaybackSelect\(\{/);
 assert.match(menu, /androidExternalPlayerAvailable/);

@@ -71,6 +71,7 @@ const context = {
 };
 context.window.LampaYani = {};
 context.Lampa = context.window.Lampa;
+context.LampaYaniUiUtils = context.window.LampaYaniUiUtils;
 vm.runInNewContext(source, context);
 
 let shown;
@@ -82,6 +83,13 @@ const api = context.window.LampaYaniPlaybackMenu.create({
 
 assert.strictEqual(api.playerKey({player: 'Kodik'}), 'kodik');
 assert.strictEqual(api.videoSourceUrl({iframe_url: 'https://example/a.m3u8'}), 'https://example/a.m3u8');
+var grouped = api.groupVideos([
+    {number: '1', video_id: 'one', iframe_url: 'https://cdn.example/one', quality: '360p', data: {dubbing: 'Studio', player: 'CVH', player_id: 'cvh'}},
+    {number: '2', video_id: 'two', iframe_url: 'https://cdn.example/two', quality: '720p', data: {dubbing: 'Studio', player: 'CVH', player_id: 'cvh'}},
+    {number: '3', video_id: 'three', iframe_url: 'https://cdn.example/three', quality: '1080p', data: {dubbing: 'Studio', player: 'CVH', player_id: 'cvh'}}
+]);
+assert.strictEqual(Object.keys(grouped).length, 1, 'quality changes must not split one dubbing/source into multiple groups');
+assert.strictEqual(grouped[Object.keys(grouped)[0]].videos.length, 3, 'all episodes must stay in the selected dubbing/source group');
 assert.strictEqual(api.playbackReturnState.active, false);
 api.beginPlaybackNavigation();
 assert.strictEqual(api.playbackReturnState.active, true);

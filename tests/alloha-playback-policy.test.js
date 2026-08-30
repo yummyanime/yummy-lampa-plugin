@@ -56,6 +56,6 @@ const episodeStart = menu.indexOf('function chooseEpisode');
 const episodeEnd = menu.indexOf('function showDirectPlaybackOptions', episodeStart);
 const episodePolicy = menu.slice(episodeStart, episodeEnd);
 assert.ok(episodePolicy.includes('videoPlaybackPriority(a, group)'), 'episode choices must prioritize playable sources');
-assert.ok(episodePolicy.indexOf('playableB - playableA') < episodePolicy.indexOf('numberA - numberB'), 'episode capability must sort before episode number');
+assert.ok(episodePolicy.indexOf('numberA - numberB') < episodePolicy.indexOf('playableB - playableA'), 'episode number must stay ahead of capability priority');
 
 console.log('Alloha playback policy tests passed');
