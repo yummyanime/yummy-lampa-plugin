@@ -15,7 +15,7 @@ A new Lampa extension powered by the official YummyAnime (Yani) API.
 - a dedicated My Lists section with recent horizontal rows for signed-in users;
 - viewing comments;
 - dubbing and source selection, then playback in the internal Lampa player or an external Android player;
-- per-source visibility toggles so Kodik, VK, Alloha, CVH, Sibnet and Aksor can be hidden from the dubbing list; CVH is enabled by default on Android and Android TV, while Alloha remains disabled by default;
+- per-source visibility toggles so Kodik, VK, Alloha, CVH, Sibnet and Aksor can be hidden from the dubbing list; CVH is enabled by default on Android, Android TV and LG WebOS, while Alloha remains disabled by default;
 - preferred-player setting on Android: ask every time, internal Lampa player, or external Android player (system app chooser); locked to internal Lampa outside Android;
 - blocking Alloha in media players when no direct stream is available, with a clear Lampac warning;
 - optional self-hosted Lampac resolution of Alloha sources into direct HLS;
@@ -106,7 +106,7 @@ The extension treats two different things separately:
 
 In settings:
 
-1. **Show sources** — toggles for Kodik, VK, Alloha, CVH, Sibnet and Aksor. VK is enabled by default and supported wrapper pages are resolved into direct MP4/HLS streams. CVH is resolved into direct MP4 qualities and defaults to enabled on Android and Android TV; browser-only platforms keep it opt-in because its API has no CORS access. Alloha remains disabled by default. Disabled sources are omitted from the dubbing list when you press Watch.
+1. **Show sources** — toggles for Kodik, VK, Alloha, CVH, Sibnet and Aksor. VK is enabled by default and supported wrapper pages are resolved into direct MP4/HLS streams. CVH is resolved into direct MP4 qualities and defaults to enabled on Android, Android TV and LG WebOS; other platforms keep it opt-in because its API has no CORS access. Alloha remains disabled by default. Disabled sources are omitted from the dubbing list when you press Watch.
 2. **Preferred player** — ask every time, internal Lampa player, or external Android player.
 
 On Android, the preferred-player setting is fully editable. On every other platform the setting is inactive, locked to the internal Lampa player, and external playback is never offered.

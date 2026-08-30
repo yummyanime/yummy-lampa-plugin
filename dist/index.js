@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.15',
+        version: '0.46.17',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -347,8 +347,8 @@ function pluginYummyAnime() {
     messages.ru.alloha_direct_required = 'Alloha недоступен во внутреннем и внешнем плеере без прямого потока. Настройте сервер Lampac или выберите другой источник';
     messages.ru.vk_stream_unavailable = 'Не удалось получить видеопоток VK. Видео может быть недоступно, ограничено владельцем или требовать авторизацию VK';
     messages.ru.cvh_stream_unavailable = 'Не удалось получить прямой поток CVH. Выберите другую озвучку или источник';
-    messages.ru.cvh_source_description = 'Прямой MP4-поток. На Android и Android TV включён по умолчанию; на браузерных платформах доступ может блокироваться CORS';
-    messages.ru.cvh_source_warning = 'CVH включён. Расширение использует прямой MP4-поток; доступность зависит от сервиса CVH и платформы устройства.';
+    messages.ru.cvh_source_description = 'Прямой MP4-поток. На Android, Android TV и LG WebOS включён по умолчанию; на других платформах доступ может блокироваться CORS';
+    messages.ru.cvh_source_warning = 'CVH проверен во внутреннем плеере на Android, Android TV и LG WebOS. На других платформах работа зависит от сетевых ограничений устройства.';
     messages.ru.detail_load_error = 'Не удалось загрузить данные YummyAnime';
     messages.ru.aniskip = 'Пропуск опенинга и эндинга';
     messages.ru.aniskip_description = 'Тайминги берутся из AniSkip по идентификатору MyAnimeList. Режим «Предлагать пропуск» показывает кнопку в плеере вместо автоперемотки — так безопаснее, если озвучка другой длительности. Работает только во внутреннем плеере Lampa';
@@ -444,8 +444,8 @@ function pluginYummyAnime() {
     messages.en.alloha_direct_required = 'Alloha cannot use the internal or external player without a direct stream. Configure a Lampac server or choose another source';
     messages.en.vk_stream_unavailable = 'Could not obtain the VK video stream. The video may be unavailable, restricted by its owner, or require VK authorization';
     messages.en.cvh_stream_unavailable = 'Could not obtain a direct CVH stream. Choose another dubbing or source';
-    messages.en.cvh_source_description = 'Direct MP4 stream. Enabled by default on Android and Android TV; browser-only platforms may be blocked by CORS';
-    messages.en.cvh_source_warning = 'CVH is enabled. The extension uses a direct MP4 stream; availability depends on the CVH service and device platform.';
+    messages.en.cvh_source_description = 'Direct MP4 stream. Enabled by default on Android, Android TV and LG WebOS; other platforms may be blocked by CORS';
+    messages.en.cvh_source_warning = 'CVH is verified in the internal player on Android, Android TV and LG WebOS. Other platforms still depend on the device network restrictions.';
     messages.en.detail_load_error = 'Failed to load YummyAnime details';
     messages.en.aniskip = 'Skip openings and endings';
     messages.en.aniskip_description = 'Timestamps come from AniSkip by MyAnimeList id. “Suggest skip” shows a player button instead of auto-seeking — safer when a dub has a different runtime. Works in the internal Lampa player only';
@@ -837,8 +837,8 @@ function pluginYummyAnime() {
     messages.uk.alloha_direct_required = 'Alloha недоступний у внутрішньому та зовнішньому плеєрі без прямого потоку. Налаштуйте сервер Lampac або виберіть інше джерело';
     messages.uk.vk_stream_unavailable = 'Не вдалося отримати відеопотік VK. Відео може бути недоступне, обмежене власником або вимагати авторизацію VK';
     messages.uk.cvh_stream_unavailable = 'Не вдалося отримати прямий потік CVH. Виберіть інше озвучення або джерело';
-    messages.uk.cvh_source_description = 'Прямий MP4-потік. На Android та Android TV увімкнено за замовчуванням; на браузерних платформах доступ може блокуватися CORS';
-    messages.uk.cvh_source_warning = 'CVH увімкнено. Розширення використовує прямий MP4-потік; доступність залежить від сервісу CVH і платформи пристрою.';
+    messages.uk.cvh_source_description = 'Прямий MP4-потік. На Android, Android TV та LG WebOS увімкнено за замовчуванням; на інших платформах доступ може блокуватися CORS';
+    messages.uk.cvh_source_warning = 'CVH перевірено у внутрішньому плеєрі на Android, Android TV та LG WebOS. На інших платформах робота залежить від мережевих обмежень пристрою.';
     messages.uk.detail_load_error = 'Не вдалося завантажити дані YummyAnime';
     messages.uk.aniskip = 'Пропуск опенінга та ендінга';
     messages.uk.aniskip_description = 'Тайминги беруться з AniSkip за ідентифікатором MyAnimeList. Режим «Пропонувати пропуск» показує кнопку в плеєрі замість автоперемотування — так безпечніше, якщо озвучення іншої тривалості. Працює лише у внутрішньому плеєрі Lampa';
@@ -2683,6 +2683,27 @@ function pluginYummyAnime() {
         return url;
     }
 
+    function mediaExtensionHint(url, extension) {
+        url = normalizeVideoUrl(url);
+        extension = String(extension || '').replace(/^\./, '').toLowerCase();
+        if (!url || !extension || !/^[a-z0-9]+$/.test(extension)) return url;
+        if (new RegExp('\\.' + extension + '(?:[?#]|$)', 'i').test(url)) return url;
+        // A URL fragment is visible to Lampa's extension-based source detector
+        // but is never sent to the media server. This lets Android recognise an
+        // extensionless, resolver-confirmed MP4 without changing the request.
+        return url + (url.indexOf('#') >= 0 ? '&' : '#') + 'yani.' + extension;
+    }
+
+    function hintedQualities(qualities, extension) {
+        if (!qualities || typeof qualities !== 'object' || !extension) return qualities;
+        var result = {};
+        Object.keys(qualities).forEach(function (key) {
+            var value = qualities[key];
+            result[key] = typeof value === 'string' ? mediaExtensionHint(value, extension) : value;
+        });
+        return result;
+    }
+
     function videoHost(url) {
         try { return new URL(url).hostname.replace(/^www\./, ''); } catch (error) { return ''; }
     }
@@ -2775,6 +2796,18 @@ function pluginYummyAnime() {
         // Android TV WebViews commonly omit the Mobile token. Android phones and
         // tablets include it, so the integration stays hidden there.
         return !/\bmobile\b/i.test(userAgent);
+    }
+
+    function isWebOsPlatform() {
+        var lampa = window.Lampa;
+        var platform = lampa && lampa.Platform;
+        if (platform && typeof platform.is === 'function' && (
+            platform.is('webos') || platform.is('web_os') || platform.is('lg_webos')
+        )) return true;
+        var platformName = platform && typeof platform.get === 'function' ? String(platform.get() || '') : '';
+        if (/web[ _-]?os|lg[ _-]?webos/i.test(platformName)) return true;
+        var userAgent = window.navigator && window.navigator.userAgent ? String(window.navigator.userAgent) : '';
+        return /\bweb0s\b|\bwebos\b|\bnetcast\b/i.test(userAgent);
     }
 
     function titleScriptRank(title) {
@@ -3031,7 +3064,7 @@ function pluginYummyAnime() {
 
     function internalPlayerItem(item) {
         item = item || {};
-        var url = normalizeVideoUrl(item.url);
+        var url = mediaExtensionHint(item.url, item.extensionHint);
         if (!url) return null;
         var result = {
             title: String(item.title || 'YummyAnime'),
@@ -3039,7 +3072,7 @@ function pluginYummyAnime() {
             time: Math.max(0, Number(item.time || 0)),
             isonline: true
         };
-        if (item.quality && typeof item.quality === 'object') result.quality = item.quality;
+        if (item.quality && typeof item.quality === 'object') result.quality = hintedQualities(item.quality, item.extensionHint);
         if (item.headers && typeof item.headers === 'object') result.headers = item.headers;
         if (item.poster) result.poster = item.poster;
         return result;
@@ -3298,6 +3331,7 @@ function pluginYummyAnime() {
     window.LampaYani.UiUtils = window.LampaYaniUiUtils = {
         videoData: videoData,
         normalizeVideoUrl: normalizeVideoUrl,
+        mediaExtensionHint: mediaExtensionHint,
         videoHost: videoHost,
         posterUrl: posterUrl,
         posterSources: posterSources,
@@ -3305,6 +3339,7 @@ function pluginYummyAnime() {
         normalizeMatchTitle: normalizeMatchTitle,
         isAndroidPlatform: isAndroidPlatform,
         isAndroidTvPlatform: isAndroidTvPlatform,
+        isWebOsPlatform: isWebOsPlatform,
         stripSeasonSuffix: stripSeasonSuffix,
         parseSeasonHint: parseSeasonHint,
         cardSeasonHint: cardSeasonHint,
@@ -16928,28 +16963,32 @@ function pluginYummyAnime() {
         }).filter(Boolean);
     }
 
+    function internalPlayerExtensionHint(item) {
+        if (!isAndroidPlatform() || !item) return '';
+        return isCvhPlaybackSource(item.url, item.source) ? 'mp4' : '';
+    }
+
+    function internalPlayerPlaylistItem(item) {
+        if (!item) return null;
+        return LampaYaniUiUtils.internalPlayerItem({
+            title: item.title,
+            url: item.url,
+            time: item.time,
+            quality: item.quality || videoStreamQualities(item.source),
+            headers: item.headers || videoStreamHeaders(item.source),
+            poster: item.poster || '',
+            extensionHint: internalPlayerExtensionHint(item)
+        });
+    }
+
     function playInternalDirectVideo(current, playlist) {
         if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas) return false;
         var callbackContext = playbackContext;
         var callbackSession = playbackReturnState.session;
-        var directPlaylist = (playlist || []).filter(function (item) { return isExternalPlayableUrl(item.url, item.source); }).map(function (item) {
-            return LampaYaniUiUtils.internalPlayerItem({
-                title: item.title,
-                url: item.url,
-                time: item.time,
-                quality: item.quality || videoStreamQualities(item.source),
-                headers: item.headers || videoStreamHeaders(item.source),
-                poster: item.poster || ''
-            });
-        }).filter(Boolean);
-        var directCurrent = directPlaylist.filter(function (item) { return item.url === current.url; })[0] || LampaYaniUiUtils.internalPlayerItem({
-            title: current.title,
-            url: current.url,
-            time: current.time,
-            quality: current.quality || videoStreamQualities(current.source),
-            headers: current.headers || videoStreamHeaders(current.source),
-            poster: current.poster || ''
-        });
+        var directPlaylist = (playlist || []).filter(function (item) { return isExternalPlayableUrl(item.url, item.source); })
+            .map(internalPlayerPlaylistItem).filter(Boolean);
+        var normalizedCurrent = internalPlayerPlaylistItem(current);
+        var directCurrent = normalizedCurrent && directPlaylist.filter(function (item) { return item.url === normalizedCurrent.url; })[0] || normalizedCurrent;
         if (!directCurrent) return false;
         if (!directPlaylist.length) directPlaylist = [directCurrent];
         try {
@@ -16990,15 +17029,21 @@ function pluginYummyAnime() {
             : false;
     }
 
+    function isWebOsPlatform() {
+        return window.LampaYaniUiUtils && typeof LampaYaniUiUtils.isWebOsPlatform === 'function'
+            ? LampaYaniUiUtils.isWebOsPlatform()
+            : false;
+    }
+
     var PLAYBACK_SOURCE_IDS = ['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'];
     var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', vk: 'VK', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
         // CVH exposes direct MP4 streams but its JSON endpoints have no CORS
-        // headers. Android's native Lampa bridge can fetch them reliably;
-        // browser-only platforms keep the source opt-in.
-        if (sourceId === 'cvh') return isAndroidPlatform();
+        // headers. Android's native Lampa bridge and the WebOS runtime can
+        // resolve and play them reliably; other platforms keep it opt-in.
+        if (sourceId === 'cvh') return isAndroidPlatform() || isWebOsPlatform();
         return EXPERIMENTAL_PLAYBACK_SOURCE_IDS.indexOf(sourceId) < 0;
     }
 
@@ -17666,7 +17711,9 @@ function pluginYummyAnime() {
     }
 
     function isCvhPlaybackSource(url, group) {
-        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        var data = group ? LampaYaniUiUtils.videoData(group) : {};
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source || group.yani_stream_source) || '') +
+            ' ' + String(data.yani_stream_source || data.player || '');
         return /iframecvh|cdnvideohub|(?:^|\s)cvh(?:\s|$)/i.test(value);
     }
 

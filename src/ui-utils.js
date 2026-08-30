@@ -19,6 +19,27 @@
         return url;
     }
 
+    function mediaExtensionHint(url, extension) {
+        url = normalizeVideoUrl(url);
+        extension = String(extension || '').replace(/^\./, '').toLowerCase();
+        if (!url || !extension || !/^[a-z0-9]+$/.test(extension)) return url;
+        if (new RegExp('\\.' + extension + '(?:[?#]|$)', 'i').test(url)) return url;
+        // A URL fragment is visible to Lampa's extension-based source detector
+        // but is never sent to the media server. This lets Android recognise an
+        // extensionless, resolver-confirmed MP4 without changing the request.
+        return url + (url.indexOf('#') >= 0 ? '&' : '#') + 'yani.' + extension;
+    }
+
+    function hintedQualities(qualities, extension) {
+        if (!qualities || typeof qualities !== 'object' || !extension) return qualities;
+        var result = {};
+        Object.keys(qualities).forEach(function (key) {
+            var value = qualities[key];
+            result[key] = typeof value === 'string' ? mediaExtensionHint(value, extension) : value;
+        });
+        return result;
+    }
+
     function videoHost(url) {
         try { return new URL(url).hostname.replace(/^www\./, ''); } catch (error) { return ''; }
     }
@@ -111,6 +132,18 @@
         // Android TV WebViews commonly omit the Mobile token. Android phones and
         // tablets include it, so the integration stays hidden there.
         return !/\bmobile\b/i.test(userAgent);
+    }
+
+    function isWebOsPlatform() {
+        var lampa = window.Lampa;
+        var platform = lampa && lampa.Platform;
+        if (platform && typeof platform.is === 'function' && (
+            platform.is('webos') || platform.is('web_os') || platform.is('lg_webos')
+        )) return true;
+        var platformName = platform && typeof platform.get === 'function' ? String(platform.get() || '') : '';
+        if (/web[ _-]?os|lg[ _-]?webos/i.test(platformName)) return true;
+        var userAgent = window.navigator && window.navigator.userAgent ? String(window.navigator.userAgent) : '';
+        return /\bweb0s\b|\bwebos\b|\bnetcast\b/i.test(userAgent);
     }
 
     function titleScriptRank(title) {
@@ -367,7 +400,7 @@
 
     function internalPlayerItem(item) {
         item = item || {};
-        var url = normalizeVideoUrl(item.url);
+        var url = mediaExtensionHint(item.url, item.extensionHint);
         if (!url) return null;
         var result = {
             title: String(item.title || 'YummyAnime'),
@@ -375,7 +408,7 @@
             time: Math.max(0, Number(item.time || 0)),
             isonline: true
         };
-        if (item.quality && typeof item.quality === 'object') result.quality = item.quality;
+        if (item.quality && typeof item.quality === 'object') result.quality = hintedQualities(item.quality, item.extensionHint);
         if (item.headers && typeof item.headers === 'object') result.headers = item.headers;
         if (item.poster) result.poster = item.poster;
         return result;
@@ -634,6 +667,7 @@
     window.LampaYani.UiUtils = window.LampaYaniUiUtils = {
         videoData: videoData,
         normalizeVideoUrl: normalizeVideoUrl,
+        mediaExtensionHint: mediaExtensionHint,
         videoHost: videoHost,
         posterUrl: posterUrl,
         posterSources: posterSources,
@@ -641,6 +675,7 @@
         normalizeMatchTitle: normalizeMatchTitle,
         isAndroidPlatform: isAndroidPlatform,
         isAndroidTvPlatform: isAndroidTvPlatform,
+        isWebOsPlatform: isWebOsPlatform,
         stripSeasonSuffix: stripSeasonSuffix,
         parseSeasonHint: parseSeasonHint,
         cardSeasonHint: cardSeasonHint,

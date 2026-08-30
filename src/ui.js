@@ -3385,28 +3385,32 @@
         }).filter(Boolean);
     }
 
+    function internalPlayerExtensionHint(item) {
+        if (!isAndroidPlatform() || !item) return '';
+        return isCvhPlaybackSource(item.url, item.source) ? 'mp4' : '';
+    }
+
+    function internalPlayerPlaylistItem(item) {
+        if (!item) return null;
+        return LampaYaniUiUtils.internalPlayerItem({
+            title: item.title,
+            url: item.url,
+            time: item.time,
+            quality: item.quality || videoStreamQualities(item.source),
+            headers: item.headers || videoStreamHeaders(item.source),
+            poster: item.poster || '',
+            extensionHint: internalPlayerExtensionHint(item)
+        });
+    }
+
     function playInternalDirectVideo(current, playlist) {
         if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas) return false;
         var callbackContext = playbackContext;
         var callbackSession = playbackReturnState.session;
-        var directPlaylist = (playlist || []).filter(function (item) { return isExternalPlayableUrl(item.url, item.source); }).map(function (item) {
-            return LampaYaniUiUtils.internalPlayerItem({
-                title: item.title,
-                url: item.url,
-                time: item.time,
-                quality: item.quality || videoStreamQualities(item.source),
-                headers: item.headers || videoStreamHeaders(item.source),
-                poster: item.poster || ''
-            });
-        }).filter(Boolean);
-        var directCurrent = directPlaylist.filter(function (item) { return item.url === current.url; })[0] || LampaYaniUiUtils.internalPlayerItem({
-            title: current.title,
-            url: current.url,
-            time: current.time,
-            quality: current.quality || videoStreamQualities(current.source),
-            headers: current.headers || videoStreamHeaders(current.source),
-            poster: current.poster || ''
-        });
+        var directPlaylist = (playlist || []).filter(function (item) { return isExternalPlayableUrl(item.url, item.source); })
+            .map(internalPlayerPlaylistItem).filter(Boolean);
+        var normalizedCurrent = internalPlayerPlaylistItem(current);
+        var directCurrent = normalizedCurrent && directPlaylist.filter(function (item) { return item.url === normalizedCurrent.url; })[0] || normalizedCurrent;
         if (!directCurrent) return false;
         if (!directPlaylist.length) directPlaylist = [directCurrent];
         try {
@@ -3447,15 +3451,21 @@
             : false;
     }
 
+    function isWebOsPlatform() {
+        return window.LampaYaniUiUtils && typeof LampaYaniUiUtils.isWebOsPlatform === 'function'
+            ? LampaYaniUiUtils.isWebOsPlatform()
+            : false;
+    }
+
     var PLAYBACK_SOURCE_IDS = ['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'];
     var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', vk: 'VK', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
         // CVH exposes direct MP4 streams but its JSON endpoints have no CORS
-        // headers. Android's native Lampa bridge can fetch them reliably;
-        // browser-only platforms keep the source opt-in.
-        if (sourceId === 'cvh') return isAndroidPlatform();
+        // headers. Android's native Lampa bridge and the WebOS runtime can
+        // resolve and play them reliably; other platforms keep it opt-in.
+        if (sourceId === 'cvh') return isAndroidPlatform() || isWebOsPlatform();
         return EXPERIMENTAL_PLAYBACK_SOURCE_IDS.indexOf(sourceId) < 0;
     }
 
@@ -4123,7 +4133,9 @@
     }
 
     function isCvhPlaybackSource(url, group) {
-        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        var data = group ? LampaYaniUiUtils.videoData(group) : {};
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source || group.yani_stream_source) || '') +
+            ' ' + String(data.yani_stream_source || data.player || '');
         return /iframecvh|cdnvideohub|(?:^|\s)cvh(?:\s|$)/i.test(value);
     }
 

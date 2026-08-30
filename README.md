@@ -2,7 +2,7 @@
 
 An unofficial YummyAnime extension for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.46.15`
+Current version: `0.46.17`
 
 [Changelog](CHANGELOG.md) · [Technical documentation](docs/README.en.md)
 
@@ -46,7 +46,7 @@ Sections you do not use can be hidden in the extension settings.
 
 The schedule opens on the current day and covers the previous week, the current week, and the next two weeks. Each release can show its episode number, local time, rating, and available dubbing or subtitle teams.
 
-Disabled sources are hidden. VK is enabled by default; the extension resolves supported VK wrapper and `video_ext` pages into a direct MP4/HLS stream. CVH is resolved into direct MP4 qualities and is enabled by default on Android and Android TV, where Lampa provides a native request bridge; it remains opt-in on browser-only platforms because the CVH API does not expose CORS access. Alloha stays disabled by default. The last successfully loaded schedule remains available during temporary API problems.
+Disabled sources are hidden. VK is enabled by default; the extension resolves supported VK wrapper and `video_ext` pages into a direct MP4/HLS stream. CVH is resolved into direct MP4 qualities and is enabled by default on Android, Android TV and LG WebOS, where playback has been verified; it remains opt-in on other platforms because the CVH API does not expose CORS access. Alloha stays disabled by default. The last successfully loaded schedule remains available during temporary API problems.
 
 ## Ratings
 

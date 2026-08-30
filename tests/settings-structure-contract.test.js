@@ -23,8 +23,8 @@ assert.deepStrictEqual(settingsOrder, settingsOrder.slice().sort((left, right) =
     'settings sections must follow the intended TV-friendly order');
 assert.match(ui, /EXPERIMENTAL_PLAYBACK_SOURCE_IDS = \['alloha', 'cvh'\]/,
     'Alloha and CVH must be treated as experimental sources');
-assert.match(ui, /if \(sourceId === 'cvh'\) return isAndroidPlatform\(\)/,
-    'CVH must default to enabled only behind the Android native bridge');
+assert.match(ui, /if \(sourceId === 'cvh'\) return isAndroidPlatform\(\) \|\| isWebOsPlatform\(\)/,
+    'CVH must default to enabled on the verified Android and WebOS runtimes');
 assert.match(ui, /return EXPERIMENTAL_PLAYBACK_SOURCE_IDS\.indexOf\(sourceId\) < 0/,
     'other experimental sources must retain their safe disabled default');
 assert.match(ui, /name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled\(sourceId\)/,

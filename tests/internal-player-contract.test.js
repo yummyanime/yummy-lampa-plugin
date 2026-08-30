@@ -13,7 +13,11 @@ assert.ok(
     internalPlayback.indexOf("Lampa.Player.runas('lampa')") < internalPlayback.indexOf('Lampa.Player.play(directCurrent)'),
     'the Lampa engine must be selected before playback starts'
 );
-assert.ok(internalPlayback.includes('LampaYaniUiUtils.internalPlayerItem'), 'internal playback must preserve normalized stream metadata');
+assert.ok(source.includes('LampaYaniUiUtils.internalPlayerItem'), 'internal playback must preserve normalized stream metadata');
+assert.match(source, /function internalPlayerExtensionHint/);
+assert.match(source, /isAndroidPlatform\(\)[\s\S]{0,120}isCvhPlaybackSource/,
+    'only Android CVH playback should receive the MP4 extension hint');
+assert.match(source, /extensionHint: internalPlayerExtensionHint\(item\)/);
 assert.ok(internalPlayback.includes('isExternalPlayableUrl(item.url, item.source)'), 'resolved streams without a filename extension must remain in the internal playlist');
 assert.ok(source.includes('isExternalPlayableUrl(current && current.url, current && current.source)'), 'the internal player must accept a resolver-confirmed CVH stream');
 assert.match(source, /isCvhPlaybackSource\(url, group\)[\s\S]{0,260}cvh_stream_unavailable/,

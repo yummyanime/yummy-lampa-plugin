@@ -13,6 +13,7 @@ assert.deepStrictEqual(Array.from(utils.titleValues({title: 'Наруто', othe
 assert.strictEqual(utils.normalizeMatchTitle('Ёжик: 2026'), 'ежик 2026');
 assert.strictEqual(utils.isAndroidPlatform(), false);
 assert.strictEqual(utils.isAndroidTvPlatform(), false);
+assert.strictEqual(utils.isWebOsPlatform(), false);
 const androidContext = {window: {Lampa: {Platform: {is: function (name) { return name === 'android'; }, get: function () { return 'android'; }}}}};
 vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), androidContext);
 assert.strictEqual(androidContext.window.LampaYaniUiUtils.isAndroidPlatform(), true);
@@ -29,6 +30,16 @@ const androidTvContext = {window: {
 }};
 vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), androidTvContext);
 assert.strictEqual(androidTvContext.window.LampaYaniUiUtils.isAndroidTvPlatform(), true);
+const webOsPlatformContext = {window: {
+    navigator: {userAgent: 'Mozilla/5.0 (Web0S; Linux/SmartTV)'},
+    Lampa: {Platform: {is: function (name) { return name === 'webos'; }, get: function () { return 'webos'; }}}
+}};
+vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), webOsPlatformContext);
+assert.strictEqual(webOsPlatformContext.window.LampaYaniUiUtils.isWebOsPlatform(), true);
+assert.strictEqual(webOsPlatformContext.window.LampaYaniUiUtils.isAndroidPlatform(), false);
+const webOsUserAgentContext = {window: {navigator: {userAgent: 'Mozilla/5.0 (Web0S; Linux/SmartTV)'}}};
+vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), webOsUserAgentContext);
+assert.strictEqual(webOsUserAgentContext.window.LampaYaniUiUtils.isWebOsPlatform(), true);
 assert.deepStrictEqual(Array.from(utils.standardSearchTitles({title: 'Anime (2026)', yani_titles: ['Anime']})), ['Anime', 'Anime (2026)']);
 assert.deepStrictEqual(Array.from(utils.standardSearchTitles({
     title: 'Белого мага, изгнанного из команды героев',
@@ -114,6 +125,20 @@ assert.strictEqual(internalItem.quality['720p'], 'https://media.example/720.m3u8
 assert.strictEqual(internalItem.headers.Referer, 'https://example.test/');
 assert.strictEqual(internalItem.poster, 'poster.jpg');
 assert.strictEqual(utils.internalPlayerItem({url: ''}), null);
+
+const hintedInternalItem = utils.internalPlayerItem({
+    title: 'CVH episode',
+    url: 'https://vd.example.test/?id=1&type=5',
+    quality: {
+        '720p': 'https://vd.example.test/?id=1&type=4',
+        '1080p': 'https://vd.example.test/?id=1&type=5'
+    },
+    extensionHint: 'mp4'
+});
+assert.strictEqual(hintedInternalItem.url, 'https://vd.example.test/?id=1&type=5#yani.mp4');
+assert.strictEqual(hintedInternalItem.quality['720p'], 'https://vd.example.test/?id=1&type=4#yani.mp4');
+assert.strictEqual(hintedInternalItem.quality['1080p'], 'https://vd.example.test/?id=1&type=5#yani.mp4');
+assert.strictEqual(utils.mediaExtensionHint('https://cdn.example/video.mp4?token=1', 'mp4'), 'https://cdn.example/video.mp4?token=1');
 assert.strictEqual(utils.detailRouteId({yani_id: 10551}), '10551');
 assert.strictEqual(utils.detailRouteId({component: 'yani_detail', card: {anime_id: 23365}}), '23365');
 assert.strictEqual(utils.detailRouteId({component: 'yani_detail', url: 'yani/detail/4912'}), '4912');

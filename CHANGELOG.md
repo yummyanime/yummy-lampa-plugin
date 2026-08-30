@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.46.17 — 2026-08-30
+
+- Refactor CVH platform defaults for LG WebOS 
+- Fix CVH settings guidance
+
+## 0.46.16 — 2026-08-30
+
+- Fix CVH detection in the internal Android player
+- Add extension hints for CVH quality streams
+
 ## 0.46.15 — 2026-08-30
 
 - Fix repeated episode player teardown 
