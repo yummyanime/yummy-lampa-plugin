@@ -3130,10 +3130,11 @@
             restorePlaybackInteraction();
             return;
         }
-        var allohaSource = isAllohaUrl(url) || /alloha/i.test(String(group && (group.player || group.title) || ''));
+        var allohaPageUrl = selected.yani_alloha_iframe_url || (isAllohaUrl(selected.iframe_url) ? selected.iframe_url : url);
+        var allohaSource = isAllohaUrl(allohaPageUrl) || /alloha/i.test(String(group && (group.player || group.title) || ''));
         var resolvedAlloha = ALLOHA_RESOLVED_SOURCES.indexOf(String(selected.yani_stream_source || '').toLowerCase()) >= 0;
-        if (allohaSource && !resolvedAlloha) {
-            return launchAllohaPlayer(card, group, selected, url);
+        if (allohaSource && (!resolvedAlloha || !options.autoAdvance)) {
+            return launchAllohaPlayer(card, group, selected, allohaPageUrl, options);
         }
         if (!isExternalPlayableUrl(url, selected) && window.LampaYaniStreamResolver && LampaYaniStreamResolver.canResolve(url)) {
             setLoading(true);
@@ -3241,9 +3242,7 @@
         });
     }
 
-    function launchAllohaPlayer(card, group, selected, url) {
-        var chain = allohaResolvers(card, group, selected, url);
-        if (!chain.length) return blockAllohaPlayback(card, group, selected, url);
+    function launchAllohaDirect(card, group, selected, url, chain, options) {
         setLoading(true);
         resolveInOrder(chain).then(function (result) {
             setLoading(false);
@@ -3252,12 +3251,51 @@
             selected.yani_stream_qualities = result.qualities || null;
             selected.yani_stream_headers = result.headers || null;
             selected.yani_stream_source = result.source || 'lampac-alloha';
-            launchResolvedVideo(card, group, group.videos || [selected], selected, result.url);
+            launchResolvedVideo(card, group, group.videos || [selected], selected, result.url, options);
         }).catch(function (error) {
             setLoading(false);
             console.warn('[YummyAnime] Alloha resolve failed; playback blocked', error);
             blockAllohaPlayback(card, group, selected, url);
         });
+        return true;
+    }
+
+    function launchAllohaPlayer(card, group, selected, url, options) {
+        options = options || {};
+        if (selected && isAllohaUrl(url)) selected.yani_alloha_iframe_url = url;
+        var chain = allohaResolvers(card, group, selected, url);
+        var webAvailable = allohaIframeEnabled();
+        if (!chain.length) return blockAllohaPlayback(card, group, selected, url);
+
+        // Auto-next must stay uninterrupted. The direct resolver is the only
+        // Alloha route that can preserve Lampa's playlist and progress model.
+        if (options.autoAdvance || !webAvailable) {
+            return launchAllohaDirect(card, group, selected, url, chain, options);
+        }
+
+        var shown = showPlaybackSelect({
+            title: t('alloha_playback_title'),
+            items: [
+                {
+                    title: t('alloha_watch_lampa'),
+                    subtitle: t('alloha_watch_lampa_description'),
+                    action: 'direct'
+                },
+                {
+                    title: t('alloha_watch_web'),
+                    subtitle: t('alloha_watch_web_description'),
+                    action: 'web'
+                }
+            ],
+            onSelect: function (item) {
+                if (item && item.action === 'web') {
+                    openAllohaWebPlayer(card, group, selected, url);
+                    return;
+                }
+                launchAllohaDirect(card, group, selected, url, chain, options);
+            }
+        });
+        if (!shown) return launchAllohaDirect(card, group, selected, url, chain, options);
         return true;
     }
 
@@ -3273,10 +3311,22 @@
     }
 
     function blockAllohaPlayback(card, group, selected, url) {
-        if (url && allohaIframeEnabled() && openAllohaEmbed(card, group, selected, url)) return true;
+        if (url && allohaIframeEnabled() && openAllohaWebPlayer(card, group, selected, url)) return true;
         Lampa.Noty.show(t('alloha_direct_required'));
         restorePlaybackInteraction();
         return true;
+    }
+
+    function acknowledgeAllohaWebNotice() {
+        if (!Lampa.Storage || !Lampa.Storage.get || !Lampa.Storage.set) return;
+        if (Lampa.Storage.get('yani_alloha_web_notice_seen', false)) return;
+        Lampa.Storage.set('yani_alloha_web_notice_seen', true);
+        Lampa.Noty.show(t('alloha_web_player_notice'));
+    }
+
+    function openAllohaWebPlayer(card, group, selected, url) {
+        acknowledgeAllohaWebNotice();
+        return openAllohaEmbed(card, group, selected, url);
     }
 
     function openEmbeddedEpisode(card, group, selected, url) {
@@ -3288,14 +3338,12 @@
             // Only the start can be reported: the page plays inside an iframe
             // this plugin cannot read a position from.
             syncServerProgress(selected);
-            // Activity owns the back stack for the embedded page and will
-            // restart the detail controller itself.
-            clearPlaybackReturn();
             Lampa.Activity.push({
                 url: 'yani/player',
                 title: (card && card.title || 'YummyAnime') + ' · ' + t('episode') + ' ' + ((selected && (selected.number || selected.index)) || '?'),
                 component: 'yani_player',
-                iframe_url: url
+                iframe_url: url,
+                return_snapshot: playbackReturnSnapshot()
             });
             return true;
         } catch (error) {
@@ -4066,7 +4114,12 @@
     function IframePlayer(object) {
         return LampaYaniPlayer.create(object, {
             sourceUrl: function (item) { return videoSourceUrl(item) || item && item.iframe_url || ''; },
-            goBack: goBack
+            goBack: function () {
+                goBack();
+                setTimeout(function () {
+                    restorePlaybackInteraction(object && object.return_snapshot, {retryDelays: [250, 700]});
+                }, 80);
+            }
         });
     }
 
@@ -4797,7 +4850,10 @@
         Lampa.SettingsApi.addParam({
             component: 'yani',
             param: {name: 'yani_alloha_iframe', type: 'trigger', default: false},
-            field: {name: t('alloha_iframe'), description: t('alloha_iframe_description')}
+            field: {name: t('alloha_iframe'), description: t('alloha_iframe_description')},
+            onChange: function (value) {
+                if (value === true || value === 'true') acknowledgeAllohaWebNotice();
+            }
         });
 
         Lampa.SettingsApi.addParam({

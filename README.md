@@ -2,7 +2,7 @@
 
 An unofficial YummyAnime extension for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.46.12`
+Current version: `0.46.13`
 
 [Changelog](CHANGELOG.md) · [Technical documentation](docs/README.en.md)
 
@@ -70,9 +70,9 @@ For Alloha, the extension uses the following order:
 
 1. **YummyAnime resolver server** — converts the selected episode and dubbing into a direct HLS stream.
 2. **Lampac server** — tries to find a direct stream by the title's external IDs; matching is not guaranteed.
-3. **Alloha embedded site player** — an optional fallback, disabled by default. It opens the original web player inside Lampa, so Lampa's timeline, progress tracking, and external-player handoff are unavailable.
+3. **Alloha source web player** — an optional fallback, disabled by default. It opens the original web player inside Lampa without a companion app, so Lampa's timeline, precise progress tracking, and external-player handoff are unavailable.
 
-If none of these options is configured, Alloha playback is blocked with an explanation instead of sending an iframe to an incompatible player. Other available sources remain usable and are placed higher in the dubbing list. Resolver and Lampac addresses, source visibility, the embedded Alloha fallback, and the preferred player are configured under `Settings → YummyAnime`.
+When both a direct resolver and the source web player are available, the extension asks whether to use the Lampa player or the Alloha web player. If neither option is configured, Alloha playback is blocked with an explanation instead of sending an iframe to an incompatible player. Other available sources remain usable and are placed higher in the dubbing list. Resolver and Lampac addresses, source visibility, the Alloha web-player fallback, and the preferred player are configured under `Settings → YummyAnime`.
 
 The optional YummyTV integration is shown only on Android TV and is disabled by default. It only opens the title in the separately installed YummyTV application, is not an Alloha resolver, and is not required for the extension.
 

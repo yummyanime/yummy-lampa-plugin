@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.13 — 2026-08-30
+
+- Refactor Alloha web playback
+- Fix iframe return focus
+
 ## 0.46.12 — 2026-08-30
 
 - Add live authorization status to settings
