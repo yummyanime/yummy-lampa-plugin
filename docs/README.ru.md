@@ -32,8 +32,6 @@
 
 `https://yummyanime.github.io/yummy-lampa-plugin/stable/index.js`
 
-Эту же ссылку стоит публиковать в каталогах плагинов и на сайте YummyAnime (`yummyani.me`, страница «Lampa» или FAQ). Ссылка с официального домена для каталогов весит больше, чем github.io.
-
 Тестовая версия из `main`:
 
 `https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js`

@@ -32,8 +32,6 @@ Add the official stable URL in the Lampa extensions settings:
 
 `https://yummyanime.github.io/yummy-lampa-plugin/stable/index.js`
 
-Use this same URL in plugin catalogs and on the YummyAnime site (`yummyani.me`, Lampa or FAQ page). A link from the official domain is stronger for catalogs than github.io alone.
-
 Test version from `main`:
 
 `https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js`
