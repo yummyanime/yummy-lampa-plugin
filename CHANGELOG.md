@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.24 — 2026-09-03
+
+- Add README screenshots of the home, title, schedule, and genre screens
+
 ## 0.46.23 — 2026-09-03
 
 - Fix official YummyAnime plugin wording and publish the stable install URL

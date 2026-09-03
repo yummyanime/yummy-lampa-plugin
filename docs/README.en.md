@@ -4,6 +4,16 @@ The official YummyAnime plugin for Lampa, powered by the YummyAnime (Yani) API.
 
 Official website: [yummyani.me](https://yummyani.me)
 
+Screenshots for catalogs and the public README:
+
+![YummyAnime home dashboard](../assets/yummyanime-home.png)
+
+![YummyAnime title page](../assets/yummyanime-title.png)
+
+![YummyAnime schedule](../assets/yummyanime-schedule.png)
+
+![YummyAnime genre catalog](../assets/yummyanime-genre.jpg)
+
 ## MVP features
 
 - anime catalog;

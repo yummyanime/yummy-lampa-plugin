@@ -47,6 +47,13 @@ assert.doesNotMatch(ru, /[Нн]еофициальн/);
 assert.match(en, /The official YummyAnime plugin for Lampa/);
 assert.match(root, /yummyani\.me/);
 assert.match(ru, /yummyani\.me/);
+assert.match(root, /assets\/yummyanime-home\.png/);
+assert.match(root, /assets\/yummyanime-title\.png/);
+assert.match(root, /assets\/yummyanime-schedule\.png/);
+assert.match(root, /assets\/yummyanime-genre\.jpg/);
+['assets/yummyanime-home.png', 'assets/yummyanime-title.png', 'assets/yummyanime-schedule.png', 'assets/yummyanime-genre.jpg'].forEach((file) => {
+    assert.ok(fs.existsSync(file), file + ' must be present for README catalogs');
+});
 assert.match(root, /<sub>\[Русская версия\]\(docs\/README\.ru\.md\)<\/sub>/);
 assert.ok(fs.existsSync('docs/README.ru.md'), 'optional Russian documentation must be available separately');
 assert.match(fs.readFileSync('src/ui.js', 'utf8'), /t\('official_plugin'\)/);

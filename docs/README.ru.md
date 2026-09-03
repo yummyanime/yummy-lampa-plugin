@@ -1,12 +1,30 @@
-# YummyAnime for Lampa
+﻿# YummyAnime for Lampa
 
 Официальный плагин YummyAnime для Lampa. Добавляет каталог аниме, расписание, рейтинги, личные списки и просмотр доступных источников. Интерфейс адаптирован для ТВ-пульта.
 
-Текущая версия: `0.46.23`
+Текущая версия: `0.46.24`
 
 Официальный сайт: [yummyani.me](https://yummyani.me)
 
 [Основная документация](../README.md) · [История изменений](../CHANGELOG.md)
+
+## Скриншоты
+
+<p align="center">
+  <img src="../assets/yummyanime-home.png" alt="Главный экран YummyAnime в Lampa" width="720">
+</p>
+
+<p align="center">
+  <img src="../assets/yummyanime-title.png" alt="Карточка тайтла YummyAnime с рейтингами и переводами" width="720">
+</p>
+
+<p align="center">
+  <img src="../assets/yummyanime-schedule.png" alt="Расписание YummyAnime с сериями и озвучками" width="720">
+</p>
+
+<p align="center">
+  <img src="../assets/yummyanime-genre.jpg" alt="Каталог жанра YummyAnime" width="720">
+</p>
 
 ## Установка
 
