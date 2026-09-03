@@ -1,18 +1,20 @@
 # YummyAnime for Lampa
 
-An unofficial YummyAnime extension for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
+The official YummyAnime plugin for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.46.22`
+Current version: `0.46.23`
+
+Official website: [yummyani.me](https://yummyani.me)
 
 [Changelog](CHANGELOG.md) · [Technical documentation](docs/README.en.md)
 
 ## Installation
 
-Add one of these URLs in the Lampa extensions settings.
-
-Stable version:
+Add the official stable URL in the Lampa extensions settings:
 
 `https://yummyanime.github.io/yummy-lampa-plugin/stable/index.js`
+
+Use this same URL in plugin catalogs and on the YummyAnime site (`yummyani.me`, Lampa or FAQ page). A link from the official domain is stronger for catalogs than github.io alone.
 
 Test version from `main`:
 
@@ -82,6 +84,6 @@ The optional YummyTV integration is shown only on Android TV and is disabled by 
 - Interface languages: Russian, English, and Ukrainian.
 - Playback depends on the available sources and their formats.
 
-Author: Andrew Codeman
+Official plugin by YummyAnime
 
 <sub>[Русская версия](docs/README.ru.md)</sub>

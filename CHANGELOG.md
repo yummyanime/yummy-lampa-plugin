@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.23 — 2026-09-03
+
+- Fix official YummyAnime plugin wording and publish the stable install URL
+
 ## 0.46.22 — 2026-08-30
 
 - Fix CVH streams failing in the internal Android player by signing the CDN link for the agent that plays it

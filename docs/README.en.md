@@ -1,6 +1,8 @@
 # Lampa YummyAnime Extension — Documentation
 
-A new Lampa extension powered by the official YummyAnime (Yani) API.
+The official YummyAnime plugin for Lampa, powered by the YummyAnime (Yani) API.
+
+Official website: [yummyani.me](https://yummyani.me)
 
 ## MVP features
 

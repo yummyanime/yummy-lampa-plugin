@@ -23,6 +23,18 @@ const IDLE_TIMEOUT_MS = Number(process.env.YANI_RESOLVER_IDLE_MS || 5 * 60 * 100
 const HEADLESS = process.env.YANI_RESOLVER_HEADLESS !== 'false';
 const VERBOSE = process.env.YANI_RESOLVER_VERBOSE === 'true';
 
+// Experimental: hand out the CDN links as they are, with the one static header
+// the CDN asks for, instead of proxying every byte. Measured against a live
+// title: the bnsi links answer 403 without `Origin: https://alloha.yani.tv`
+// and 200 with it - no rotating token, no live session, nothing to keep warm.
+// A player that can send headers therefore needs nothing from this service
+// beyond the links themselves, which is most of the proxy's reason to exist.
+// The proxy stays in place and stays the default until this is proven on real
+// devices: the internal Android player is a <video> in a WebView and cannot
+// send that header, so it still needs the proxy.
+const DIRECT_LINKS = process.env.YANI_RESOLVER_DIRECT === 'true';
+const ALLOHA_ORIGIN = 'https://alloha.yani.tv';
+
 const REFRESH_WAIT_MS = Number(process.env.YANI_RESOLVER_REFRESH_WAIT_MS || 12000);
 const HOP_BY_HOP =['connection', 'keep-alive', 'transfer-encoding', 'upgrade', 'te', 'trailer', 'host', 'content-length'];
 
@@ -231,6 +243,24 @@ async function handleResolve(request, response, query) {
             qualities[label] = `${base}/hls/${id}/q/${encodeURIComponent(label)}/master.m3u8`;
         });
         const best = labels[labels.length - 1];
+
+        if (DIRECT_LINKS && best) {
+            const direct = {};
+            labels.forEach((label) => { direct[label] = session.qualities[label]; });
+            sendJson(response, 200, {
+                url: session.qualities[best],
+                quality: best,
+                qualities: direct,
+                headers: {Origin: ALLOHA_ORIGIN},
+                source: 'yani-resolver',
+                session: id,
+                mode: 'direct',
+                expires_in: null
+            });
+            // Nothing else needs the browser: the links are self-contained.
+            releaseSession(iframeUrl);
+            return;
+        }
 
         sendJson(response, 200, {
             url: best ? qualities[best] : `${base}/hls/${id}/master.m3u8`,

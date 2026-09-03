@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.22',
+        version: '0.46.23',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -129,7 +129,8 @@ function pluginYummyAnime() {
     messages.ru.open_list = 'Открыть список';
     messages.ru.watch_history = 'История просмотра';
     messages.ru.favorites = 'Любимое';
-    messages.ru.repo_notice = 'YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
+    messages.ru.repo_notice = 'Официальный плагин YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
+    messages.ru.official_plugin = 'Официальный плагин YummyAnime';
     messages.ru.my_reviews = 'Мои отзывы';
     messages.ru.my_reviews_description = 'Отзывы пользователя YummyAnime';
     messages.ru.reviews_empty = 'Отзывов пока нет';
@@ -230,7 +231,8 @@ function pluginYummyAnime() {
     messages.en.open_list = 'Open list';
     messages.en.watch_history = 'Watch history';
     messages.en.favorites = 'Favorites';
-    messages.en.repo_notice = 'YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
+    messages.en.repo_notice = 'Official YummyAnime plugin · https://github.com/yummyanime/yummy-lampa-plugin';
+    messages.en.official_plugin = 'Official YummyAnime plugin';
     messages.en.my_reviews = 'My reviews';
     messages.en.my_reviews_description = 'Your YummyAnime reviews';
     messages.en.reviews_empty = 'There are no reviews yet';
@@ -758,7 +760,8 @@ function pluginYummyAnime() {
     messages.uk.auth_manage_description = 'Вхід за логіном і паролем YummyAnime. Реєстрація: {site}';
     messages.uk.auth_hint = 'Для входу в плагін використовуйте логін і пароль YummyAnime. Зареєструватися можна на сайті: {site}. Пароль не зберігається в Lampa.';
     messages.uk.favorites = 'Улюблене';
-    messages.uk.repo_notice = 'YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
+    messages.uk.repo_notice = 'Офіційний плагін YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
+    messages.uk.official_plugin = 'Офіційний плагін YummyAnime';
     messages.uk.my_reviews = 'Мої відгуки';
     messages.uk.my_reviews_description = 'Відгуки користувача YummyAnime';
     messages.uk.reviews_empty = 'Відгуків ще немає';
@@ -18674,7 +18677,7 @@ function pluginYummyAnime() {
             param: {name: 'yani_about', type: 'button'},
             field: {
                 name: t('version_name'),
-                description: t('version_label') + ' ' + LampaYaniConfig.version + ' · ' + t('extension') + ' · ' + t('website_description') + ': ' + yummyWebsiteUrl()
+                description: t('official_plugin') + ' · ' + t('version_label') + ' ' + LampaYaniConfig.version + ' · ' + t('website_description') + ': ' + yummyWebsiteUrl()
             },
             onChange: openYummyWebsite
         });

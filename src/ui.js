@@ -5055,7 +5055,7 @@
             param: {name: 'yani_about', type: 'button'},
             field: {
                 name: t('version_name'),
-                description: t('version_label') + ' ' + LampaYaniConfig.version + ' · ' + t('extension') + ' · ' + t('website_description') + ': ' + yummyWebsiteUrl()
+                description: t('official_plugin') + ' · ' + t('version_label') + ' ' + LampaYaniConfig.version + ' · ' + t('website_description') + ': ' + yummyWebsiteUrl()
             },
             onChange: openYummyWebsite
         });
