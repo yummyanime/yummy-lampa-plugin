@@ -13,9 +13,12 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.34',
+        version: '0.46.35',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
+        // Referrer bridge for the Alloha player, served from the same Pages site
+        // as the plugin itself. See embed/alloha.html for why it is needed.
+        allohaEmbedUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/embed/alloha.html',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
         defaultApplicationToken: defaultApplicationToken,
         applicationToken: function () { return defaultApplicationToken; },
@@ -17232,8 +17235,25 @@ function pluginYummyAnime() {
         return value + (value.indexOf('?') >= 0 ? '&' : '?') + 'autoplay=1';
     }
 
+    /**
+     * Wraps the player address in the project's own bridge page.
+     *
+     * Alloha answers 404 to a request carrying no referrer, and Lampa's Android
+     * app serves its interface locally, so an iframe opened straight from the
+     * app arrives with an empty referrer - the viewer is told the content does
+     * not exist. Which referrer it is does not matter, so a static page on the
+     * same Pages site that serves this plugin is enough to stand between them.
+     * No server anyone has to run.
+     */
+    function allohaEmbedUrl(url) {
+        var target = allohaAutoplayUrl(url);
+        var bridge = window.LampaYaniConfig && LampaYaniConfig.allohaEmbedUrl;
+        if (!target || !bridge) return target;
+        return bridge + '?url=' + encodeURIComponent(target);
+    }
+
     function openAllohaEmbed(card, group, selected, url) {
-        return openEmbeddedEpisode(card, group, selected, allohaAutoplayUrl(url));
+        return openEmbeddedEpisode(card, group, selected, allohaEmbedUrl(url));
     }
 
     function setLoading(enabled) {
