@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.46.31 — 2026-09-06
+
+- Refactor the embedded player back control into a small arrow so it stops covering the picture
+
+## 0.46.30 — 2026-09-06
+
+- Remove the back button covering the embedded player picture, closing it with the remote Back key alone
+
 ## 0.46.29 — 2026-09-06
 
 - Fix Sibnet failing in the internal player by letting a stream that needs request headers use the platform player instead of the built-in engine
