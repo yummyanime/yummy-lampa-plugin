@@ -1655,11 +1655,20 @@ body > .yani-skip-prompt {
 
 .yani-player {
     position: fixed;
-    z-index: 1000;
+    /* Above Lampa's own header: it kept drawing its clock and icons over the
+       video, and the back button landed on top of the title. */
+    z-index: 9000;
     inset: 0;
     width: 100vw;
     height: 100vh;
     background: #000;
+}
+
+/* Belt and braces for skins whose header sits in a stacking context of its own,
+   where raising our z-index alone would not be enough. */
+body.yani-player-open .head,
+body.yani-player-open .head--simple {
+    display: none !important;
 }
 
 .yani-player__iframe {

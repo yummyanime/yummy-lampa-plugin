@@ -37,3 +37,18 @@ component.activity = {loader() {}, toggle() {}};
 assert.doesNotThrow(() => { component.create(); component.start(); },
     'a missing dependency must not blank the screen');
 assert.strictEqual(typeof component.render, 'function');
+
+// Lampa's header kept drawing over the embedded video, and the back button
+// landed on top of the title. The player owns the whole screen while it is
+// open, and must give it back on every exit path - a body class left behind
+// would hide the header for the rest of the session.
+const css = fs.readFileSync('style.css', 'utf8');
+assert.match(css, /body\.yani-player-open \.head/, 'the header must be hidden while the player is open');
+assert.match(playerSource, /addClass\('yani-player-open'\)/, 'the player must claim the screen');
+assert.strictEqual(
+    (playerSource.match(/claimScreen\(false\)/g) || []).length,
+    2,
+    'the screen must be released both on close and on destroy'
+);
+assert.match(playerSource, /function claimScreen\(on\)[\s\S]{0,320}catch \(error\) \{\}/,
+    'claiming the screen must not be able to take the player down');

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.28 — 2026-09-06
+
+- Fix Lampa header drawing over the embedded player video
+
 ## 0.46.27 — 2026-09-06
 
 - Fix the embedded player showing an empty list instead of the video because a missing translator threw while the component was built
