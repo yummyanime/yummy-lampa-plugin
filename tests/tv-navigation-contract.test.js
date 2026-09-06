@@ -21,14 +21,16 @@ assert.match(notifications, /function focusable\(element\)[\s\S]{0,220}LampaYani
 assert.match(notifications, /function refreshFocus\(preferred\)[\s\S]{0,700}collectionFocus/);
 assert.match(notifications, /collectionSet\(scroll\.render\(\), false, true\)/);
 
-// The embedded player keeps one focusable control - without it the keys reach
-// the embedded page and Back stops closing anything - but it is an arrow rather
-// than a label, because a line of text in the corner covered the picture.
-assert.match(player, /yani-player__back selector/);
-assert.ok(!/yani-player__back[^>]*>\s*<\/div>'\)\.text\(/.test(player), 'the control must not be a text label');
-assert.match(player, /<svg viewBox="0 0 24 24"/, 'the control must be drawn as a glyph');
-assert.match(player, /aria-label', t\('back_to_lampa'\)/, 'the glyph must still be announced');
-assert.match(player, /collectionFocus\(back, html, true\)/);
+// The embedded page owns the keys. A control of the plugin's own would be the
+// only focusable element in Lampa's collection and would take every OK press,
+// so the page's own play button could never be reached with a remote. The
+// iframe takes the focus instead, and Back is the one key this screen answers.
+assert.ok(!/yani-player__back|yani-player__anchor/.test(player), 'no control of our own may hold the focus');
+assert.match(player, /function focusPlayer\(\)/, 'the embedded page must receive the focus');
+assert.match(player, /toggle: focusPlayer,\s*back: close/, 'Back must stay the way out');
+// Nothing of ours goes into the collection any more: whatever sits there takes
+// the OK press that belongs to the embedded page.
+assert.ok(!/collectionSet|collectionFocus/.test(player), 'the screen must not hold a focus collection of its own');
 assert.match(schedule, /function refreshFocus\(element\)/);
 assert.match(schedule, /function moveDay\(delta\)/);
 assert.match(schedule, /select\(next, 'chip'\)/);
@@ -44,8 +46,7 @@ assert.match(schedule, /function updateShortcutBadges\(\)[\s\S]{0,900}shortcutBa
 assert.match(schedule, /group\.relativeOffset === 0\) chip\.append\(shortcutBadge\('red'\)\)/);
 assert.match(schedule, /function handleRemoteShortcut\(event\)[\s\S]{0,900}focusFirstRelease\(\)/);
 assert.match(schedule, /document\.addEventListener\('keydown', remoteShortcutHandler, true\)/);
-assert.match(css, /\.yani-player__back\.focus/, 'the control must show its focus state on a remote');
-assert.match(css, /\.yani-player__back[\s\S]{0,300}width: 2\.1em/, 'the control must stay small enough not to cover the picture');
+assert.ok(!/\.yani-player__back/.test(css), 'no control may be drawn over the embedded page');
 ['ru', 'en', 'uk'].forEach((language) => {
     assert.match(i18n, new RegExp(`messages\\.${language}\\.back_to_lampa\\s*=`));
 });

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.36 — 2026-09-07
+
+- Remove the embedded player back control so the remote reaches the page's own buttons instead of a focus holder that took every press
+
 ## 0.46.35 — 2026-09-06
 
 - Fix the embedded Alloha page reporting missing content by opening it through a referrer bridge published with the plugin

@@ -32,18 +32,52 @@
             claimScreen(false);
             if (deps.goBack) deps.goBack();
         }
-        // A back arrow rather than a label: the control has to stay - it holds
-        // the focus Lampa's controller needs, and without a focusable element
-        // the keys reach the embedded page and Back stops closing anything -
-        // but a line of text in the corner covered too much of the picture.
-        var back = $('<div class="yani-player__back selector">' +
-            '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
-            '<path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-            'stroke-linecap="round" stroke-linejoin="round"/></svg></div>')
-            .attr('aria-label', t('back_to_lampa'))
-            .attr('title', t('back_to_lampa'))
-            .on('hover:enter click', close);
-        return {create: function () { iframe.attr('src', (deps.sourceUrl ? deps.sourceUrl(object) : '') || (object && object.iframe_url) || '').attr('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture; payment'); html.append(iframe, back); claimScreen(true); this.activity.loader(false); this.activity.toggle(); }, start: function () { Lampa.Controller.add('content', {toggle: function () { Lampa.Controller.collectionSet(html, false, true); Lampa.Controller.collectionFocus(back, html, true); }, left: function () {}, right: function () {}, up: function () { Lampa.Controller.toggle('head'); }, down: function () {}, back: close}); Lampa.Controller.toggle('content'); }, render: function (js) { return js ? html[0] : html; }, destroy: function () { closing = true; claimScreen(false); iframe.attr('src', 'about:blank'); iframe.remove(); back.off().remove(); html.remove(); }};
+
+        // The embedded page owns the keys while it is open.
+        //
+        // This screen used to carry a back control, and being the only focusable
+        // element in the collection it received every OK press - so the play
+        // button and the controls of the embedded player could never be reached
+        // with a remote. Nothing of ours is focusable now: the iframe takes the
+        // focus, its own page decides what the arrows and OK do, and Back is
+        // the one key this component still answers.
+        function focusPlayer() {
+            try {
+                var node = iframe[0];
+                if (node && node.focus) node.focus();
+            } catch (error) {}
+        }
+
+        return {
+            create: function () {
+                iframe
+                    .attr('src', (deps.sourceUrl ? deps.sourceUrl(object) : '') || (object && object.iframe_url) || '')
+                    .attr('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture; payment')
+                    .attr('tabindex', '0')
+                    .attr('title', t('back_to_lampa'))
+                    .on('load', focusPlayer);
+                html.append(iframe);
+                claimScreen(true);
+                this.activity.loader(false);
+                this.activity.toggle();
+            },
+            start: function () {
+                Lampa.Controller.add('content', {
+                    toggle: focusPlayer,
+                    back: close
+                });
+                Lampa.Controller.toggle('content');
+                focusPlayer();
+            },
+            render: function (js) { return js ? html[0] : html; },
+            destroy: function () {
+                closing = true;
+                claimScreen(false);
+                iframe.off().attr('src', 'about:blank');
+                iframe.remove();
+                html.remove();
+            }
+        };
     }
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Player = window.LampaYaniPlayer = {create: create};

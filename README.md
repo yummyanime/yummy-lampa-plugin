@@ -2,7 +2,7 @@
 
 The official YummyAnime plugin for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.46.35`
+Current version: `0.46.36`
 
 Official website: [yummyani.me](https://yummyani.me)
 

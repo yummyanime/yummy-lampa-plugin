@@ -1679,35 +1679,12 @@ body.yani-player-open .head--simple {
     background: #000;
 }
 
-/* An arrow, not a label. The control has to exist - it holds the focus Lampa's
-   controller needs - but a line of text in the corner covered too much of the
-   picture, so it is a small glyph that stays out of the way and only lights up
-   when focused. */
-.yani-player__back {
-    position: absolute;
-    z-index: 2;
-    top: .9em;
-    left: .9em;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.1em;
-    height: 2.1em;
-    border-radius: 50%;
-    color: #fff;
-    background: rgba(20, 20, 24, .55);
-    transition: background .15s ease, color .15s ease, transform .15s ease;
-}
-
-.yani-player__back svg {
-    width: 1.15em;
-    height: 1.15em;
-}
-
-.yani-player__back.focus {
-    color: #18181b;
-    background: #fff;
-    transform: scale(1.12);
+/* Nothing of the plugin's own is drawn over the embedded page. A control here
+   would also be the only focusable element in Lampa's collection, so it would
+   receive every OK press and the page's own buttons could never be reached
+   with a remote. Back on the remote closes this screen. */
+.yani-player__iframe:focus {
+    outline: none;
 }
 
 .full-start__buttons .full-start__button.view--yummyanime,
