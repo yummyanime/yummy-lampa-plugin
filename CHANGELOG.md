@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.33 — 2026-09-06
+
+- Fix Continue Watching waiting on a request per title before drawing by building the list from known history and filling the card badges in afterwards
+
 ## 0.46.32 — 2026-09-06
 
 - Fix the wait before Continue Watching appears by fetching history pages together and remembering episode counts between openings

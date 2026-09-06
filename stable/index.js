@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.32',
+        version: '0.46.33',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -11057,12 +11057,47 @@ function pluginYummyAnime() {
             });
         }
 
+        /**
+         * Builds the cards the list is drawn from, without going to the network.
+         *
+         * Every entry already carries the title and poster a card shows; the
+         * extra request only adds badges - genres, status, episode count. It
+         * used to run for every title in the queue, three at a time, with the
+         * whole screen waiting on the last one: forty titles meant fourteen
+         * round trips in a row before anything appeared. The list is drawn from
+         * what is already known, and the badges catch up on their own.
+         */
         function cardsFor(entries) {
-            var mapper = function (entry) { return historyCard(entry, deps, continueMode, loadDetail); };
-            if (continueMode && window.LampaYaniCardRails && window.LampaYaniCardRails.mapLimit) {
-                return window.LampaYaniCardRails.mapLimit(entries, 3, mapper);
-            }
-            return Promise.all(entries.map(mapper));
+            return Promise.all(entries.map(function (entry) {
+                return historyCard(entry, deps, false, null);
+            }));
+        }
+
+        // Fills the badges in after the list is on screen. Failures are silent
+        // on purpose: a card without badges is a complete card, and nothing
+        // here is worth an error in front of the viewer.
+        function enrichCards(cards) {
+            if (!continueMode || !deps.detail || !cards || !cards.length) return;
+            var rails = window.LampaYaniCardRails;
+            var pending = cards.filter(function (card) { return card && card.yani_id; });
+            if (!pending.length) return;
+            var mapper = function (card) {
+                return loadDetail(card.yani_id).then(function (payload) {
+                    var value = payload && payload.response ? payload.response : payload;
+                    if (!value) return null;
+                    var enriched = deps.toCard(value);
+                    // Only the fields the card draws, so nothing the queue
+                    // depends on - the resume target above all - is overwritten.
+                    ['yani_genres', 'yani_status', 'yani_episodes', 'yani_episode_duration', 'yani_seasons_count']
+                        .forEach(function (field) {
+                            if (enriched[field] !== undefined && enriched[field] !== null) card[field] = enriched[field];
+                        });
+                    if (deps.redrawCard) deps.redrawCard(card);
+                    return null;
+                }).catch(function () { return null; });
+            };
+            if (rails && rails.mapLimit) rails.mapLimit(pending, 6, mapper);
+            else pending.forEach(mapper);
         }
 
         // A queue shorter than the history it was built from is the expected
@@ -11135,7 +11170,9 @@ function pluginYummyAnime() {
                 });
             }).then(function (cards) {
                 var totalPages = hasMore ? 2 : 1;
-                self.build({results: cards.filter(Boolean), total_pages: totalPages, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
+                var ready = cards.filter(Boolean);
+                self.build({results: ready, total_pages: totalPages, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
+                enrichCards(ready);
                 if (!cards.length) Lampa.Noty.show(deps.t(remoteFailed ? 'history_load_error' : 'history_empty'));
             }).catch(function (error) {
                 console.error('[YummyAnime History]', error);
@@ -15974,7 +16011,17 @@ function pluginYummyAnime() {
             authorized: function () { return Boolean(LampaYaniAuth.token()); },
             fetchRemote: LampaYaniApi.watchHistory,
             importRemote: importRemoteEntries,
-            historyCardRender: bindHistoryCardRender
+            historyCardRender: bindHistoryCardRender,
+            // Redraws one already-rendered card after its details arrive, so
+            // Continue Watching can show the list first and fill the badges in
+            // afterwards instead of waiting for a request per title.
+            redrawCard: function (card) {
+                if (!card || !card.yani_id) return;
+                var selector = '[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]';
+                $(selector).each(function () {
+                    try { cardRenderers.decorate(this, card); } catch (error) {}
+                });
+            }
         });
     }
 

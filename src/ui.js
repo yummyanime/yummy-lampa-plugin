@@ -2167,7 +2167,17 @@
             authorized: function () { return Boolean(LampaYaniAuth.token()); },
             fetchRemote: LampaYaniApi.watchHistory,
             importRemote: importRemoteEntries,
-            historyCardRender: bindHistoryCardRender
+            historyCardRender: bindHistoryCardRender,
+            // Redraws one already-rendered card after its details arrive, so
+            // Continue Watching can show the list first and fill the badges in
+            // afterwards instead of waiting for a request per title.
+            redrawCard: function (card) {
+                if (!card || !card.yani_id) return;
+                var selector = '[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]';
+                $(selector).each(function () {
+                    try { cardRenderers.decorate(this, card); } catch (error) {}
+                });
+            }
         });
     }
 

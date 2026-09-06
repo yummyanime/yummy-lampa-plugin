@@ -52,8 +52,17 @@ assert.match(sectionsSource, /var continueLimit = 300/);
 assert.match(sectionsSource, /fetchHistoryRange\(deps\.fetchRemote, continueLimit, limit\)/);
 assert.match(sectionsSource, /Math\.min\(30, Number\(pageSize \|\| 30\)\)/);
 assert.match(sectionsSource, /remoteFailed \? 'history_load_error' : 'history_empty'/);
-assert.match(sectionsSource, /historyCard\(entry, deps, continueMode, loadDetail\)/);
-assert.match(sectionsSource, /LampaYaniCardRails\.mapLimit\(entries, 3, mapper\)/);
+// The list is drawn from what history already knows - every entry carries a
+// title and a poster - and the badges that need a request per title are filled
+// in after it is on screen. Enriching first meant a round trip per title, three
+// at a time, with nothing visible until the last one came back.
+assert.match(sectionsSource, /historyCard\(entry, deps, false, null\)/,
+    'cards must be built without going to the network');
+assert.match(sectionsSource, /function enrichCards\(cards\)/, 'badges must be filled in separately');
+assert.match(sectionsSource, /self\.build\([\s\S]{0,200}enrichCards\(ready\)/,
+    'enrichment must start only after the list is drawn');
+assert.match(sectionsSource, /rails\.mapLimit\(pending, 6, mapper\)/,
+    'background enrichment may run wider than the old three-at-a-time crawl');
 assert.match(historySource, /playback\.last_watched_episode \|\| playback\.number/);
 assert.match(ui, /yani_home_playback_snapshot_v2/);
 
