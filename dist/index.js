@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.31',
+        version: '0.46.32',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -10604,30 +10604,41 @@ function pluginYummyAnime() {
         }).filter(Boolean);
     }
 
+    /**
+     * Reads the account history up to `maxItems`.
+     *
+     * The first page has to come back before anything else can be asked for -
+     * a short page means there is no more history - but once it arrives full,
+     * the remaining pages are independent of each other and are fetched at
+     * once. Chaining all ten cost ten round trips in a row, which is most of
+     * the wait before Continue Watching draws anything.
+     */
     function fetchHistoryRange(fetchPage, maxItems, pageSize, control) {
         var maximum = Math.max(1, Number(maxItems || 30));
         var size = Math.max(1, Math.min(30, Number(pageSize || 30)));
-        var offset = 0;
-        var entries = [];
 
-        function next() {
+        function page(offset) {
             return Promise.resolve(fetchPage(size, offset, control)).then(function (payload) {
-                var raw = historyPayloadItems(payload);
-                var normalized = normalizeRemoteHistory(payload);
-                if (normalized.length) entries = entries.concat(normalized);
-                offset += raw.length;
-                if (!raw.length || raw.length < size || offset >= maximum) return entries.slice(0, maximum);
-                return next();
-            }).catch(function (error) {
-                if (entries.length) {
-                    console.warn('[YummyAnime History] A later history page is unavailable', error);
-                    return entries.slice(0, maximum);
-                }
-                throw error;
+                return {raw: historyPayloadItems(payload).length, entries: normalizeRemoteHistory(payload)};
             });
         }
 
-        return next();
+        return page(0).then(function (first) {
+            if (first.raw < size || first.raw >= maximum) return first.entries.slice(0, maximum);
+            var offsets = [];
+            for (var offset = first.raw; offset < maximum; offset += size) offsets.push(offset);
+            return Promise.all(offsets.map(function (value) {
+                // One unavailable page must not lose the pages that did arrive.
+                return page(value).catch(function (error) {
+                    console.warn('[YummyAnime History] A later history page is unavailable', error);
+                    return {raw: 0, entries: []};
+                });
+            })).then(function (rest) {
+                var entries = first.entries;
+                rest.forEach(function (item) { entries = entries.concat(item.entries); });
+                return entries.slice(0, maximum);
+            });
+        });
     }
 
     function normalizeLocalHistory(saved) {
@@ -10652,6 +10663,48 @@ function pluginYummyAnime() {
                 remote: false
             };
         });
+    }
+
+    // How many episodes a title has released changes at most once a week, but
+    // Continue Watching asked the API for it on every single open - one request
+    // per finished title, all of them awaited before the list could be drawn.
+    // Remembering the answers turns that into a cost paid once per title.
+    var CEILING_CACHE_KEY = 'yani_episode_ceilings';
+    var CEILING_CACHE_TTL = 24 * 60 * 60 * 1000;
+
+    function readCeilingCache() {
+        try {
+            if (!window.Lampa || !Lampa.Storage || !Lampa.Storage.get) return {};
+            var stored = Lampa.Storage.get(CEILING_CACHE_KEY, '{}');
+            if (typeof stored === 'string') stored = JSON.parse(stored || '{}');
+            return stored && typeof stored === 'object' ? stored : {};
+        } catch (error) { return {}; }
+    }
+
+    function cachedCeilings(ids) {
+        var stored = readCeilingCache();
+        var fresh = {};
+        var missing = [];
+        (ids || []).forEach(function (id) {
+            var item = stored[String(id)];
+            if (item && Number(item.count) > 0 && Date.now() - Number(item.at || 0) < CEILING_CACHE_TTL) {
+                fresh[String(id)] = Number(item.count);
+            } else {
+                missing.push(String(id));
+            }
+        });
+        return {ceilings: fresh, missing: missing};
+    }
+
+    function rememberCeilings(counts) {
+        try {
+            if (!window.Lampa || !Lampa.Storage || !Lampa.Storage.set) return;
+            var stored = readCeilingCache();
+            Object.keys(counts || {}).forEach(function (id) {
+                if (Number(counts[id]) > 0) stored[id] = {count: Number(counts[id]), at: Date.now()};
+            });
+            Lampa.Storage.set(CEILING_CACHE_KEY, JSON.stringify(stored));
+        } catch (error) {}
     }
 
     function historyEntryKey(entry) {
@@ -11042,8 +11095,9 @@ function pluginYummyAnime() {
                 var key = String(entry.anime_id || entry.animeId || '');
                 if (key) wanted[key] = true;
             });
-            var ids = Object.keys(wanted);
-            if (!ids.length) return Promise.resolve({});
+            var known = cachedCeilings(Object.keys(wanted));
+            var ids = known.missing;
+            if (!ids.length) return Promise.resolve(known.ceilings);
             return Promise.all(ids.map(function (id) {
                 return loadDetail(id).then(function (payload) {
                     var value = payload && payload.response ? payload.response : payload;
@@ -11054,7 +11108,8 @@ function pluginYummyAnime() {
             })).then(function (results) {
                 var ceilings = {};
                 results.forEach(function (result) { if (result.count) ceilings[result.id] = result.count; });
-                return ceilings;
+                rememberCeilings(ceilings);
+                return Object.assign({}, known.ceilings, ceilings);
             });
         }
 

@@ -217,4 +217,28 @@ const finishedRemote = history.continueWatchingEntries(
 );
 assert.strictEqual(finishedRemote.length, 0, 'a fully watched account title stays out of the queue');
 
-console.log('Watch history contract checks passed');
+// Continue Watching made the viewer wait through ten history requests chained
+// one after another, plus one episode-count request per finished title on every
+// single open. Pages after the first are independent, and an episode count does
+// not change between openings.
+const sectionsFile = fs.readFileSync('src/ui-home-sections.js', 'utf8');
+assert.match(sectionsFile, /function cachedCeilings\(ids\)/, 'episode counts must be remembered between openings');
+assert.match(sectionsFile, /function rememberCeilings\(counts\)/, 'resolved counts must be written back');
+assert.match(sectionsFile, /var ids = known\.missing;/, 'only unknown counts may be requested');
+
+let pageCalls = 0;
+let concurrent = 0;
+let peak = 0;
+function countingPage(size, offset) {
+    pageCalls += 1;
+    concurrent += 1;
+    peak = Math.max(peak, concurrent);
+    const items = offset < 90 ? Array.from({length: size}, (unused, index) => ({anime_id: offset + index + 1, episode: 1})) : [];
+    return new Promise((resolve) => setTimeout(() => { concurrent -= 1; resolve({response: items}); }, 5));
+}
+history.fetchHistoryRange(countingPage, 90, 30).then((entries) => {
+    assert.strictEqual(entries.length, 90, 'every page must be collected');
+    assert.ok(peak > 1, 'pages after the first must be fetched together, not chained');
+    console.log('Watch history contract checks passed');
+});
+

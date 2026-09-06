@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.32 — 2026-09-06
+
+- Fix the wait before Continue Watching appears by fetching history pages together and remembering episode counts between openings
+
 ## 0.46.31 — 2026-09-06
 
 - Refactor the embedded player back control into a small arrow so it stops covering the picture
