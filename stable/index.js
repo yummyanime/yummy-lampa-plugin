@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.24',
+        version: '0.46.25',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -348,6 +348,7 @@ function pluginYummyAnime() {
     messages.ru.not_configured = 'не настроен';
     messages.ru.alloha_direct_required = 'Alloha недоступен во внутреннем и внешнем плеере без прямого потока. Настройте сервер Lampac или выберите другой источник';
     messages.ru.vk_stream_unavailable = 'Не удалось получить видеопоток VK. Видео может быть недоступно, ограничено владельцем или требовать авторизацию VK';
+    messages.ru.sibnet_source_description = 'Открывать официальный веб-плеер Sibnet внутри Lampa. Он необходим, потому что прямой MP4 Sibnet проверяет адрес страницы плеера';
     messages.ru.cvh_stream_unavailable = 'Не удалось получить прямой поток CVH. Выберите другую озвучку или источник';
     messages.ru.cvh_source_description = 'Прямой MP4-поток. На Android и Android TV доступен внутренний плеер Lampa в режиме совместимости, а также внешний плеер; на LG WebOS доступен внутренний плеер';
     messages.ru.cvh_source_warning = 'Для CVH на Android и Android TV расширение использует совместимый режим внутреннего плеера. Если конкретный поток не поддерживается устройством, выберите внешний плеер.';
@@ -445,6 +446,7 @@ function pluginYummyAnime() {
     messages.en.not_configured = 'not configured';
     messages.en.alloha_direct_required = 'Alloha cannot use the internal or external player without a direct stream. Configure a Lampac server or choose another source';
     messages.en.vk_stream_unavailable = 'Could not obtain the VK video stream. The video may be unavailable, restricted by its owner, or require VK authorization';
+    messages.en.sibnet_source_description = 'Open the official Sibnet web player inside Lampa. It is required because the direct Sibnet MP4 checks the player page address';
     messages.en.cvh_stream_unavailable = 'Could not obtain a direct CVH stream. Choose another dubbing or source';
     messages.en.cvh_source_description = 'Direct MP4 stream. Android and Android TV can use Lampa\'s internal player in compatibility mode or an external player; LG WebOS supports the internal player';
     messages.en.cvh_source_warning = 'For CVH on Android and Android TV, the extension uses a compatible internal-player mode. If the device cannot decode a particular stream, choose an external player.';
@@ -839,6 +841,7 @@ function pluginYummyAnime() {
     messages.uk.not_configured = 'не налаштовано';
     messages.uk.alloha_direct_required = 'Alloha недоступний у внутрішньому та зовнішньому плеєрі без прямого потоку. Налаштуйте сервер Lampac або виберіть інше джерело';
     messages.uk.vk_stream_unavailable = 'Не вдалося отримати відеопотік VK. Відео може бути недоступне, обмежене власником або вимагати авторизацію VK';
+    messages.uk.sibnet_source_description = 'Відкривати офіційний вебплеєр Sibnet усередині Lampa. Він потрібен, оскільки прямий MP4 Sibnet перевіряє адресу сторінки плеєра';
     messages.uk.cvh_stream_unavailable = 'Не вдалося отримати прямий потік CVH. Виберіть інше озвучення або джерело';
     messages.uk.cvh_source_description = 'Прямий MP4-потік. На Android та Android TV доступний внутрішній плеєр Lampa в режимі сумісності, а також зовнішній плеєр; на LG WebOS доступний внутрішній плеєр';
     messages.uk.cvh_source_warning = 'Для CVH на Android та Android TV розширення використовує сумісний режим внутрішнього плеєра. Якщо пристрій не підтримує конкретний потік, виберіть зовнішній плеєр.';
@@ -1973,14 +1976,18 @@ function pluginYummyAnime() {
 
     function requestText(url, options) {
         options = options || {};
-        var isAndroid = !!(window.AndroidJS || window.Android) || !!(window.Lampa && Lampa.Platform && Lampa.Platform.is && Lampa.Platform.is('android'));
-        if (isAndroid && window.Lampa && Lampa.Reguest) {
+        if (isAndroidRuntime() && window.Lampa && Lampa.Reguest) {
             return nativeRequestText(url, options).catch(function (nativeError) {
                 console.warn('[YummyAnime] Native stream request failed, trying browser request', nativeError);
                 return browserRequestText(url, options);
             });
         }
         return browserRequestText(url, options);
+    }
+
+    function isAndroidRuntime() {
+        return !!(window.AndroidJS || window.Android) ||
+            !!(window.Lampa && Lampa.Platform && Lampa.Platform.is && Lampa.Platform.is('android'));
     }
 
     function requestJson(url, options) {
@@ -2451,7 +2458,7 @@ function pluginYummyAnime() {
         var qualityPattern = /["']?(?:url|mp4_)(2160|1440|1080|720|480|360|240)["']?\s*[:=]\s*["']([^"']+)["']/gi;
         while ((match = qualityPattern.exec(text))) addVkQuality(qualities, match[1] + 'p', match[2], baseUrl);
 
-        var hlsPattern = /["']?(?:hls_fmp4|hls|url_hls|url)["']?\s*[:=]\s*["']([^"']+)["']/gi;
+        var hlsPattern = /["']?(?:hls_ondemand|hls_fmp4|hls|url_hls|url)["']?\s*[:=]\s*["']([^"']+)["']/gi;
         while ((match = hlsPattern.exec(text))) addVkQuality(qualities, 'auto', match[1], baseUrl);
 
         var attributePattern = /(?:data-video(?:-src|Src)|<source[^>]+src)\s*=\s*["']([^"']+)["']/gi;
@@ -2471,6 +2478,24 @@ function pluginYummyAnime() {
         return ordered;
     }
 
+    function vkHlsQualityMap(manifest, manifestUrl) {
+        var qualities = {};
+        var pending = '';
+        String(manifest || '').split(/\r?\n/).forEach(function (line) {
+            line = String(line || '').trim();
+            if (!line) return;
+            if (/^#EXT-X-STREAM-INF:/i.test(line)) {
+                var resolution = /RESOLUTION=\d+x(\d+)/i.exec(line);
+                pending = resolution ? resolution[1] + 'p' : '';
+                return;
+            }
+            if (line.charAt(0) === '#') return;
+            if (pending && !qualities[pending]) qualities[pending] = absoluteUrl(line, manifestUrl);
+            pending = '';
+        });
+        return qualities;
+    }
+
     function vkVideoExtUrl(pageHtml, iframeUrl) {
         var normalized = normalizeUrl(iframeUrl);
         if (/video_ext\.php/i.test(normalized)) return normalized;
@@ -2482,12 +2507,11 @@ function pluginYummyAnime() {
         return 'https://vk.com/video_ext.php?oid=' + encodeURIComponent(decodeVkPayload(match[1])) + '&id=' + encodeURIComponent(decodeVkPayload(match[2])) + '&hd=1';
     }
 
-    function vkResolvedResult(cacheKey, html, sourceUrl) {
-        if (/embedErrorCallback\s*\?\.?\s*\(\s*8\s*\)/i.test(String(html || ''))) throw new Error('VK video unavailable');
-        var qualities = vkQualityMap(html, sourceUrl);
+    function selectVkResult(cacheKey, qualities, sourceUrl) {
         var labels = Object.keys(qualities);
-        if (!labels.length) throw new Error('VK stream links not found');
-        var playableLabels = labels.filter(function (label) { return label !== 'auto'; });
+        var playableLabels = labels.filter(function (label) { return label !== 'auto'; }).sort(function (left, right) {
+            return Number(left.replace(/\D/g, '')) - Number(right.replace(/\D/g, ''));
+        });
         var label = playableLabels.length ? playableLabels[playableLabels.length - 1] : labels[labels.length - 1];
         return cacheResult(cacheKey, {
             url: qualities[label],
@@ -2500,6 +2524,31 @@ function pluginYummyAnime() {
                 Origin: 'https://vk.com',
                 'User-Agent': CHROME_UA
             }
+        });
+    }
+
+    function vkResolvedResult(cacheKey, html, sourceUrl) {
+        if (/embedErrorCallback\s*\?\.?\s*\(\s*8\s*\)/i.test(String(html || ''))) throw new Error('VK video unavailable');
+        var qualities = vkQualityMap(html, sourceUrl);
+        var labels = Object.keys(qualities);
+        if (!labels.length) throw new Error('VK stream links not found');
+        if (!qualities.auto || !/\.m3u8(?:[?#]|$)/i.test(qualities.auto)) {
+            return Promise.resolve(selectVkResult(cacheKey, qualities, sourceUrl));
+        }
+        return requestText(qualities.auto, {
+            headers: {
+                Referer: sourceUrl,
+                Origin: 'https://vk.com',
+                'User-Agent': CHROME_UA
+            }
+        }).then(function (manifest) {
+            var variants = vkHlsQualityMap(manifest, qualities.auto);
+            Object.keys(variants).forEach(function (label) {
+                if (isAndroidRuntime() || !qualities[label]) qualities[label] = variants[label];
+            });
+            return selectVkResult(cacheKey, qualities, sourceUrl);
+        }).catch(function () {
+            return selectVkResult(cacheKey, qualities, sourceUrl);
         });
     }
 
@@ -13950,7 +13999,7 @@ function pluginYummyAnime() {
                     ensureRemoteHistory();
                     registerOnlineSource();
                     registerSearchSource();
-                    registerCvhInternalVideoTube();
+                    registerAndroidDirectVideoTube();
                 } catch (settingsError) {
                     console.error('[YummyAnime] Settings registration failed', settingsError);
                 }
@@ -16759,6 +16808,13 @@ function pluginYummyAnime() {
         if (allohaSource && (!resolvedAlloha || !options.autoAdvance)) {
             return launchAllohaPlayer(card, group, selected, allohaPageUrl, options);
         }
+        // Sibnet protects the extracted MP4 with a Referer check. A media
+        // element and Android player intent cannot set that header reliably,
+        // while the official embeddable player supplies it for its own stream.
+        var sibnetPageUrl = selected.iframe_url || url;
+        if (isSibnetPlaybackSource(sibnetPageUrl, group)) {
+            return openEmbeddedEpisode(card, group, selected, sibnetPageUrl);
+        }
         if (!isExternalPlayableUrl(url, selected) && window.LampaYaniStreamResolver && LampaYaniStreamResolver.canResolve(url)) {
             setLoading(true);
             LampaYaniStreamResolver.resolve(url, selected).then(function (result) {
@@ -17010,27 +17066,53 @@ function pluginYummyAnime() {
 
     function internalPlayerExtensionHint(item) {
         if (!isAndroidPlatform() || !item) return '';
+        if (isVkPlaybackSource(item.url, item.source)) {
+            return /\.m3u8(?:[?#]|$)/i.test(String(item.url || '')) ? 'm3u8' : 'mp4';
+        }
         return isCvhPlaybackSource(item.url, item.source) ? 'mp4' : '';
     }
 
-    function isCvhInternalVideoUrl(src) {
+    function markAndroidDirectVideoUrl(url, extensionHint) {
+        url = String(url || '');
+        if (!url || !extensionHint || !isAndroidPlatform() || /(?:#|&)yani\.(?:mp4|m3u8)(?:&|$)/i.test(url)) return url;
+        return url + (url.indexOf('#') >= 0 ? '&' : '#') + 'yani.' + extensionHint;
+    }
+
+    function markAndroidDirectVideoQualities(qualities, extensionHint) {
+        if (!qualities || typeof qualities !== 'object' || !extensionHint) return qualities;
+        var marked = {};
+        Object.keys(qualities).forEach(function (label) {
+            var value = qualities[label];
+            if (typeof value !== 'string') {
+                marked[label] = value;
+                return;
+            }
+            var qualityExtension = extensionHint === 'm3u8'
+                ? (/\.m3u8(?:[?#]|$)/i.test(value) ? 'm3u8' : 'mp4')
+                : extensionHint;
+            marked[label] = markAndroidDirectVideoUrl(value, qualityExtension);
+        });
+        return marked;
+    }
+
+    function isAndroidDirectVideoUrl(src) {
         src = String(src || '');
         return isAndroidPlatform() &&
             /^https?:\/\/[^/?#]*okcdn\.ru(?:[/?#]|$)/i.test(src) &&
-            /(?:#|&)yani\.mp4(?:&|$)/i.test(src);
+            /(?:#|&)yani\.(?:mp4|m3u8)(?:&|$)/i.test(src);
     }
 
-    function registerCvhInternalVideoTube() {
-        if (window.LampaYaniCvhVideoTube) return true;
+    function registerAndroidDirectVideoTube() {
+        if (window.LampaYaniAndroidDirectVideoTube) return true;
         if (!window.Lampa || !Lampa.PlayerVideo || typeof Lampa.PlayerVideo.registerTube !== 'function') return false;
 
         var tube = {
-            name: 'YummyAnime CVH',
+            name: 'YummyAnime Android direct video',
             verify: function (src) {
-                return isCvhInternalVideoUrl(src);
+                return isAndroidDirectVideoUrl(src);
             },
             create: function (callback) {
-                // CVH MP4 responses do not include Access-Control-Allow-Origin.
+                // CVH and VK CDN responses do not include Access-Control-Allow-Origin.
                 // Lampa's default crossorigin attribute makes Android WebView
                 // reject those streams, so this source uses a plain video tag.
                 var element = $('<video class="player-video__video" poster="./img/video_poster.png"></video>');
@@ -17040,50 +17122,26 @@ function pluginYummyAnime() {
         };
 
         Lampa.PlayerVideo.registerTube(tube);
-        window.LampaYaniCvhVideoTube = tube;
+        window.LampaYaniAndroidDirectVideoTube = tube;
         return true;
-    }
-
-    function internalPlayerQuality(item, extensionHint) {
-        var qualities = item && (item.quality || videoStreamQualities(item.source));
-        if (!qualities || typeof qualities !== 'object') return qualities;
-        // Android TV 14 rejects some of the CVH Full HD encodes with a
-        // misleading "no supported source" error. Keep the direct stream and
-        // all qualities for external players, but cap only the internal TV
-        // playlist at the most broadly supported CVH level.
-        if (!isAndroidTvPlatform() || extensionHint !== 'mp4') return qualities;
-        var safe = {};
-        ['240p', '360p', '480p', '576p', '720p'].forEach(function (label) {
-            if (qualities[label]) safe[label] = qualities[label];
-        });
-        return Object.keys(safe).length ? safe : qualities;
-    }
-
-    function internalPlayerSourceUrl(item, extensionHint, qualities) {
-        if (!item) return '';
-        if (isAndroidTvPlatform() && extensionHint === 'mp4' && qualities && typeof qualities === 'object') {
-            var preferred = ['720p', '576p', '480p', '360p', '240p'];
-            for (var index = 0; index < preferred.length; index++) {
-                if (qualities[preferred[index]]) return qualities[preferred[index]];
-            }
-        }
-        return item.url;
     }
 
     function internalPlayerPlaylistItem(item) {
         if (!item) return null;
         var extensionHint = internalPlayerExtensionHint(item);
-        var quality = internalPlayerQuality(item, extensionHint);
+        var quality = item.quality || videoStreamQualities(item.source);
+        var sourceUrl = markAndroidDirectVideoUrl(item.url, extensionHint);
+        quality = markAndroidDirectVideoQualities(quality, extensionHint);
         return LampaYaniUiUtils.internalPlayerItem({
             title: item.title,
-            url: internalPlayerSourceUrl(item, extensionHint, quality),
+            url: sourceUrl,
             time: item.time,
             quality: quality,
             headers: item.headers || videoStreamHeaders(item.source),
             poster: item.poster || '',
             extensionHint: extensionHint,
             extension: extensionHint,
-            mime: extensionHint === 'mp4' ? 'video/mp4' : ''
+            mime: extensionHint === 'mp4' ? 'video/mp4' : extensionHint === 'm3u8' ? 'application/vnd.apple.mpegurl' : ''
         });
     }
 
@@ -17813,8 +17871,17 @@ function pluginYummyAnime() {
     }
 
     function isVkPlaybackSource(url, group) {
-        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        var data = group ? LampaYaniUiUtils.videoData(group) : {};
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source || group.yani_stream_source) || '') +
+            ' ' + String(data.yani_stream_source || data.player || '');
         return /iframevk|vkvideo|vk\.com|video_ext\.php|(?:^|\s)vk(?:\s|$)/i.test(value);
+    }
+
+    function isSibnetPlaybackSource(url, group) {
+        var data = group ? LampaYaniUiUtils.videoData(group) : {};
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source || group.yani_stream_source) || '') +
+            ' ' + String(data.yani_stream_source || data.player || '');
+        return /video\.sibnet\.ru|(?:^|\s)sibnet(?:\s|$)/i.test(value);
     }
 
     function isCvhPlaybackSource(url, group) {
@@ -18546,7 +18613,7 @@ function pluginYummyAnime() {
                 param: {name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled(sourceId)},
                 field: {
                     name: label,
-                    description: sourceId === 'cvh' ? t('cvh_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
+                    description: sourceId === 'cvh' ? t('cvh_source_description') : sourceId === 'sibnet' ? t('sibnet_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
                 },
                 onChange: function (value) {
                     if (experimental && triggerSettingEnabled(value, storageKey, false)) {

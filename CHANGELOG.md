@@ -2,7 +2,9 @@
 
 ## 0.46.25 — 2026-09-06
 
-- Fix VK playback for the current OK CDN response | Fix Sibnet playback through its required web player
+- Fix VK playback for the current OK CDN response
+- Fix Sibnet playback through its required web player
+- Remove the internal player quality cap
 
 ## 0.46.24 — 2026-09-03
 

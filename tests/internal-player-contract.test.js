@@ -22,14 +22,10 @@ assert.match(source, /function internalPlayerExtensionHint[\s\S]{0,360}isCvhPlay
 assert.match(source, /extensionHint: extensionHint/);
 assert.match(source, /extension: extensionHint/);
 assert.match(source, /extensionHint === 'm3u8' \? 'application\/vnd\.apple\.mpegurl'/);
-assert.match(source, /function internalPlayerQuality\(item, extensionHint\)/);
-assert.match(source, /isAndroidTvPlatform\(\)[\s\S]{0,180}extensionHint !== 'mp4'/,
-    'the Android TV quality fallback must be limited to resolved CVH MP4 streams');
-assert.match(source, /\['240p', '360p', '480p', '576p', '720p'\]/,
-    'the internal Android TV CVH playlist must cap quality at 720p');
-assert.match(source, /function internalPlayerSourceUrl\(item, extensionHint, qualities\)/);
-assert.match(source, /internalPlayerSourceUrl\(item, extensionHint, quality\)/,
-    'the internal player must start the Android TV-safe quality, not the rejected Full HD URL');
+assert.doesNotMatch(source, /function internalPlayerQuality/,
+    'the internal player must not cap the source quality');
+assert.doesNotMatch(source, /function internalPlayerSourceUrl/,
+    'the internal player must not replace the selected stream with a lower-quality URL');
 assert.match(source, /function registerAndroidDirectVideoTube\(\)/);
 assert.match(source, /Lampa\.PlayerVideo\.registerTube\(tube\)/,
     'CVH and VK playback must use Lampa\'s supported custom video-tube API');
@@ -38,7 +34,7 @@ assert.match(source, /okcdn\\\.ru[\s\S]{0,140}yani\\\.\(\?:mp4\|m3u8\)/,
 assert.match(source, /registerAndroidDirectVideoTube\(\);/,
     'the Android direct-video adapter must be registered during plugin startup');
 const tubeStart = source.indexOf('function registerAndroidDirectVideoTube');
-const tubeEnd = source.indexOf('\n    function internalPlayerQuality', tubeStart);
+const tubeEnd = source.indexOf('\n    function internalPlayerPlaylistItem', tubeStart);
 const tubeSource = source.slice(tubeStart, tubeEnd);
 assert.doesNotMatch(tubeSource, /crossorigin\s*=/i,
     'the direct video element must not enable CORS mode because the CDN omits ACAO');

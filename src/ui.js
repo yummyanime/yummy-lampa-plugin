@@ -3455,37 +3455,11 @@
         return true;
     }
 
-    function internalPlayerQuality(item, extensionHint) {
-        var qualities = item && (item.quality || videoStreamQualities(item.source));
-        if (!qualities || typeof qualities !== 'object') return qualities;
-        // Android TV 14 rejects some Full HD encodes with a
-        // misleading "no supported source" error. Keep the direct stream and
-        // all qualities for external players, but cap only the internal TV
-        // playlist at the most broadly supported level.
-        if (!isAndroidTvPlatform() || extensionHint !== 'mp4') return qualities;
-        var safe = {};
-        ['240p', '360p', '480p', '576p', '720p'].forEach(function (label) {
-            if (qualities[label]) safe[label] = qualities[label];
-        });
-        return Object.keys(safe).length ? safe : qualities;
-    }
-
-    function internalPlayerSourceUrl(item, extensionHint, qualities) {
-        if (!item) return '';
-        if (isAndroidTvPlatform() && extensionHint === 'mp4' && qualities && typeof qualities === 'object') {
-            var preferred = ['720p', '576p', '480p', '360p', '240p'];
-            for (var index = 0; index < preferred.length; index++) {
-                if (qualities[preferred[index]]) return qualities[preferred[index]];
-            }
-        }
-        return item.url;
-    }
-
     function internalPlayerPlaylistItem(item) {
         if (!item) return null;
         var extensionHint = internalPlayerExtensionHint(item);
-        var quality = internalPlayerQuality(item, extensionHint);
-        var sourceUrl = markAndroidDirectVideoUrl(internalPlayerSourceUrl(item, extensionHint, quality), extensionHint);
+        var quality = item.quality || videoStreamQualities(item.source);
+        var sourceUrl = markAndroidDirectVideoUrl(item.url, extensionHint);
         quality = markAndroidDirectVideoQualities(quality, extensionHint);
         return LampaYaniUiUtils.internalPlayerItem({
             title: item.title,
