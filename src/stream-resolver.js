@@ -347,7 +347,13 @@
         }
     }
 
-    function cvhUserAgent() {
+    // Both CVH and VK sign their CDN links for whichever agent asked for them -
+    // the signed URL carries srcAg=CHROME, srcAg=CHROME_ANDROID_TABLET and so on
+    // - and the CDN answers 400 when playback arrives from a different agent.
+    // The internal Android player is a <video> in the WebView and cannot send
+    // custom headers, so it always requests with the WebView's own agent: ask
+    // with the agent that will actually play, and the signature matches.
+    function deviceUserAgent() {
         var own = window.navigator && window.navigator.userAgent;
         return typeof own === 'string' && own ? own : CHROME_UA;
     }
@@ -370,7 +376,7 @@
         // player, which is a <video> in the WebView and cannot send custom
         // headers, always requests with the WebView's agent. Ask with the agent
         // that will actually play, so the signature matches either way.
-        var playbackUserAgent = cvhUserAgent();
+        var playbackUserAgent = deviceUserAgent();
         var headers = {
             Referer: 'https://ru.yummyani.me/',
             'User-Agent': playbackUserAgent,
@@ -462,6 +468,37 @@
             .replace(/&#0*38;/gi, '&');
     }
 
+    /**
+     * Resolves a redirecting stream URL to whatever it finally points at.
+     *
+     * `fetch` follows redirects on its own and reports the destination in
+     * `response.url`, so one ranged request is enough - no body is read. A
+     * browser cannot set a Referer, so the hop is asked for natively where that
+     * is possible; failing that the original URL is returned unchanged and the
+     * external player, which does send the headers, still works.
+     */
+    function followRedirects(url, headers) {
+        if (typeof fetch !== 'function') return Promise.resolve(url);
+        var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var timer = setTimeout(function () { if (controller) controller.abort(); }, 12000);
+        var options = {
+            method: 'GET',
+            headers: Object.assign({Range: 'bytes=0-1'}, headers || {}),
+            redirect: 'follow',
+            credentials: 'omit'
+        };
+        if (controller) options.signal = controller.signal;
+        return fetch(url, options).then(function (response) {
+            clearTimeout(timer);
+            if (!response.ok && response.status !== 206) return url;
+            return response.url || url;
+        }).catch(function (error) {
+            clearTimeout(timer);
+            console.warn('[YummyAnime] Could not resolve the stream redirect', error);
+            return url;
+        });
+    }
+
     function resolveSibnet(iframeUrl) {
         var fullUrl = normalizeUrl(iframeUrl);
         var hit = cached(fullUrl);
@@ -480,14 +517,24 @@
             var playbackHeaders = {
                 Referer: fullUrl,
                 Origin: 'https://video.sibnet.ru',
-                'User-Agent': CHROME_UA
+                'User-Agent': deviceUserAgent()
             };
-            return cacheResult(fullUrl, {
-                url: streamUrl,
-                quality: 'auto',
-                source: 'sibnet',
-                direct: true,
-                headers: playbackHeaders
+            // Sibnet checks the referrer on the first hop only, then redirects
+            // to a signed file that needs no headers at all. The internal
+            // player is a <video> in the WebView: it sends the Lampa page as
+            // the referrer, is refused with 403 and reports the file as
+            // unplayable. Following the redirects here hands it the URL that
+            // needs nothing, which is the only form it can actually fetch.
+            return followRedirects(streamUrl, playbackHeaders).then(function (finalUrl) {
+                return cacheResult(fullUrl, {
+                    url: finalUrl || streamUrl,
+                    quality: 'auto',
+                    source: 'sibnet',
+                    direct: true,
+                    // Kept for the external player, which still benefits when
+                    // the redirect could not be resolved here.
+                    headers: playbackHeaders
+                });
             });
         });
     }
@@ -665,7 +712,9 @@
             headers: {
                 Referer: sourceUrl,
                 Origin: 'https://vk.com',
-                'User-Agent': CHROME_UA
+                // Same agent the link was signed for, so an external player
+                // matches the signature the internal one carries by itself.
+                'User-Agent': deviceUserAgent()
             }
         });
     }
@@ -682,7 +731,9 @@
             headers: {
                 Referer: sourceUrl,
                 Origin: 'https://vk.com',
-                'User-Agent': CHROME_UA
+                // Same agent the link was signed for, so an external player
+                // matches the signature the internal one carries by itself.
+                'User-Agent': deviceUserAgent()
             }
         }).then(function (manifest) {
             var variants = vkHlsQualityMap(manifest, qualities.auto);
@@ -701,10 +752,11 @@
         if (hit) return Promise.resolve(hit);
         var pair = vkVideoPair(fullUrl);
         var playerUrl = pair ? 'https://vk.com/video_ext.php?oid=' + encodeURIComponent(pair.owner) + '&id=' + encodeURIComponent(pair.video) + '&hd=1' : '';
+        var playbackUserAgent = deviceUserAgent();
         function headers(referer) {
             return {
                 Referer: referer || fullUrl,
-                'User-Agent': CHROME_UA,
+                'User-Agent': playbackUserAgent,
                 Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
             };
         }

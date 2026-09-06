@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.26 — 2026-09-06
+
+- Fix VK streams failing in the internal Android player by signing the link for the agent that plays it
+- Fix Sibnet by resolving its redirect to the file that needs no headers
+
 ## 0.46.25 — 2026-09-06
 
 - Fix VK playback for the current OK CDN response

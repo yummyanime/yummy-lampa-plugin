@@ -196,7 +196,7 @@ Promise.all([
 // with the WebView's own agent: asking CVH with a hardcoded desktop agent
 // produced links that player could never fetch.
 const cvhSource = fs.readFileSync('src/stream-resolver.js', 'utf8');
-assert.match(cvhSource, /function cvhUserAgent\(\)/, 'CVH must resolve the playing agent');
+assert.match(cvhSource, /function deviceUserAgent\(\)/, 'the playing agent must be resolved in one place');
 assert.match(cvhSource, /window\.navigator && window\.navigator\.userAgent/, 'the device agent is the one that plays');
 const cvhStart = cvhSource.indexOf('function resolveCvh');
 const cvhEnd = cvhSource.indexOf('function resolveAksor', cvhStart);
@@ -209,3 +209,24 @@ assert.strictEqual(
     3,
     'the agent is declared once and used for both the request and the playback headers'
 );
+
+// VK signs its CDN links exactly like CVH does - the same okcdn hosts, the same
+// srcAg parameter - so it failed in the internal Android player for the same
+// reason and takes the same fix.
+const vkStart = cvhSource.indexOf('function resolveVk');
+const vkEnd = cvhSource.indexOf('function resolve(url)', vkStart);
+assert.ok(vkStart >= 0 && vkEnd > vkStart, 'the VK resolver must exist');
+const vkBody = cvhSource.slice(vkStart, vkEnd);
+assert.ok(!/'User-Agent': CHROME_UA/.test(vkBody), 'VK must not ask for links signed for a hardcoded desktop agent');
+assert.ok(vkBody.includes("'User-Agent': playbackUserAgent"), 'the VK page request must use the playing agent');
+
+// Sibnet checks the referrer on the first hop only and then redirects to a
+// signed file that needs no headers. The internal player cannot send that
+// referrer, so the redirect is resolved during resolution instead.
+assert.match(cvhSource, /function followRedirects\(url, headers\)/, 'the redirect resolver must exist');
+const sibStart = cvhSource.indexOf('function resolveSibnet');
+const sibEnd = cvhSource.indexOf('function absoluteUrl', sibStart);
+const sibBody = cvhSource.slice(sibStart, sibEnd);
+assert.ok(sibStart >= 0 && sibEnd > sibStart, 'the Sibnet resolver must exist');
+assert.ok(sibBody.includes('followRedirects(streamUrl, playbackHeaders)'), 'Sibnet must hand the player the redirected URL');
+assert.ok(sibBody.includes('finalUrl || streamUrl'), 'an unresolved redirect must fall back to the original URL');
