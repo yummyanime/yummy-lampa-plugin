@@ -119,14 +119,18 @@
 
     function requestText(url, options) {
         options = options || {};
-        var isAndroid = !!(window.AndroidJS || window.Android) || !!(window.Lampa && Lampa.Platform && Lampa.Platform.is && Lampa.Platform.is('android'));
-        if (isAndroid && window.Lampa && Lampa.Reguest) {
+        if (isAndroidRuntime() && window.Lampa && Lampa.Reguest) {
             return nativeRequestText(url, options).catch(function (nativeError) {
                 console.warn('[YummyAnime] Native stream request failed, trying browser request', nativeError);
                 return browserRequestText(url, options);
             });
         }
         return browserRequestText(url, options);
+    }
+
+    function isAndroidRuntime() {
+        return !!(window.AndroidJS || window.Android) ||
+            !!(window.Lampa && Lampa.Platform && Lampa.Platform.is && Lampa.Platform.is('android'));
     }
 
     function requestJson(url, options) {
@@ -597,7 +601,7 @@
         var qualityPattern = /["']?(?:url|mp4_)(2160|1440|1080|720|480|360|240)["']?\s*[:=]\s*["']([^"']+)["']/gi;
         while ((match = qualityPattern.exec(text))) addVkQuality(qualities, match[1] + 'p', match[2], baseUrl);
 
-        var hlsPattern = /["']?(?:hls_fmp4|hls|url_hls|url)["']?\s*[:=]\s*["']([^"']+)["']/gi;
+        var hlsPattern = /["']?(?:hls_ondemand|hls_fmp4|hls|url_hls|url)["']?\s*[:=]\s*["']([^"']+)["']/gi;
         while ((match = hlsPattern.exec(text))) addVkQuality(qualities, 'auto', match[1], baseUrl);
 
         var attributePattern = /(?:data-video(?:-src|Src)|<source[^>]+src)\s*=\s*["']([^"']+)["']/gi;
@@ -617,6 +621,24 @@
         return ordered;
     }
 
+    function vkHlsQualityMap(manifest, manifestUrl) {
+        var qualities = {};
+        var pending = '';
+        String(manifest || '').split(/\r?\n/).forEach(function (line) {
+            line = String(line || '').trim();
+            if (!line) return;
+            if (/^#EXT-X-STREAM-INF:/i.test(line)) {
+                var resolution = /RESOLUTION=\d+x(\d+)/i.exec(line);
+                pending = resolution ? resolution[1] + 'p' : '';
+                return;
+            }
+            if (line.charAt(0) === '#') return;
+            if (pending && !qualities[pending]) qualities[pending] = absoluteUrl(line, manifestUrl);
+            pending = '';
+        });
+        return qualities;
+    }
+
     function vkVideoExtUrl(pageHtml, iframeUrl) {
         var normalized = normalizeUrl(iframeUrl);
         if (/video_ext\.php/i.test(normalized)) return normalized;
@@ -628,12 +650,11 @@
         return 'https://vk.com/video_ext.php?oid=' + encodeURIComponent(decodeVkPayload(match[1])) + '&id=' + encodeURIComponent(decodeVkPayload(match[2])) + '&hd=1';
     }
 
-    function vkResolvedResult(cacheKey, html, sourceUrl) {
-        if (/embedErrorCallback\s*\?\.?\s*\(\s*8\s*\)/i.test(String(html || ''))) throw new Error('VK video unavailable');
-        var qualities = vkQualityMap(html, sourceUrl);
+    function selectVkResult(cacheKey, qualities, sourceUrl) {
         var labels = Object.keys(qualities);
-        if (!labels.length) throw new Error('VK stream links not found');
-        var playableLabels = labels.filter(function (label) { return label !== 'auto'; });
+        var playableLabels = labels.filter(function (label) { return label !== 'auto'; }).sort(function (left, right) {
+            return Number(left.replace(/\D/g, '')) - Number(right.replace(/\D/g, ''));
+        });
         var label = playableLabels.length ? playableLabels[playableLabels.length - 1] : labels[labels.length - 1];
         return cacheResult(cacheKey, {
             url: qualities[label],
@@ -646,6 +667,31 @@
                 Origin: 'https://vk.com',
                 'User-Agent': CHROME_UA
             }
+        });
+    }
+
+    function vkResolvedResult(cacheKey, html, sourceUrl) {
+        if (/embedErrorCallback\s*\?\.?\s*\(\s*8\s*\)/i.test(String(html || ''))) throw new Error('VK video unavailable');
+        var qualities = vkQualityMap(html, sourceUrl);
+        var labels = Object.keys(qualities);
+        if (!labels.length) throw new Error('VK stream links not found');
+        if (!qualities.auto || !/\.m3u8(?:[?#]|$)/i.test(qualities.auto)) {
+            return Promise.resolve(selectVkResult(cacheKey, qualities, sourceUrl));
+        }
+        return requestText(qualities.auto, {
+            headers: {
+                Referer: sourceUrl,
+                Origin: 'https://vk.com',
+                'User-Agent': CHROME_UA
+            }
+        }).then(function (manifest) {
+            var variants = vkHlsQualityMap(manifest, qualities.auto);
+            Object.keys(variants).forEach(function (label) {
+                if (isAndroidRuntime() || !qualities[label]) qualities[label] = variants[label];
+            });
+            return selectVkResult(cacheKey, qualities, sourceUrl);
+        }).catch(function () {
+            return selectVkResult(cacheKey, qualities, sourceUrl);
         });
     }
 

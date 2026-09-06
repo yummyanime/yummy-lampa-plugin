@@ -328,7 +328,7 @@
                     ensureRemoteHistory();
                     registerOnlineSource();
                     registerSearchSource();
-                    registerCvhInternalVideoTube();
+                    registerAndroidDirectVideoTube();
                 } catch (settingsError) {
                     console.error('[YummyAnime] Settings registration failed', settingsError);
                 }
@@ -3137,6 +3137,13 @@
         if (allohaSource && (!resolvedAlloha || !options.autoAdvance)) {
             return launchAllohaPlayer(card, group, selected, allohaPageUrl, options);
         }
+        // Sibnet protects the extracted MP4 with a Referer check. A media
+        // element and Android player intent cannot set that header reliably,
+        // while the official embeddable player supplies it for its own stream.
+        var sibnetPageUrl = selected.iframe_url || url;
+        if (isSibnetPlaybackSource(sibnetPageUrl, group)) {
+            return openEmbeddedEpisode(card, group, selected, sibnetPageUrl);
+        }
         if (!isExternalPlayableUrl(url, selected) && window.LampaYaniStreamResolver && LampaYaniStreamResolver.canResolve(url)) {
             setLoading(true);
             LampaYaniStreamResolver.resolve(url, selected).then(function (result) {
@@ -3388,27 +3395,53 @@
 
     function internalPlayerExtensionHint(item) {
         if (!isAndroidPlatform() || !item) return '';
+        if (isVkPlaybackSource(item.url, item.source)) {
+            return /\.m3u8(?:[?#]|$)/i.test(String(item.url || '')) ? 'm3u8' : 'mp4';
+        }
         return isCvhPlaybackSource(item.url, item.source) ? 'mp4' : '';
     }
 
-    function isCvhInternalVideoUrl(src) {
+    function markAndroidDirectVideoUrl(url, extensionHint) {
+        url = String(url || '');
+        if (!url || !extensionHint || !isAndroidPlatform() || /(?:#|&)yani\.(?:mp4|m3u8)(?:&|$)/i.test(url)) return url;
+        return url + (url.indexOf('#') >= 0 ? '&' : '#') + 'yani.' + extensionHint;
+    }
+
+    function markAndroidDirectVideoQualities(qualities, extensionHint) {
+        if (!qualities || typeof qualities !== 'object' || !extensionHint) return qualities;
+        var marked = {};
+        Object.keys(qualities).forEach(function (label) {
+            var value = qualities[label];
+            if (typeof value !== 'string') {
+                marked[label] = value;
+                return;
+            }
+            var qualityExtension = extensionHint === 'm3u8'
+                ? (/\.m3u8(?:[?#]|$)/i.test(value) ? 'm3u8' : 'mp4')
+                : extensionHint;
+            marked[label] = markAndroidDirectVideoUrl(value, qualityExtension);
+        });
+        return marked;
+    }
+
+    function isAndroidDirectVideoUrl(src) {
         src = String(src || '');
         return isAndroidPlatform() &&
             /^https?:\/\/[^/?#]*okcdn\.ru(?:[/?#]|$)/i.test(src) &&
-            /(?:#|&)yani\.mp4(?:&|$)/i.test(src);
+            /(?:#|&)yani\.(?:mp4|m3u8)(?:&|$)/i.test(src);
     }
 
-    function registerCvhInternalVideoTube() {
-        if (window.LampaYaniCvhVideoTube) return true;
+    function registerAndroidDirectVideoTube() {
+        if (window.LampaYaniAndroidDirectVideoTube) return true;
         if (!window.Lampa || !Lampa.PlayerVideo || typeof Lampa.PlayerVideo.registerTube !== 'function') return false;
 
         var tube = {
-            name: 'YummyAnime CVH',
+            name: 'YummyAnime Android direct video',
             verify: function (src) {
-                return isCvhInternalVideoUrl(src);
+                return isAndroidDirectVideoUrl(src);
             },
             create: function (callback) {
-                // CVH MP4 responses do not include Access-Control-Allow-Origin.
+                // CVH and VK CDN responses do not include Access-Control-Allow-Origin.
                 // Lampa's default crossorigin attribute makes Android WebView
                 // reject those streams, so this source uses a plain video tag.
                 var element = $('<video class="player-video__video" poster="./img/video_poster.png"></video>');
@@ -3418,17 +3451,17 @@
         };
 
         Lampa.PlayerVideo.registerTube(tube);
-        window.LampaYaniCvhVideoTube = tube;
+        window.LampaYaniAndroidDirectVideoTube = tube;
         return true;
     }
 
     function internalPlayerQuality(item, extensionHint) {
         var qualities = item && (item.quality || videoStreamQualities(item.source));
         if (!qualities || typeof qualities !== 'object') return qualities;
-        // Android TV 14 rejects some of the CVH Full HD encodes with a
+        // Android TV 14 rejects some Full HD encodes with a
         // misleading "no supported source" error. Keep the direct stream and
         // all qualities for external players, but cap only the internal TV
-        // playlist at the most broadly supported CVH level.
+        // playlist at the most broadly supported level.
         if (!isAndroidTvPlatform() || extensionHint !== 'mp4') return qualities;
         var safe = {};
         ['240p', '360p', '480p', '576p', '720p'].forEach(function (label) {
@@ -3452,16 +3485,18 @@
         if (!item) return null;
         var extensionHint = internalPlayerExtensionHint(item);
         var quality = internalPlayerQuality(item, extensionHint);
+        var sourceUrl = markAndroidDirectVideoUrl(internalPlayerSourceUrl(item, extensionHint, quality), extensionHint);
+        quality = markAndroidDirectVideoQualities(quality, extensionHint);
         return LampaYaniUiUtils.internalPlayerItem({
             title: item.title,
-            url: internalPlayerSourceUrl(item, extensionHint, quality),
+            url: sourceUrl,
             time: item.time,
             quality: quality,
             headers: item.headers || videoStreamHeaders(item.source),
             poster: item.poster || '',
             extensionHint: extensionHint,
             extension: extensionHint,
-            mime: extensionHint === 'mp4' ? 'video/mp4' : ''
+            mime: extensionHint === 'mp4' ? 'video/mp4' : extensionHint === 'm3u8' ? 'application/vnd.apple.mpegurl' : ''
         });
     }
 
@@ -4191,8 +4226,17 @@
     }
 
     function isVkPlaybackSource(url, group) {
-        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source) || '');
+        var data = group ? LampaYaniUiUtils.videoData(group) : {};
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source || group.yani_stream_source) || '') +
+            ' ' + String(data.yani_stream_source || data.player || '');
         return /iframevk|vkvideo|vk\.com|video_ext\.php|(?:^|\s)vk(?:\s|$)/i.test(value);
+    }
+
+    function isSibnetPlaybackSource(url, group) {
+        var data = group ? LampaYaniUiUtils.videoData(group) : {};
+        var value = String(url || '') + ' ' + String(group && (group.player || group.title || group.source || group.yani_stream_source) || '') +
+            ' ' + String(data.yani_stream_source || data.player || '');
+        return /video\.sibnet\.ru|(?:^|\s)sibnet(?:\s|$)/i.test(value);
     }
 
     function isCvhPlaybackSource(url, group) {
@@ -4924,7 +4968,7 @@
                 param: {name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled(sourceId)},
                 field: {
                     name: label,
-                    description: sourceId === 'cvh' ? t('cvh_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
+                    description: sourceId === 'cvh' ? t('cvh_source_description') : sourceId === 'sibnet' ? t('sibnet_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
                 },
                 onChange: function (value) {
                     if (experimental && triggerSettingEnabled(value, storageKey, false)) {

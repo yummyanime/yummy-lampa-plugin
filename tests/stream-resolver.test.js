@@ -74,7 +74,23 @@ global.fetch = async function (url) {
         return {
             ok: true,
             text: async function () {
-                return '<script>var playerParams = {"url360":"https:\\/\\/cdn.vk.test\\/video-360.mp4?token=1\\u0026extra=2","url720":"https:\\/\\/cdn.vk.test\\/video-720.mp4?token=1"};</script>';
+                return '<script>window.cur={"response":{"items":[{"files":{"mp4_1080":"https:\\/\\/vkvd346.okcdn.ru\\/?token=1\\u0026extra=2","hls_ondemand":"https:\\/\\/vkvd346.okcdn.ru\\/video\\/master.m3u8?token=1"}}]}};</script>';
+            }
+        };
+    }
+    if (String(url).indexOf('vk.com/video_ext.php?oid=-228989270&id=456239777') >= 0) {
+        return {
+            ok: true,
+            text: async function () {
+                return '<script>window.cur={"response":{"items":[{"files":{"mp4_1080":"https:\\/\\/vkvd346.okcdn.ru\\/?token=android","hls_ondemand":"https:\\/\\/vkvd346.okcdn.ru\\/video\\/master.m3u8?token=1"}}]}};</script>';
+            }
+        };
+    }
+    if (String(url).indexOf('vkvd346.okcdn.ru/video/master.m3u8?token=1') >= 0) {
+        return {
+            ok: true,
+            text: async function () {
+                return '#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360\n360/track.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=2400000,RESOLUTION=1280x720\n720/track.m3u8\n#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080\n1080/track.m3u8';
             }
         };
     }
@@ -138,9 +154,12 @@ Promise.all([
     assert.strictEqual(rutube.headers.Origin, 'https://rutube.ru');
     var vk = results[3];
     assert.strictEqual(vk.source, 'vk');
-    assert.strictEqual(vk.quality, '720p');
-    assert.strictEqual(vk.qualities['360p'], 'https://cdn.vk.test/video-360.mp4?token=1&extra=2');
-    assert.strictEqual(vk.url, 'https://cdn.vk.test/video-720.mp4?token=1');
+    assert.strictEqual(vk.quality, '1080p');
+    assert.strictEqual(vk.qualities['1080p'], 'https://vkvd346.okcdn.ru/?token=1&extra=2');
+    assert.strictEqual(vk.qualities['360p'], 'https://vkvd346.okcdn.ru/video/360/track.m3u8');
+    assert.strictEqual(vk.qualities['720p'], 'https://vkvd346.okcdn.ru/video/720/track.m3u8');
+    assert.strictEqual(vk.qualities.auto, 'https://vkvd346.okcdn.ru/video/master.m3u8?token=1');
+    assert.strictEqual(vk.url, 'https://vkvd346.okcdn.ru/?token=1&extra=2');
     assert.strictEqual(vk.headers.Origin, 'https://vk.com');
     var wrappedVk = results[4];
     assert.strictEqual(wrappedVk.source, 'vk');
@@ -153,9 +172,16 @@ Promise.all([
     assert.strictEqual(cvh.url, 'https://vd.example.test/?type=5&token=1080');
     assert.strictEqual(cvh.qualities['720p'], 'https://vd.example.test/?type=3&token=720');
     assert.match(cvh.headers['User-Agent'], /Chrome\/149/);
-    return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239022').then(function () {
+    global.AndroidJS = {};
+    return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239777').then(function (androidVk) {
+        delete global.AndroidJS;
+        assert.strictEqual(androidVk.quality, '1080p');
+        assert.strictEqual(androidVk.url, 'https://vkvd346.okcdn.ru/video/1080/track.m3u8');
+        return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239022');
+    }).then(function () {
         throw new Error('Unavailable VK video unexpectedly resolved');
     }, function (error) {
+        delete global.AndroidJS;
         assert.strictEqual(error.message, 'VK video unavailable');
         console.log('stream-resolver tests passed');
     });

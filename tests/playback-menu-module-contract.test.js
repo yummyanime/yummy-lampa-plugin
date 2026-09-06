@@ -24,7 +24,7 @@ assert.doesNotMatch(source, /internalPlayerAvailable|canInternal/,
     'the playback picker must keep the internal option available for CVH');
 assert.match(source, /Tizen \/ WebOS/);
 assert.match(ui, /androidExternalPlayerAvailable: function \(\) \{ return isAndroidPlatform\(\); \}/);
-assert.match(ui, /registerCvhInternalVideoTube\(\);/);
+assert.match(ui, /registerAndroidDirectVideoTube\(\);/);
 assert.match(ui, /function isAndroidPlatform\(\)/);
 assert.match(ui, /if \(!isAndroidPlatform\(\)\) return 'internal'/);
 assert.match(ui, /yani_playback_target_locked/);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.25 — 2026-09-06
+
+- Fix VK playback for the current OK CDN response | Fix Sibnet playback through its required web player
+
 ## 0.46.24 — 2026-09-03
 
 - Add README screenshots of the home, title, schedule, and genre screens
