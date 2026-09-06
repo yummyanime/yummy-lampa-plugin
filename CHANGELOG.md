@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.27 — 2026-09-06
+
+- Fix the embedded player showing an empty list instead of the video because a missing translator threw while the component was built
+
 ## 0.46.26 — 2026-09-06
 
 - Fix VK streams failing in the internal Android player by signing the link for the agent that plays it

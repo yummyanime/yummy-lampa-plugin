@@ -4270,6 +4270,7 @@
 
     function IframePlayer(object) {
         return LampaYaniPlayer.create(object, {
+            t: t,
             sourceUrl: function (item) { return videoSourceUrl(item) || item && item.iframe_url || ''; },
             goBack: function () {
                 goBack();
