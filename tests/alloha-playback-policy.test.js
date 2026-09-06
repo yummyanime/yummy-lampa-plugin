@@ -65,8 +65,7 @@ console.log('Alloha playback policy tests passed');
 // can reach into. It does read `autoplay` from the query string, so the
 // embedded page is asked to start by itself.
 assert.match(source, /function allohaAutoplayUrl\(url\)/, 'the embed must ask the page to start itself');
-assert.match(source, /openEmbeddedEpisode\(card, group, selected, allohaAutoplayUrl\(url\)\)/,
-    'the embed must open the autoplaying address');
+assert.match(source, /allohaAutoplayUrl\(url\)/, 'the embed must ask the page to start itself');
 const autoplayStart = source.indexOf('function allohaAutoplayUrl');
 const autoplayBody = source.slice(autoplayStart, source.indexOf('function openAllohaEmbed', autoplayStart));
 const buildAutoplayUrl = new Function(autoplayBody + '; return allohaAutoplayUrl;')();
@@ -80,3 +79,37 @@ assert.strictEqual(
     'an address that already states autoplay must be left alone'
 );
 assert.strictEqual(buildAutoplayUrl(''), '', 'an empty address must stay empty');
+
+// Alloha answers 404 to a request carrying no referrer, and Lampa's Android app
+// serves its interface locally, so an iframe opened straight from the app
+// arrives with an empty referrer and the viewer is told the content does not
+// exist. Which referrer it is does not matter, so a static page on the plugin's
+// own Pages site stands between them - no server anyone has to run.
+const config = fs.readFileSync('src/config.js', 'utf8');
+const bridgePage = fs.readFileSync('embed/alloha.html', 'utf8');
+const pagesWorkflow = fs.readFileSync('.github/workflows/pages.yml', 'utf8');
+
+assert.match(config, /allohaEmbedUrl: 'https:\/\/[^']+\/embed\/alloha\.html'/, 'the bridge address must be configured');
+assert.match(source, /function allohaEmbedUrl\(url\)/, 'the embed must go through the bridge');
+assert.match(source, /openEmbeddedEpisode\(card, group, selected, allohaEmbedUrl\(url\)\)/);
+assert.match(pagesWorkflow, /cp -R embed _pages\/embed/, 'the bridge must be published with the site');
+
+// The bridge must never become a way to embed arbitrary sites through the
+// project's own domain.
+assert.match(bridgePage, /ALLOWED_HOST = \/\^\(\?:\[a-z0-9-\]\+\\.\)\*alloha\\.yani\\.tv\$\/i/,
+    'the bridge must accept only the Alloha player');
+assert.match(bridgePage, /target\.protocol !== 'https:'/, 'the bridge must refuse a plain-text address');
+
+const allowedHost = /^(?:[a-z0-9-]+\.)*alloha\.yani\.tv$/i;
+assert.strictEqual(allowedHost.test('alloha.yani.tv'), true);
+assert.strictEqual(allowedHost.test('cdn.alloha.yani.tv'), true);
+assert.strictEqual(allowedHost.test('alloha.yani.tv.evil.example'), false, 'a lookalike host must be refused');
+assert.strictEqual(allowedHost.test('evil.example'), false);
+
+const bridgeStart = source.indexOf('function allohaAutoplayUrl');
+const buildBridgeUrl = new Function('window', 'LampaYaniConfig',
+    source.slice(bridgeStart, source.indexOf('function openAllohaEmbed', bridgeStart)) + '; return allohaEmbedUrl;'
+)({LampaYaniConfig: {allohaEmbedUrl: 'https://pages.test/embed/alloha.html'}}, {allohaEmbedUrl: 'https://pages.test/embed/alloha.html'});
+const bridged = buildBridgeUrl('https://alloha.yani.tv/?token_movie=abc');
+assert.ok(bridged.indexOf('https://pages.test/embed/alloha.html?url=') === 0, 'the player must be opened through the bridge');
+assert.ok(decodeURIComponent(bridged).indexOf('autoplay=1') > 0, 'autoplay must survive the wrapping');

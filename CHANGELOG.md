@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.35 — 2026-09-06
+
+- Fix the embedded Alloha page reporting missing content by opening it through a referrer bridge published with the plugin
+
 ## 0.46.34 — 2026-09-06
 
 - Add autoplay to the embedded Alloha page so it starts without a pointer on a remote

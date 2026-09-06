@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YummyAnime · Alloha</title>
+<style>
+    html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+    iframe { display: block; width: 100%; height: 100%; border: 0; background: #000; }
+    .message {
+        display: flex; align-items: center; justify-content: center;
+        height: 100%; padding: 1.5em; box-sizing: border-box;
+        color: #fff; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        text-align: center;
+    }
+</style>
+</head>
+<body>
+<script>
+// Referrer bridge for the Alloha player.
+//
+// Alloha answers 404 to a request that carries no referrer at all, and Lampa's
+// Android app serves its interface locally, so an iframe opened straight from
+// the app arrives with an empty referrer and the viewer is told the content
+// does not exist. Which referrer it is does not matter - a plain address of
+// this page is accepted - so this page exists only to be a real https origin
+// between the two. It is served from the same GitHub Pages site as the plugin,
+// which means no server anyone has to run.
+(function () {
+    'use strict';
+
+    var ALLOWED_HOST = /^(?:[a-z0-9-]+\.)*alloha\.yani\.tv$/i;
+
+    function fail(text) {
+        var box = document.createElement('div');
+        box.className = 'message';
+        box.textContent = text;
+        document.body.appendChild(box);
+    }
+
+    var raw = '';
+    try {
+        raw = new URLSearchParams(window.location.search).get('url') || '';
+    } catch (error) {
+        raw = '';
+    }
+    if (!raw) return fail('Не передан адрес плеера.');
+
+    var target;
+    try {
+        target = new URL(raw, 'https://alloha.yani.tv/');
+    } catch (error) {
+        return fail('Некорректный адрес плеера.');
+    }
+
+    // This page must never become a way to embed arbitrary sites through the
+    // project's own domain, so only the player it exists for is accepted.
+    if (target.protocol !== 'https:' || !ALLOWED_HOST.test(target.hostname)) {
+        return fail('Этот адрес не относится к плееру Alloha.');
+    }
+
+    // The page starts paused and waits for a click on its own play button,
+    // which a remote cannot deliver.
+    if (!target.searchParams.has('autoplay')) target.searchParams.set('autoplay', '1');
+
+    var frame = document.createElement('iframe');
+    frame.setAttribute('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture');
+    frame.setAttribute('allowfullscreen', 'allowfullscreen');
+    frame.setAttribute('frameborder', '0');
+    frame.src = target.toString();
+    document.body.appendChild(frame);
+}());
+</script>
+</body>
+</html>
