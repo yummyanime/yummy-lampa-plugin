@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.28',
+        version: '0.46.29',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -17216,6 +17216,15 @@ function pluginYummyAnime() {
         });
     }
 
+    // Headers only matter where a player can actually send them, which on this
+    // plugin's platforms means Android. Elsewhere the built-in engine stays the
+    // right choice, headers or not.
+    function needsRequestHeaders(item) {
+        if (!isAndroidPlatform()) return false;
+        var headers = item && item.headers;
+        return Boolean(headers && typeof headers === 'object' && Object.keys(headers).length);
+    }
+
     function playInternalDirectVideo(current, playlist) {
         if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas) return false;
         var callbackContext = playbackContext;
@@ -17229,7 +17238,16 @@ function pluginYummyAnime() {
         try {
             // Lampa.Player.play follows the globally configured player unless
             // the caller explicitly selects the built-in Lampa engine.
-            Lampa.Player.runas('lampa');
+            //
+            // That engine is a <video> in the WebView, and a <video> cannot send
+            // request headers: it signs every request with the Lampa page as the
+            // referrer. Sibnet checks the referrer and answers 403, which the
+            // element reports as an unplayable file. The same URL and headers
+            // play fine in a native player, so a stream that states headers is
+            // left to whichever engine the platform provides instead of being
+            // forced into the one that must fail. Streams without headers - CVH,
+            // VK, Kodik - keep using the built-in engine exactly as before.
+            if (!needsRequestHeaders(directCurrent)) Lampa.Player.runas('lampa');
             Lampa.Player.play(directCurrent);
             if (Lampa.Player.playlist) Lampa.Player.playlist(directPlaylist);
             if (Lampa.Player.callback) {

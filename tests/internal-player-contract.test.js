@@ -59,3 +59,14 @@ assert.match(menu, /t\('no_enabled_sources'\)/);
 
 console.log('internal-player contract tests passed');
 
+// The built-in Lampa engine is a <video> in the WebView and cannot send request
+// headers: it signs every request with the Lampa page as the referrer. Sibnet
+// checks the referrer and answers 403, which the element reports as an
+// unplayable file. A stream that states headers is therefore left to the
+// platform's own player, while everything without headers keeps the built-in
+// engine exactly as before.
+assert.match(source, /function needsRequestHeaders\(item\)/, 'the header requirement must be decided in one place');
+assert.match(source, /if \(!needsRequestHeaders\(directCurrent\)\) Lampa\.Player\.runas\('lampa'\);/,
+    'the built-in engine must not be forced on a stream that needs headers');
+assert.match(source, /function needsRequestHeaders[\s\S]{0,200}isAndroidPlatform\(\)/,
+    'only a platform whose player can send headers may skip the built-in engine');

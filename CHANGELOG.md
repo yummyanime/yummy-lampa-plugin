@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.29 — 2026-09-06
+
+- Fix Sibnet failing in the internal player by letting a stream that needs request headers use the platform player instead of the built-in engine
+
 ## 0.46.28 — 2026-09-06
 
 - Fix Lampa header drawing over the embedded player video
