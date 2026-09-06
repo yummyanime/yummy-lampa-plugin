@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.37 — 2026-09-07
+
+- Add focus handover into the embedded player so a real remote press reaches its own controls
+
 ## 0.46.36 — 2026-09-07
 
 - Remove the embedded player back control so the remote reaches the page's own buttons instead of a focus holder that took every press

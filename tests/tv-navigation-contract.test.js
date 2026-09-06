@@ -27,7 +27,12 @@ assert.match(notifications, /collectionSet\(scroll\.render\(\), false, true\)/);
 // iframe takes the focus instead, and Back is the one key this screen answers.
 assert.ok(!/yani-player__back|yani-player__anchor/.test(player), 'no control of our own may hold the focus');
 assert.match(player, /function focusPlayer\(\)/, 'the embedded page must receive the focus');
-assert.match(player, /toggle: focusPlayer,\s*back: close/, 'Back must stay the way out');
+assert.match(player, /back: close/, 'Back must stay the way out');
+// A cross-origin frame accepts no synthetic events, so its play button can only
+// be pressed by real input - which means the browsing context itself has to be
+// handed over, not merely the element focused.
+assert.match(player, /contentWindow\.focus\(\)/, 'the keys must be handed to the embedded page');
+assert.match(player, /enter: focusPlayer/, 'OK must go to the embedded page rather than to us');
 // Nothing of ours goes into the collection any more: whatever sits there takes
 // the OK press that belongs to the embedded page.
 assert.ok(!/collectionSet|collectionFocus/.test(player), 'the screen must not hold a focus collection of its own');

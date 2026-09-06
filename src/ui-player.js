@@ -44,8 +44,28 @@
         function focusPlayer() {
             try {
                 var node = iframe[0];
-                if (node && node.focus) node.focus();
+                if (!node) return;
+                if (node.focus) node.focus();
+                // Focusing the element is not the same as handing the keys to
+                // the page inside it. `contentWindow.focus()` is one of the few
+                // things allowed across origins, and it moves the browsing
+                // context itself - which is what makes a real OK press from the
+                // remote arrive at the embedded player rather than at Lampa.
+                // Synthetic events are not an option here: a cross-origin frame
+                // accepts none, so the page's own play button can only ever be
+                // pressed by genuine input.
+                if (node.contentWindow && node.contentWindow.focus) node.contentWindow.focus();
             } catch (error) {}
+        }
+
+        // The embedded page sets up its own player after load and can take the
+        // focus back while doing so. A couple of late attempts cost nothing and
+        // cover the slow start of a television.
+        function focusPlayerRepeatedly() {
+            focusPlayer();
+            [400, 1200, 3000].forEach(function (delay) {
+                setTimeout(function () { if (!closing) focusPlayer(); }, delay);
+            });
         }
 
         return {
@@ -55,7 +75,7 @@
                     .attr('allow', 'autoplay; fullscreen; encrypted-media; picture-in-picture; payment')
                     .attr('tabindex', '0')
                     .attr('title', t('back_to_lampa'))
-                    .on('load', focusPlayer);
+                    .on('load', focusPlayerRepeatedly);
                 html.append(iframe);
                 claimScreen(true);
                 this.activity.loader(false);
@@ -64,10 +84,14 @@
             start: function () {
                 Lampa.Controller.add('content', {
                     toggle: focusPlayer,
+                    // OK belongs to the embedded page, not to us. Handing the
+                    // focus over again on every press is the closest thing to
+                    // pressing its play button that a cross-origin frame allows.
+                    enter: focusPlayer,
                     back: close
                 });
                 Lampa.Controller.toggle('content');
-                focusPlayer();
+                focusPlayerRepeatedly();
             },
             render: function (js) { return js ? html[0] : html; },
             destroy: function () {
