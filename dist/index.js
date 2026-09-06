@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.33',
+        version: '0.46.34',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         applicationHeader: defaultApplicationToken, // Backward-compatible default public token.
@@ -17219,8 +17219,21 @@ function pluginYummyAnime() {
         }
     }
 
+    /**
+     * Alloha's player page starts paused and waits for a click on its own play
+     * button - which a remote cannot deliver, because the page lives in a
+     * cross-origin iframe nothing here can reach into. It does read `autoplay`
+     * out of the query string into its own settings, so asking for it up front
+     * is what makes the embedded page usable without a pointer.
+     */
+    function allohaAutoplayUrl(url) {
+        var value = String(url || '');
+        if (!value || /[?&]autoplay=/i.test(value)) return value;
+        return value + (value.indexOf('?') >= 0 ? '&' : '?') + 'autoplay=1';
+    }
+
     function openAllohaEmbed(card, group, selected, url) {
-        return openEmbeddedEpisode(card, group, selected, url);
+        return openEmbeddedEpisode(card, group, selected, allohaAutoplayUrl(url));
     }
 
     function setLoading(enabled) {

@@ -59,3 +59,24 @@ assert.ok(episodePolicy.includes('videoPlaybackPriority(a, group)'), 'episode ch
 assert.ok(episodePolicy.indexOf('numberA - numberB') < episodePolicy.indexOf('playableB - playableA'), 'episode number must stay ahead of capability priority');
 
 console.log('Alloha playback policy tests passed');
+
+// Alloha's page starts paused and waits for a click on its own play button,
+// which a remote cannot deliver: the page is a cross-origin iframe nothing here
+// can reach into. It does read `autoplay` from the query string, so the
+// embedded page is asked to start by itself.
+assert.match(source, /function allohaAutoplayUrl\(url\)/, 'the embed must ask the page to start itself');
+assert.match(source, /openEmbeddedEpisode\(card, group, selected, allohaAutoplayUrl\(url\)\)/,
+    'the embed must open the autoplaying address');
+const autoplayStart = source.indexOf('function allohaAutoplayUrl');
+const autoplayBody = source.slice(autoplayStart, source.indexOf('function openAllohaEmbed', autoplayStart));
+const buildAutoplayUrl = new Function(autoplayBody + '; return allohaAutoplayUrl;')();
+assert.strictEqual(
+    buildAutoplayUrl('https://alloha.yani.tv/?token_movie=abc'),
+    'https://alloha.yani.tv/?token_movie=abc&autoplay=1'
+);
+assert.strictEqual(
+    buildAutoplayUrl('https://alloha.yani.tv/?autoplay=0'),
+    'https://alloha.yani.tv/?autoplay=0',
+    'an address that already states autoplay must be left alone'
+);
+assert.strictEqual(buildAutoplayUrl(''), '', 'an empty address must stay empty');
