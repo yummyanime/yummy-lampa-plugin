@@ -3524,6 +3524,23 @@
     // Headers only matter where a player can actually send them, which on this
     // plugin's platforms means Android. Elsewhere the built-in engine stays the
     // right choice, headers or not.
+    /**
+     * Warns when a stream asks for request headers the chosen player may not
+     * send. Sibnet is the case that made this necessary: its file is guarded by
+     * a referrer check, and Lampa's built-in engine is a <video> element, which
+     * signs every request with the Lampa page instead - the file then comes back
+     * refused and the screen fills with noise and "video not found", which reads
+     * as a broken plugin rather than as a source that needs a different player.
+     *
+     * The choice of player stays with the viewer; this only makes the trade-off
+     * visible instead of letting them meet it as a failure.
+     */
+    function warnAboutRequestHeaders(item) {
+        if (!needsRequestHeaders(item)) return;
+        if (!Lampa.Noty || !Lampa.Noty.show) return;
+        Lampa.Noty.show(t('internal_player_headers_warning'));
+    }
+
     function needsRequestHeaders(item) {
         if (!isAndroidPlatform()) return false;
         var headers = item && item.headers;
@@ -3672,7 +3689,10 @@
         // would skip one extra episode.
         var items = autoNextEnabled() && current ? [current] : playlist;
         var started = isExternalPlayableUrl(current && current.url, current && current.source) && playInternalDirectVideo(current, items);
-        if (started) startPlaybackWatcher(playbackContext);
+        if (started) {
+            warnAboutRequestHeaders(current);
+            startPlaybackWatcher(playbackContext);
+        }
         return started;
     }
 

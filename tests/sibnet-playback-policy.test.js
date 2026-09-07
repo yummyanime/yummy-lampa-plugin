@@ -61,3 +61,18 @@ assert.strictEqual(
 );
 assert.match(playerSource, /function claimScreen\(on\)[\s\S]{0,320}catch \(error\) \{\}/,
     'claiming the screen must not be able to take the player down');
+
+// The choice of player stays with the viewer, but a stream whose file is guarded
+// by a referrer check cannot be fetched by a <video> element - it signs every
+// request with the Lampa page - and the failure looks like a broken plugin
+// rather than a source that needs a different player. So it is said out loud.
+assert.match(ui, /function warnAboutRequestHeaders\(item\)/, 'the trade-off must be stated, not met as a failure');
+assert.match(ui, /if \(started\) \{\s*warnAboutRequestHeaders\(current\);/,
+    'the warning belongs to the moment internal playback actually starts');
+const i18nSource = fs.readFileSync('src/i18n.js', 'utf8');
+['ru', 'en', 'uk'].forEach(function (locale) {
+    assert.ok(
+        i18nSource.indexOf('messages.' + locale + '.internal_player_headers_warning') > 0,
+        'the warning must be translated for ' + locale
+    );
+});

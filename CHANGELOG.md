@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.39 — 2026-09-07
+
+- Add a warning when a stream that needs request headers is opened in the internal player, which cannot send them
+
 ## 0.46.38 — 2026-09-07
 
 - Fix Sibnet on Android opening a web page no remote can operate by playing its stream in the platform player instead

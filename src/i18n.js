@@ -323,6 +323,7 @@
     messages.ru.cvh_source_description = 'Прямой MP4-поток. На Android и Android TV доступен внутренний плеер Lampa в режиме совместимости, а также внешний плеер; на LG WebOS доступен внутренний плеер';
     messages.ru.cvh_source_warning = 'Для CVH на Android и Android TV расширение использует совместимый режим внутреннего плеера. Если конкретный поток не поддерживается устройством, выберите внешний плеер.';
     messages.ru.detail_load_error = 'Не удалось загрузить данные YummyAnime';
+    messages.ru.internal_player_headers_warning = 'Этот источник требует внешний плеер. Во внутреннем воспроизведение не гарантируется';
     messages.ru.aniskip = 'Пропуск опенинга и эндинга';
     messages.ru.aniskip_description = 'Тайминги берутся из AniSkip по идентификатору MyAnimeList. Режим «Предлагать пропуск» показывает кнопку в плеере вместо автоперемотки — так безопаснее, если озвучка другой длительности. Работает только во внутреннем плеере Lampa';
     messages.ru.aniskip_off = 'Выключено';
@@ -421,6 +422,7 @@
     messages.en.cvh_source_description = 'Direct MP4 stream. Android and Android TV can use Lampa\'s internal player in compatibility mode or an external player; LG WebOS supports the internal player';
     messages.en.cvh_source_warning = 'For CVH on Android and Android TV, the extension uses a compatible internal-player mode. If the device cannot decode a particular stream, choose an external player.';
     messages.en.detail_load_error = 'Failed to load YummyAnime details';
+    messages.en.internal_player_headers_warning = 'This source needs an external player. Playback in the internal one is not guaranteed';
     messages.en.aniskip = 'Skip openings and endings';
     messages.en.aniskip_description = 'Timestamps come from AniSkip by MyAnimeList id. “Suggest skip” shows a player button instead of auto-seeking — safer when a dub has a different runtime. Works in the internal Lampa player only';
     messages.en.aniskip_off = 'Disabled';
@@ -816,6 +818,7 @@
     messages.uk.cvh_source_description = 'Прямий MP4-потік. На Android та Android TV доступний внутрішній плеєр Lampa в режимі сумісності, а також зовнішній плеєр; на LG WebOS доступний внутрішній плеєр';
     messages.uk.cvh_source_warning = 'Для CVH на Android та Android TV розширення використовує сумісний режим внутрішнього плеєра. Якщо пристрій не підтримує конкретний потік, виберіть зовнішній плеєр.';
     messages.uk.detail_load_error = 'Не вдалося завантажити дані YummyAnime';
+    messages.uk.internal_player_headers_warning = 'Це джерело потребує зовнішній плеєр. У внутрішньому відтворення не гарантується';
     messages.uk.aniskip = 'Пропуск опенінга та ендінга';
     messages.uk.aniskip_description = 'Тайминги беруться з AniSkip за ідентифікатором MyAnimeList. Режим «Пропонувати пропуск» показує кнопку в плеєрі замість автоперемотування — так безпечніше, якщо озвучення іншої тривалості. Працює лише у внутрішньому плеєрі Lampa';
     messages.uk.aniskip_off = 'Вимкнено';
