@@ -7,8 +7,17 @@ const launchEnd = ui.indexOf('function launchResolvedVideo', launchStart);
 const launchPolicy = ui.slice(launchStart, launchEnd);
 
 assert.match(ui, /function isSibnetPlaybackSource\(url, group\)/);
-assert.match(launchPolicy, /var sibnetPageUrl = selected\.iframe_url \|\| url;[\s\S]{0,100}if \(isSibnetPlaybackSource\(sibnetPageUrl, group\)\) \{\s*return openEmbeddedEpisode\(card, group, selected, sibnetPageUrl\);/,
-    'Sibnet must use its official iframe so the MP4 request carries the required Referer');
+// Sibnet's MP4 is guarded by a Referer check, so it needs a player that sends
+// request headers. Android has one, and the file plays there with no web page
+// at all. The embedded page remains for platforms without such a player - it is
+// a poor fit for a remote, because this WebView has no spatial navigation and
+// nothing on that page can be reached, which is why it is now the last resort
+// rather than the first choice.
+assert.match(launchPolicy, /if \(isSibnetPlaybackSource\(sibnetPageUrl, group\) && !isAndroidPlatform\(\)\) \{\s*return openEmbeddedEpisode\(card, group, selected, sibnetPageUrl\);/,
+    'the embedded page must only be used where no player can send the header');
+assert.match(ui, /function needsRequestHeaders\(item\)/, 'a stream that needs headers must be recognised');
+assert.match(ui, /if \(!needsRequestHeaders\(directCurrent\)\) Lampa\.Player\.runas\('lampa'\);/,
+    'such a stream must reach the platform player rather than the built-in engine');
 assert.ok(
     launchPolicy.indexOf('isSibnetPlaybackSource(sibnetPageUrl, group)') < launchPolicy.indexOf('LampaYaniStreamResolver.resolve(url, selected)'),
     'Sibnet iframe routing must happen before direct stream extraction');

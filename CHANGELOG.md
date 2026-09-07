@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.38 — 2026-09-07
+
+- Fix Sibnet on Android opening a web page no remote can operate by playing its stream in the platform player instead
+
 ## 0.46.37 — 2026-09-07
 
 - Add focus handover into the embedded player so a real remote press reaches its own controls

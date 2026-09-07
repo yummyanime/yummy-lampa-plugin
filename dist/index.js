@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.37',
+        version: '0.46.38',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -17052,11 +17052,18 @@ function pluginYummyAnime() {
         if (allohaSource && (!resolvedAlloha || !options.autoAdvance)) {
             return launchAllohaPlayer(card, group, selected, allohaPageUrl, options);
         }
-        // Sibnet protects the extracted MP4 with a Referer check. A media
-        // element and Android player intent cannot set that header reliably,
-        // while the official embeddable player supplies it for its own stream.
+        // Sibnet protects the extracted MP4 with a Referer check, so it needs a
+        // player that sends request headers. Android has one - the stream is
+        // handed to it rather than to the built-in <video>, which cannot set
+        // headers - and that is how the file plays without any web page at all.
+        //
+        // Everywhere else the embedded page stays the only way, because it
+        // supplies the header for its own stream. It is a poor fit for a
+        // remote: its play button is a real control, but this WebView has no
+        // spatial navigation, so nothing on that page can be reached at all.
+        // That is exactly why it is no longer used where a real player exists.
         var sibnetPageUrl = selected.iframe_url || url;
-        if (isSibnetPlaybackSource(sibnetPageUrl, group)) {
+        if (isSibnetPlaybackSource(sibnetPageUrl, group) && !isAndroidPlatform()) {
             return openEmbeddedEpisode(card, group, selected, sibnetPageUrl);
         }
         if (!isExternalPlayableUrl(url, selected) && window.LampaYaniStreamResolver && LampaYaniStreamResolver.canResolve(url)) {
