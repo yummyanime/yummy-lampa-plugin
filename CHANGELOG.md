@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.41 — 2026-09-10
+
+- Fix Sibnet on Android by opening its embedded page again, since no Lampa engine sends the referrer its file requires
+
 ## 0.46.40 — 2026-09-10
 
 - Fix CVH and VK breaking in the internal player after a header check that treated any header as a requirement

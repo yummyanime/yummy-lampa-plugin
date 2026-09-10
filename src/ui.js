@@ -3148,18 +3148,15 @@
         if (allohaSource && (!resolvedAlloha || !options.autoAdvance)) {
             return launchAllohaPlayer(card, group, selected, allohaPageUrl, options);
         }
-        // Sibnet protects the extracted MP4 with a Referer check, so it needs a
-        // player that sends request headers. Android has one - the stream is
-        // handed to it rather than to the built-in <video>, which cannot set
-        // headers - and that is how the file plays without any web page at all.
-        //
-        // Everywhere else the embedded page stays the only way, because it
-        // supplies the header for its own stream. It is a poor fit for a
-        // remote: its play button is a real control, but this WebView has no
-        // spatial navigation, so nothing on that page can be reached at all.
-        // That is exactly why it is no longer used where a real player exists.
+        // Sibnet protects the extracted MP4 with a Referer check that Lampa's
+        // built-in <video> cannot satisfy - it signs every request with the
+        // Lampa page - and no engine of Lampa's on any platform turned out to
+        // send headers instead. So the official embedded page is the one route
+        // that actually shows the video: it supplies the header for its own
+        // stream. Its play button needs a pointer or a press that reaches the
+        // page, which the focus handover in the player component is for.
         var sibnetPageUrl = selected.iframe_url || url;
-        if (isSibnetPlaybackSource(sibnetPageUrl, group) && !isAndroidPlatform()) {
+        if (isSibnetPlaybackSource(sibnetPageUrl, group)) {
             return openEmbeddedEpisode(card, group, selected, sibnetPageUrl);
         }
         if (!isExternalPlayableUrl(url, selected) && window.LampaYaniStreamResolver && LampaYaniStreamResolver.canResolve(url)) {

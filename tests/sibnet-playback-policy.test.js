@@ -7,14 +7,13 @@ const launchEnd = ui.indexOf('function launchResolvedVideo', launchStart);
 const launchPolicy = ui.slice(launchStart, launchEnd);
 
 assert.match(ui, /function isSibnetPlaybackSource\(url, group\)/);
-// Sibnet's MP4 is guarded by a Referer check, so it needs a player that sends
-// request headers. Android has one, and the file plays there with no web page
-// at all. The embedded page remains for platforms without such a player - it is
-// a poor fit for a remote, because this WebView has no spatial navigation and
-// nothing on that page can be reached, which is why it is now the last resort
-// rather than the first choice.
-assert.match(launchPolicy, /if \(isSibnetPlaybackSource\(sibnetPageUrl, group\) && !isAndroidPlatform\(\)\) \{\s*return openEmbeddedEpisode\(card, group, selected, sibnetPageUrl\);/,
-    'the embedded page must only be used where no player can send the header');
+// Sibnet's MP4 is guarded by a Referer check that Lampa's built-in <video>
+// cannot satisfy, and no engine of Lampa's on any platform turned out to send
+// headers instead - so the embedded page is the one route that shows the video,
+// on every platform. Routing Android to the internal player instead produced a
+// screen that could never play.
+assert.match(launchPolicy, /if \(isSibnetPlaybackSource\(sibnetPageUrl, group\)\) \{\s*return openEmbeddedEpisode\(card, group, selected, sibnetPageUrl\);/,
+    'Sibnet must open its embedded page on every platform');
 assert.match(ui, /function needsRequestHeaders\(item\)/, 'a stream that needs headers must be recognised');
 const resolverSource = fs.readFileSync('src/stream-resolver.js', 'utf8');
 assert.match(resolverSource, /source: 'sibnet',[\s\S]{0,700}headersRequired: true/,
