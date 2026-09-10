@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.40 — 2026-09-10
+
+- Fix CVH and VK breaking in the internal player after a header check that treated any header as a requirement
+- Fix the internal player warning to fire only for streams the resolver marks as unplayable without their headers
+
 ## 0.46.39 — 2026-09-07
 
 - Add a warning when a stream that needs request headers is opened in the internal player, which cannot send them

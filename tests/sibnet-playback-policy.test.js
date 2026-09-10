@@ -16,8 +16,9 @@ assert.match(ui, /function isSibnetPlaybackSource\(url, group\)/);
 assert.match(launchPolicy, /if \(isSibnetPlaybackSource\(sibnetPageUrl, group\) && !isAndroidPlatform\(\)\) \{\s*return openEmbeddedEpisode\(card, group, selected, sibnetPageUrl\);/,
     'the embedded page must only be used where no player can send the header');
 assert.match(ui, /function needsRequestHeaders\(item\)/, 'a stream that needs headers must be recognised');
-assert.match(ui, /if \(!needsRequestHeaders\(directCurrent\)\) Lampa\.Player\.runas\('lampa'\);/,
-    'such a stream must reach the platform player rather than the built-in engine');
+const resolverSource = fs.readFileSync('src/stream-resolver.js', 'utf8');
+assert.match(resolverSource, /source: 'sibnet',[\s\S]{0,700}headersRequired: true/,
+    'Sibnet must declare that its file is refused without the referrer');
 assert.ok(
     launchPolicy.indexOf('isSibnetPlaybackSource(sibnetPageUrl, group)') < launchPolicy.indexOf('LampaYaniStreamResolver.resolve(url, selected)'),
     'Sibnet iframe routing must happen before direct stream extraction');

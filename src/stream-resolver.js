@@ -533,7 +533,11 @@
                     direct: true,
                     // Kept for the external player, which still benefits when
                     // the redirect could not be resolved here.
-                    headers: playbackHeaders
+                    headers: playbackHeaders,
+                    // Unlike CVH and VK, whose headers are optional, this file
+                    // is refused without the referrer - a player that cannot
+                    // send it cannot play it, and the viewer should hear that.
+                    headersRequired: true
                 });
             });
         });

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.39',
+        version: '0.46.40',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -2396,7 +2396,11 @@ function pluginYummyAnime() {
                     direct: true,
                     // Kept for the external player, which still benefits when
                     // the redirect could not be resolved here.
-                    headers: playbackHeaders
+                    headers: playbackHeaders,
+                    // Unlike CVH and VK, whose headers are optional, this file
+                    // is refused without the referrer - a player that cannot
+                    // send it cannot play it, and the viewer should hear that.
+                    headersRequired: true
                 });
             });
         });
@@ -16875,6 +16879,7 @@ function pluginYummyAnime() {
             probe.yani_stream_qualities = result.qualities || null;
             probe.yani_stream_source = result.source || '';
             probe.yani_stream_headers = result.headers || null;
+            probe.yani_stream_headers_required = Boolean(result.headersRequired);
             group.quality = result.quality || group.quality;
             item.subtitle = voiceOptionSubtitle(group);
             $(target).find('.selectbox-item__subtitle').text(item.subtitle);
@@ -17079,6 +17084,7 @@ function pluginYummyAnime() {
                     selected.yani_stream_qualities = result.qualities || null;
                     selected.yani_stream_source = result.source || '';
                     selected.yani_stream_headers = result.headers || null;
+                    selected.yani_stream_headers_required = Boolean(result.headersRequired);
                 }
                 launchResolvedVideo(card, group, videos, selected, videoSourceUrl(selected) || url, options);
             }).catch(function (error) {
@@ -17188,6 +17194,7 @@ function pluginYummyAnime() {
             selected.yani_stream_quality = result.quality || '';
             selected.yani_stream_qualities = result.qualities || null;
             selected.yani_stream_headers = result.headers || null;
+            selected.yani_stream_headers_required = Boolean(result.headersRequired);
             selected.yani_stream_source = result.source || 'lampac-alloha';
             launchResolvedVideo(card, group, group.videos || [selected], selected, result.url, options);
         }).catch(function (error) {
@@ -17449,10 +17456,15 @@ function pluginYummyAnime() {
         Lampa.Noty.show(t('internal_player_headers_warning'));
     }
 
+    // True only for a stream the resolver marked as unplayable without its
+    // headers. Merely carrying headers is not that: CVH and VK results carry a
+    // User-Agent, sometimes a Referer, and play fine in a <video> without them.
+    // Treating any header as a requirement is what broke both of them.
     function needsRequestHeaders(item) {
-        if (!isAndroidPlatform()) return false;
-        var headers = item && item.headers;
-        return Boolean(headers && typeof headers === 'object' && Object.keys(headers).length);
+        if (!item) return false;
+        if (item.headersRequired) return true;
+        var source = item.source;
+        return Boolean(source && source.yani_stream_headers_required);
     }
 
     function playInternalDirectVideo(current, playlist) {
@@ -17477,7 +17489,7 @@ function pluginYummyAnime() {
             // left to whichever engine the platform provides instead of being
             // forced into the one that must fail. Streams without headers - CVH,
             // VK, Kodik - keep using the built-in engine exactly as before.
-            if (!needsRequestHeaders(directCurrent)) Lampa.Player.runas('lampa');
+            Lampa.Player.runas('lampa');
             Lampa.Player.play(directCurrent);
             if (Lampa.Player.playlist) Lampa.Player.playlist(directPlaylist);
             if (Lampa.Player.callback) {
@@ -18056,6 +18068,7 @@ function pluginYummyAnime() {
             next.yani_stream_qualities = result.qualities || null;
             next.yani_stream_source = result.source || '';
             next.yani_stream_headers = result.headers || null;
+            next.yani_stream_headers_required = Boolean(result.headersRequired);
         }).catch(function (error) {
             // The episode is launched normally later; a failed prefetch only
             // costs the time it would have saved.

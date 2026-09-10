@@ -59,14 +59,13 @@ assert.match(menu, /t\('no_enabled_sources'\)/);
 
 console.log('internal-player contract tests passed');
 
-// The built-in Lampa engine is a <video> in the WebView and cannot send request
-// headers: it signs every request with the Lampa page as the referrer. Sibnet
-// checks the referrer and answers 403, which the element reports as an
-// unplayable file. A stream that states headers is therefore left to the
-// platform's own player, while everything without headers keeps the built-in
-// engine exactly as before.
-assert.match(source, /function needsRequestHeaders\(item\)/, 'the header requirement must be decided in one place');
-assert.match(source, /if \(!needsRequestHeaders\(directCurrent\)\) Lampa\.Player\.runas\('lampa'\);/,
-    'the built-in engine must not be forced on a stream that needs headers');
-assert.match(source, /function needsRequestHeaders[\s\S]{0,200}isAndroidPlatform\(\)/,
-    'only a platform whose player can send headers may skip the built-in engine');
+// The built-in engine is always the one used for internal playback: letting a
+// stream with headers fall through to the globally configured player was what
+// broke CVH and VK, whose headers are optional. What a stream that genuinely
+// needs its headers gets is a warning, decided by a flag the resolver sets.
+assert.match(source, /Lampa\.Player\.runas\('lampa'\);\s*Lampa\.Player\.play\(directCurrent\);/,
+    'internal playback must always use the built-in engine');
+assert.match(source, /function needsRequestHeaders\(item\)[\s\S]{0,400}yani_stream_headers_required/,
+    'the requirement must come from the resolver flag, not from the mere presence of headers');
+assert.ok(!/function needsRequestHeaders\(item\)[\s\S]{0,400}Object\.keys\(headers\)/.test(source),
+    'the presence of headers alone must not count as a requirement');
