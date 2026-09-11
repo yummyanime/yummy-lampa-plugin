@@ -4362,6 +4362,9 @@
     function IframePlayer(object) {
         return LampaYaniPlayer.create(object, {
             t: t,
+            // Only Android handles Back outside the web page; everywhere else a
+            // focus inside the frame would swallow the way out. See ui-player.
+            handOverFocus: isAndroidPlatform(),
             sourceUrl: function (item) { return videoSourceUrl(item) || item && item.iframe_url || ''; },
             goBack: function () {
                 goBack();

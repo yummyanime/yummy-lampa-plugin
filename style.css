@@ -1687,6 +1687,54 @@ body.yani-player-open .head--simple {
     outline: none;
 }
 
+/* Pointer platforms only (webOS): a strip along the top edge that reveals the
+   exit control when the Magic Remote cursor reaches it. It sits above the
+   frame so the cursor leaving the page lands on this document again. */
+.yani-player__edge {
+    position: absolute;
+    z-index: 2;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6vh;
+}
+
+/* Hidden until the pointer asks for it; never a `.selector`, so it can never
+   take the OK press that belongs to the embedded page. */
+.yani-player__back {
+    position: absolute;
+    z-index: 3;
+    top: .9em;
+    left: .9em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.4em;
+    height: 2.4em;
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(20, 20, 24, .78);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+}
+
+.yani-player__back svg {
+    width: 1.3em;
+    height: 1.3em;
+}
+
+.yani-player__back--visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.yani-player__back:hover {
+    color: #18181b;
+    background: #fff;
+}
+
 .full-start__buttons .full-start__button.view--yummyanime,
 .full-start-new__buttons .full-start__button.view--yummyanime {
     display: inline-flex;

@@ -41,7 +41,19 @@
         // with a remote. Nothing of ours is focusable now: the iframe takes the
         // focus, its own page decides what the arrows and OK do, and Back is
         // the one key this component still answers.
+        // Whether the keys may be handed to the embedded page at all.
+        //
+        // Doing so is what lets a real OK press reach the page's play button
+        // on Android TV, where there is no pointer. It is also what breaks
+        // Back on webOS: there Back is an ordinary key event delivered to the
+        // focused document, so with the focus inside a cross-origin frame the
+        // press goes to the Sibnet page and Lampa never sees it - the player
+        // cannot be left. Android's Back is handled by the app itself and is
+        // unaffected. So the handover is done only where Back survives it.
+        var handOverFocus = Boolean(deps.handOverFocus);
+
         function focusPlayer() {
+            if (!handOverFocus) return;
             try {
                 var node = iframe[0];
                 if (!node) return;
@@ -68,6 +80,37 @@
             });
         }
 
+        // Exit control for platforms with a pointer, hidden until asked for.
+        //
+        // Once the viewer has clicked inside the embedded page with the pointer,
+        // the focus is in the frame and Back is lost to it (see above). Counting
+        // Back presses cannot bring a control back - those presses never reach
+        // this document. The pointer does: it fires on this document as soon as
+        // it leaves the frame, so moving it to the top edge reveals the way out.
+        // The control is not a `.selector`: it must never join the focus
+        // collection, or it would take every OK press as the old button did.
+        var revealTimer = null;
+        var back = null;
+        if (!handOverFocus) {
+            back = $('<div class="yani-player__back">' +
+                '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">' +
+                '<path d="M15 5 8 12l7 7" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+                'stroke-linecap="round" stroke-linejoin="round"/></svg></div>')
+                .attr('role', 'button')
+                .attr('aria-label', t('back_to_lampa'))
+                .attr('title', t('back_to_lampa'))
+                .on('click', close);
+        }
+
+        function revealBack() {
+            if (!back) return;
+            back.addClass('yani-player__back--visible');
+            if (revealTimer) clearTimeout(revealTimer);
+            revealTimer = setTimeout(function () {
+                if (back) back.removeClass('yani-player__back--visible');
+            }, 4000);
+        }
+
         return {
             create: function () {
                 iframe
@@ -77,6 +120,10 @@
                     .attr('title', t('back_to_lampa'))
                     .on('load', focusPlayerRepeatedly);
                 html.append(iframe);
+                if (back) {
+                    html.append($('<div class="yani-player__edge"></div>').on('mousemove mouseenter', revealBack));
+                    html.append(back.on('mousemove mouseenter', revealBack));
+                }
                 claimScreen(true);
                 this.activity.loader(false);
                 this.activity.toggle();
@@ -96,6 +143,8 @@
             render: function (js) { return js ? html[0] : html; },
             destroy: function () {
                 closing = true;
+                if (revealTimer) clearTimeout(revealTimer);
+                if (back) back.off().remove();
                 claimScreen(false);
                 iframe.off().attr('src', 'about:blank');
                 iframe.remove();

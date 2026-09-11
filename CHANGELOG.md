@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.42 — 2026-09-11
+
+- Fix Back not leaving the embedded player on webOS by handing the keys to the page only on Android 
+- Add a pointer-revealed exit control for platforms with a cursor
+
 ## 0.46.41 — 2026-09-10
 
 - Fix Sibnet on Android by opening its embedded page again, since no Lampa engine sends the referrer its file requires
