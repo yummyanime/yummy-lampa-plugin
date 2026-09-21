@@ -105,11 +105,27 @@ function readTaggedBundle(version, git) {
     }
 }
 
+function cutUnreleased(options) {
+    options = options || {};
+    const root = options.root || path.join(__dirname, '..');
+    const source = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
+    if (!changelog.unreleasedHasItems(source)) return null;
+    return bump.applyVersion({
+        root: root,
+        bump: options.bump || 'patch',
+        build: options.build
+    });
+}
+
 function promote(options) {
     options = options || {};
     const root = options.root || path.join(__dirname, '..');
     const git = options.git || defaultGit(root);
     const rollback = Boolean(options.promote);
+    let bumped = null;
+    if (!rollback && options.bumpUnreleased !== false) {
+        bumped = cutUnreleased({root: root, bump: options.bump, build: options.build});
+    }
     const version = normalizeVersion(options.promote || options.version || readCurrentBundle(root).version);
     const bundle = rollback ? readTaggedBundle(version, git) : readCurrentBundle(root).bundle;
     const manifest = writeStable({
@@ -131,6 +147,8 @@ function promote(options) {
         tag: tag,
         tagged: tagged,
         rollback: rollback,
+        bumped: bumped,
+        from: bumped ? bumped.from : version,
         manifest: manifest,
         stableUrl: STABLE_URL,
         testUrl: TEST_URL
@@ -161,10 +179,8 @@ function usage() {
         'Production URL:  ' + STABLE_URL,
         'Test URL:        ' + TEST_URL,
         '',
-        'Promote the current dist bundle to production and tag it, or roll production',
-        'back to an earlier git tag without changing the test channel.',
-        'This does not bump src/config.js. Cut a new version first with:',
-        '  node scripts/bump-version.js patch'
+        'If CHANGELOG [Unreleased] has entries, patch-bumps the plugin first, then',
+        'copies dist to production. --promote rolls back without bumping.'
     ].join('\n');
 }
 
@@ -176,8 +192,8 @@ if (require.main === module) {
             process.exit(0);
         }
         const result = promote(args);
+        if (result.bumped) console.log('Version ' + result.bumped.from + ' → ' + result.bumped.version);
         console.log((result.rollback ? 'Rolled production back to ' : 'Promoted production to ') + result.version);
-        console.log('Plugin version is unchanged; run node scripts/bump-version.js patch to cut a new one.');
         console.log('Production: ' + result.stableUrl);
         console.log('Test:       ' + result.testUrl);
         if (result.tagged) console.log('Created git tag ' + result.tag);
@@ -208,5 +224,6 @@ module.exports = {
     stableManifest: stableManifest,
     writeStable: writeStable,
     promote: promote,
+    cutUnreleased: cutUnreleased,
     parseArgs: parseArgs
 };

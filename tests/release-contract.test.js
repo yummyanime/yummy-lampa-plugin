@@ -16,7 +16,7 @@ assert.strictEqual(release.normalizeVersion('v0.41.38'), '0.41.38');
 assert.match(release.changelogSection('# Changelog\n\n## 0.41.40 — 2026-08-13\n\n- First.\n\n## 0.41.39 — 2026-08-13\n\n- Old.\n', '0.41.40'), /First/);
 assert.doesNotMatch(release.changelogSection('# Changelog\n\n## 0.41.40 — 2026-08-13\n\n- First.\n\n## 0.41.39 — 2026-08-13\n\n- Old.\n', '0.41.40'), /Old/);
 assert.match(source, /--promote/);
-assert.match(source, /bump-version\.js patch/);
+assert.match(source, /\[Unreleased\]/);
 assert.match(pages, /cp -R stable _pages\/stable/);
 assert.match(workflow, /gh release create/);
 assert.match(workflow, /tags:[\s\S]*v\*/);
@@ -70,4 +70,44 @@ assert.strictEqual(JSON.parse(fs.readFileSync(path.join(root, 'stable.json'), 'u
 assert.match(fs.readFileSync(path.join(root, 'dist/index.js'), 'utf8'), /0\.41\.40/, 'rollback must not change the test bundle');
 
 fs.rmSync(root, {recursive: true, force: true});
+
+const bumpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'yani-release-bump-'));
+fs.mkdirSync(path.join(bumpRoot, 'src'));
+fs.mkdirSync(path.join(bumpRoot, 'dist'));
+fs.writeFileSync(path.join(bumpRoot, 'src/config.js'), "window.LampaYaniConfig = { version: '0.47.0' };\n");
+fs.writeFileSync(path.join(bumpRoot, 'README.md'), 'Current version: `0.47.0`\n');
+fs.writeFileSync(path.join(bumpRoot, 'dist/index.js'), "window.LampaYaniConfig = { version: '0.47.0' };\n");
+fs.writeFileSync(path.join(bumpRoot, 'CHANGELOG.md'), [
+    '# Changelog',
+    '',
+    '## [Unreleased]',
+    '',
+    '### Fixed',
+    '',
+    '- Overlay',
+    '',
+    '## [0.47.0] - 2026-09-21',
+    '',
+    '### Changed',
+    '',
+    '- Keep a Changelog',
+    ''
+].join('\n'));
+const bumped = release.promote({
+    root: bumpRoot,
+    git: git,
+    bumpUnreleased: true,
+    releasedAt: '2026-09-21T00:00:00.000Z',
+    build: function () {
+        const next = fs.readFileSync(path.join(bumpRoot, 'src/config.js'), 'utf8');
+        fs.writeFileSync(path.join(bumpRoot, 'dist/index.js'), next);
+    }
+});
+assert.strictEqual(bumped.bumped.from, '0.47.0');
+assert.strictEqual(bumped.version, '0.47.1');
+assert.match(fs.readFileSync(path.join(bumpRoot, 'src/config.js'), 'utf8'), /0\.47\.1/);
+assert.match(fs.readFileSync(path.join(bumpRoot, 'stable/index.js'), 'utf8'), /0\.47\.1/);
+assert.match(fs.readFileSync(path.join(bumpRoot, 'CHANGELOG.md'), 'utf8'), /## \[0\.47\.1\]/);
+assert.doesNotMatch(fs.readFileSync(path.join(bumpRoot, 'CHANGELOG.md'), 'utf8'), /Overlay[\s\S]*## \[Unreleased\]/);
+fs.rmSync(bumpRoot, {recursive: true, force: true});
 console.log('release contract tests passed');

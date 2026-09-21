@@ -9,6 +9,8 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.1] - 2026-09-21
+
 ### Added
 
 - Color remote shortcuts on title pages: red for Watching, green for Planned, blue for Completed, and yellow for Favorites
