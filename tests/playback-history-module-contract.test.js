@@ -30,6 +30,11 @@ assert.match(source, /fetchHistoryRange\(window\.LampaYaniApi\.watchHistory, max
 assert.match(ui, /onAuthorized: function \(\) \{[\s\S]{0,180}ensureRemoteHistory\(true\)/);
 assert.match(source, /function ensureRemoteHistory\(force\)/, 'the shared account history must have a single pull entry point');
 assert.match(ui, /ensureRemoteHistory\(\);/, 'the account history must be pulled when the plugin starts');
+assert.match(ui, /Lampa\.PlayerVideo\.video\(\)/, 'progress must use Lampa player accessor when native playback has no DOM video');
+assert.match(ui, /listener\.follow\('timeupdate', state\.playerTimeHandler\)/, 'progress must follow Lampa player events');
+assert.match(ui, /listener\.follow\('destroy', state\.playerDestroyHandler\)/, 'the final position must be captured before Lampa destroys its media node');
+assert.match(ui, /listener\.remove\('timeupdate', state\.playerTimeHandler\)/, 'player listeners must be removed with the watcher');
+assert.match(ui, /yani:watch-progress\.yaniHome/, 'the dashboard must refresh when playback history changes');
 
 const storage = {};
 const context = {

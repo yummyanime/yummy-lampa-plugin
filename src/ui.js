@@ -585,7 +585,11 @@
             homeAuthorizationChanged = true;
             userListsSnapshot = null;
         }
+        function onHomeWatchProgress() {
+            refreshContinueWatching();
+        }
         if (typeof document !== 'undefined' && document.addEventListener) document.addEventListener('yani:auth-changed', onHomeAuthorizationChanged);
+        if (window.$ && typeof document !== 'undefined') $(document).on('yani:watch-progress.yaniHome', onHomeWatchProgress);
         var navigatorInfo = window.navigator || {};
         var reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
         var lowMemoryDevice = Number(navigatorInfo.deviceMemory || 0) > 0 && Number(navigatorInfo.deviceMemory) <= 2;
@@ -1754,6 +1758,7 @@
             homePendingRenders = {};
             if (homeAbortController) homeAbortController.abort();
             if (typeof document !== 'undefined' && document.removeEventListener) document.removeEventListener('yani:auth-changed', onHomeAuthorizationChanged);
+            if (window.$ && typeof document !== 'undefined') $(document).off('yani:watch-progress.yaniHome', onHomeWatchProgress);
             homeButtons = {};
             currentEpisodeFlow = null;
             preferredHomeKey = 'catalog';
@@ -3730,16 +3735,17 @@
         return value === true || value === 'true';
     }
 
-    // Lampa's internal player is an HTML5 video element whichever skin is
-    // active, and reading it directly avoids depending on player internals that
-    // differ between Lampa builds. External players are out of reach by design.
+    // Current Lampa builds may wrap the media element (native TV engines do not
+    // necessarily leave a usable <video> in the DOM). Prefer the public player
+    // accessor and keep the DOM lookup only for older builds.
     function playerVideoElement(preferred) {
-        if (preferred &&
-            document.documentElement.contains(preferred) &&
-            isFinite(preferred.duration) &&
-            preferred.duration > 0) {
-            return preferred;
+        if (window.Lampa && Lampa.PlayerVideo && typeof Lampa.PlayerVideo.video === 'function') {
+            try {
+                var active = Lampa.PlayerVideo.video();
+                if (active && isFinite(active.duration) && active.duration > 0 && !active.ended) return active;
+            } catch (ignorePlayerVideo) {}
         }
+        if (preferred && isFinite(preferred.duration) && preferred.duration > 0 && !preferred.ended) return preferred;
         var selectors = ['.player-video video', '.player video', 'video'];
         for (var i = 0; i < selectors.length; i++) {
             var elements = document.querySelectorAll(selectors[i]);
@@ -3757,6 +3763,13 @@
         if (!playbackWatcher) return;
         var state = playbackWatcher;
         clearInterval(state.timer);
+        var listener = window.Lampa && Lampa.PlayerVideo && Lampa.PlayerVideo.listener;
+        if (listener && typeof listener.remove === 'function') {
+            if (state.playerTimeHandler) listener.remove('timeupdate', state.playerTimeHandler);
+            if (state.playerPauseHandler) listener.remove('pause', state.playerPauseHandler);
+            if (state.playerEndedHandler) listener.remove('ended', state.playerEndedHandler);
+            if (state.playerDestroyHandler) listener.remove('destroy', state.playerDestroyHandler);
+        }
         if (state.video && state.endedHandler && state.video.removeEventListener) {
             state.video.removeEventListener('ended', state.endedHandler);
         }
@@ -3794,9 +3807,14 @@
             advanced: false,
             video: null,
             endedHandler: null,
+            playerTimeHandler: null,
+            playerPauseHandler: null,
+            playerEndedHandler: null,
+            playerDestroyHandler: null,
             lastSeenAt: Date.now()
         };
         playbackWatcher = state;
+        bindPlayerProgressEvents(generation, context, state);
         state.timer = setInterval(function () { watchPlayback(generation, context, state); }, 1000);
         var initialLength = Number(context.selected && context.selected.duration || 0);
         if (skipMode !== 'off' && initialLength >= 60) loadSkipSegments(generation, context, state, skipMode, initialLength);
@@ -4044,6 +4062,63 @@
         if (video && video.addEventListener) video.addEventListener('ended', state.endedHandler);
     }
 
+    function storeObservedPlayback(generation, context, state, event, finalState) {
+        if (generation !== playbackWatcherGeneration || playbackWatcher !== state) return;
+        event = event || {};
+        var video = playerVideoElement(state.video);
+        var eventPosition = Number(event.current);
+        var eventDuration = Number(event.duration);
+        var position = isFinite(eventPosition) && eventPosition >= 0
+            ? eventPosition
+            : Number(video && video.currentTime || state.lastObservedPosition || 0);
+        var duration = isFinite(eventDuration) && eventDuration > 0
+            ? eventDuration
+            : Number(video && video.duration || state.lastObservedDuration || context.selected && context.selected.duration || 0);
+        if (video) bindPlaybackVideo(generation, context, state, video);
+        if (!(position >= 0)) position = 0;
+        if (!(duration >= 0)) duration = 0;
+        state.lastSeenAt = Date.now();
+        state.lastObservedPosition = position;
+        state.lastObservedDuration = duration;
+        if (!(position > 0)) return;
+
+        var now = Date.now();
+        if (now - state.lastLocalSync >= 10000 || finalState && Math.abs(position - state.lastLocalPosition) >= 1) {
+            state.lastLocalSync = now;
+            state.lastLocalPosition = position;
+            updatePlaybackProgress(context, position, duration, false);
+        }
+        if (state.progressSync && (now - state.lastServerSync >= 60000 || finalState && Math.abs(position - state.lastServerPosition) >= 1)) {
+            state.lastServerSync = now;
+            state.lastServerPosition = position;
+            updatePlaybackProgress(context, position, duration, true);
+        }
+    }
+
+    function bindPlayerProgressEvents(generation, context, state) {
+        var listener = window.Lampa && Lampa.PlayerVideo && Lampa.PlayerVideo.listener;
+        if (!listener || typeof listener.follow !== 'function') return;
+        state.playerTimeHandler = function (event) {
+            storeObservedPlayback(generation, context, state, event, false);
+        };
+        state.playerPauseHandler = function (event) {
+            storeObservedPlayback(generation, context, state, event, true);
+        };
+        state.playerEndedHandler = function (event) {
+            storeObservedPlayback(generation, context, state, event, true);
+            advancePlaybackWatcher(generation, context, state);
+        };
+        state.playerDestroyHandler = function (event) {
+            // Lampa may remove the underlying media node before Player.callback.
+            // Capture the final position while its player object still exists.
+            storeObservedPlayback(generation, context, state, event, true);
+        };
+        listener.follow('timeupdate', state.playerTimeHandler);
+        listener.follow('pause', state.playerPauseHandler);
+        listener.follow('ended', state.playerEndedHandler);
+        listener.follow('destroy', state.playerDestroyHandler);
+    }
+
     function watchPlayback(generation, context, state) {
         // A queued tick from the previous episode must never stop the watcher
         // that belongs to the newly launched player.
@@ -4056,11 +4131,10 @@
             return;
         }
         bindPlaybackVideo(generation, context, state, video);
-        state.lastSeenAt = Date.now();
         var position = Number(video.currentTime) || 0;
         var duration = Number(video.duration) || 0;
-        state.lastObservedPosition = position;
-        state.lastObservedDuration = duration;
+        var finalState = video.paused || video.ended || duration > 0 && position >= duration - 2;
+        storeObservedPlayback(generation, context, state, {current: position, duration: duration}, finalState);
 
         if (state.skipMode !== 'off' && duration >= 60) {
             var rounded = Math.round(duration);
@@ -4068,21 +4142,6 @@
                 state.segments = [];
                 hideSkipPrompt();
                 loadSkipSegments(generation, context, state, state.skipMode, rounded);
-            }
-        }
-
-        if (position > 0) {
-            var now = Date.now();
-            var finalState = video.paused || video.ended || duration > 0 && position >= duration - 2;
-            if (now - state.lastLocalSync >= 10000 || finalState && Math.abs(position - state.lastLocalPosition) >= 2) {
-                state.lastLocalSync = now;
-                state.lastLocalPosition = position;
-                updatePlaybackProgress(context, position, duration, false);
-            }
-            if (state.progressSync && (now - state.lastServerSync >= 60000 || finalState && Math.abs(position - state.lastServerPosition) >= 5)) {
-                state.lastServerSync = now;
-                state.lastServerPosition = position;
-                updatePlaybackProgress(context, position, duration, true);
             }
         }
 

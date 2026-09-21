@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.46.43 — 2026-09-21
+
+- Fix playback progress after current Lampa player lifecycle changes | Fix Continue Watching refreshing after local progress changes
+
 ## 0.46.42 — 2026-09-11
 
 - Fix Back not leaving the embedded player on webOS by handing the keys to the page only on Android 
