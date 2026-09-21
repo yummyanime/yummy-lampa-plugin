@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const {execFileSync} = require('child_process');
 
+const changelog = require('./changelog');
+
 const FILES = {
     config: 'src/config.js',
     readme: 'README.md',
@@ -68,44 +70,27 @@ function updateReadme(source, from, to) {
     );
 }
 
-const NOTE_PREFIX = /^(Fix|Add|Remove|Refactor)\s+\S/;
+const NOTE_PREFIX = /^(Added|Changed|Deprecated|Removed|Fixed|Security|Add|Fix|Remove|Refactor)\s+\S/;
 
 function formatNotes(notes) {
-    const items = (Array.isArray(notes) ? notes : [notes]).map(function (note) {
-        return String(note || '').replace(/^\s*-\s*/, '').replace(/\.+\s*$/, '').trim();
-    }).filter(Boolean);
-    if (!items.length) throw new Error('Provide at least one changelog note');
-    return items.map(function (note) {
-        const parts = note.split(/\s*\|\s*/).filter(Boolean);
-        if (!parts.length || parts.some(function (part) { return !NOTE_PREFIX.test(part); })) {
-            throw new Error('Changelog notes must start with Fix / Add / Remove / Refactor, e.g. "Fix button styles | Remove unused styles"');
-        }
-        return '- ' + parts.join(' | ');
-    }).join('\n');
-}
-
-function newline(source) {
-    return source.indexOf('\r\n') >= 0 ? '\r\n' : '\n';
+    const groups = changelog.parseNotes(notes);
+    const formatted = changelog.formatGroups(groups);
+    if (!formatted) throw new Error('Provide at least one changelog note');
+    const items = Array.isArray(notes) ? notes : [notes];
+    items.forEach(function (note) {
+        String(note || '').split(/\s*\|\s*/).filter(Boolean).forEach(function (part) {
+            const text = String(part).replace(/^\s*-\s*/, '').trim();
+            if (!NOTE_PREFIX.test(text)) {
+                throw new Error('Changelog notes must start with Added / Changed / Deprecated / Removed / Fixed / Security, e.g. "Fixed button styles | Removed unused styles"');
+            }
+        });
+    });
+    return formatted;
 }
 
 function updateChangelog(source, version, date, notes) {
-    const nl = newline(source);
-    const bullets = formatNotes(notes);
-    const heading = '## ' + version + ' — ' + date;
-    const headingPattern = new RegExp('## ' + escapeRegExp(version) + ' — [^\\r\\n]+');
-    let next;
-    if (headingPattern.test(source)) {
-        next = source.replace(headingPattern, heading);
-        if (next.indexOf(heading + nl + nl + bullets.split('\n').join(nl)) < 0) {
-            next = next.replace(heading + nl, heading + nl + nl + bullets.split('\n').join(nl) + nl);
-        }
-    } else if (/^# Changelog\r?\n/.test(source)) {
-        next = source.replace(/^# Changelog\r?\n/, '# Changelog' + nl + nl + heading + nl + nl + bullets.split('\n').join(nl) + nl);
-    } else {
-        throw new Error('Unexpected CHANGELOG.md format');
-    }
-    if (next.indexOf(heading) < 0) throw new Error('Failed to update CHANGELOG.md');
-    return next;
+    formatNotes(notes);
+    return changelog.insertRelease(source, version, date, notes);
 }
 
 function applyVersion(options) {
@@ -159,7 +144,7 @@ function usage() {
     return [
         'Usage: node scripts/bump-version.js [patch|minor|major|<version>] [--date YYYY-MM-DD] [--dry-run] [-m note] [note...]',
         '',
-        'Notes must start with Fix, Add, Remove, or Refactor. Use | for related changes.',
+        'Notes must start with Added, Changed, Deprecated, Removed, Fixed, or Security. Fix/Add/Remove/Refactor still work. Use | for related changes.',
         'Updates src/config.js, README version, CHANGELOG, and dist/index.js together.'
     ].join('\n');
 }

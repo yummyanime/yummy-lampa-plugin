@@ -1,0 +1,8 @@
+#!/bin/sh
+# Fold Keep a Changelog ### sections under [Unreleased] before a commit.
+ROOT="$(git rev-parse --show-toplevel)"
+CHANGED="$(git diff --cached --name-only -- "$ROOT/CHANGELOG.md" "$ROOT/changelog.md")"
+node "$ROOT/scripts/changelog.js" --fold
+if [ -n "$CHANGED" ]; then
+    git add -- "$ROOT/CHANGELOG.md"
+fi

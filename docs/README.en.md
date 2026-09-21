@@ -105,7 +105,8 @@ Search is passed through the `q` parameter. The public application key is sent i
 - `src/yani-resolver.js` — client for the self-hosted resolver service in `server/`;
 - `src/lampac-resolver.js` — optional self-hosted Lampac adapter for Alloha;
 - `server/` — service that turns an Alloha player page into a plain HLS stream;
-- `style.css` — styles.
+- `style.css` — styles;
+- `CHANGELOG.md` — Keep a Changelog categories; `.githooks/pre-commit` folds `###` sections under `[Unreleased]` (`git config core.hooksPath .githooks`).
 
 ## Sources vs players
 

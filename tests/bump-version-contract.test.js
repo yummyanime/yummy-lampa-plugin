@@ -15,8 +15,10 @@ const args = bump.parseArgs(['node', 'scripts/bump-version.js', 'patch', '-m', '
 assert.strictEqual(args.bump, 'patch');
 assert.deepStrictEqual(args.notes, ['Add version bump script', 'and more']);
 
-assert.strictEqual(bump.formatNotes('Fix button styles | Remove unused styles'), '- Fix button styles | Remove unused styles');
-assert.strictEqual(bump.formatNotes(['Add official label.', 'Refactor button']), '- Add official label\n- Refactor button');
+assert.match(bump.formatNotes('Fix button styles | Remove unused styles'), /### Fixed[\s\S]*Button styles/);
+assert.match(bump.formatNotes('Fix button styles | Remove unused styles'), /### Removed[\s\S]*Unused styles/);
+assert.match(bump.formatNotes(['Add official label.', 'Refactor button']), /### Added[\s\S]*Official label/);
+assert.match(bump.formatNotes(['Add official label.', 'Refactor button']), /### Changed[\s\S]*Button/);
 assert.throws(function () { bump.formatNotes('Normalize dist bundle newlines'); });
 
 const source = fs.readFileSync('scripts/bump-version.js', 'utf8');
@@ -58,9 +60,10 @@ assert.doesNotMatch(fs.readFileSync(path.join(root, 'README.md'), 'utf8'), /dist
 assert.match(fs.readFileSync(path.join(root, 'docs/README.en.md'), 'utf8'), /dist\/index\.js/);
 assert.doesNotMatch(fs.readFileSync(path.join(root, 'docs/README.en.md'), 'utf8'), /dist\/index\.js\?v=/);
 const changelog = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
-assert.match(changelog, /## 0\.41\.40 — 2026-08-13/);
-assert.match(changelog, /Add version bump script/);
-assert.match(changelog, /## 0\.41\.39 — 2026-08-13/);
+assert.match(changelog, /## \[0\.41\.40\] - 2026-08-13/);
+assert.match(changelog, /### Added/);
+assert.match(changelog, /Version bump script/);
+assert.match(changelog, /## \[0\.41\.39\] - 2026-08-13/);
 
 fs.rmSync(root, {recursive: true, force: true});
 console.log('bump version contract tests passed');

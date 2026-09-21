@@ -14,14 +14,9 @@ const escaped = version.replace(/\./g, '\\.');
 
 assert.ok(version, 'config version must be present');
 assert.match(root, new RegExp('Current version: `' + escaped + '`'));
-assert.match(changelog, new RegExp('^## ' + escaped + ' — ', 'm'));
-const latestNotes = changelog.match(new RegExp('^## ' + escaped + ' — [^\\r\\n]+\\r?\\n\\r?\\n((?:- .+\\r?\\n)+)', 'm'));
-assert.ok(latestNotes, 'current version must have changelog notes');
-latestNotes[1].trim().split(/\r?\n/).forEach((line) => {
-    line.split(/\s*\|\s*/).forEach((part) => {
-        assert.match(part.replace(/^- /, ''), /^(Fix|Add|Remove|Refactor) /);
-    });
-});
+assert.match(changelog, /## \[Unreleased\]/);
+assert.match(changelog, new RegExp('^## \\[' + escaped + '\\] - ', 'm'));
+assert.match(changelog, new RegExp('## \\[' + escaped + '\\] - [^\\r\\n]+\\r?\\n\\r?\\n### (Added|Changed|Deprecated|Removed|Fixed|Security)\\r?\\n\\r?\\n- '));
 assert.match(dist, new RegExp("version: '" + escaped + "'"));
 assert.match(fs.readFileSync('build.js', 'utf8'), /function normalizeNewlines/);
 assert.doesNotMatch(dist, /\\r\\n/, 'dist bundle must not embed CRLF so Linux CI matches Windows builds');

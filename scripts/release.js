@@ -3,6 +3,7 @@ const path = require('path');
 const {execFileSync} = require('child_process');
 
 const bump = require('./bump-version');
+const changelog = require('./changelog');
 
 const PAGES_BASE = 'https://yummyanime.github.io/yummy-lampa-plugin';
 const STABLE_PATH = 'stable/index.js';
@@ -20,12 +21,7 @@ function tagName(version) {
 }
 
 function changelogSection(source, version) {
-    const target = normalizeVersion(version);
-    const match = String(source || '').match(new RegExp(
-        '## ' + target.replace(/\./g, '\\.') + ' — [^\\r\\n]+\\r?\\n([\\s\\S]*?)(?=\\r?\\n## |$)'
-    ));
-    if (!match) return 'Release ' + target;
-    return (match[0] || '').trim();
+    return changelog.changelogSection(source, version);
 }
 
 function bundleVersion(source) {
