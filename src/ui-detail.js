@@ -208,6 +208,7 @@
         var videosAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var posterViewer = null;
         var posterExpanded = false;
+        var remoteListShortcutHandler = null;
         var detailFocus = LampaYaniNavigation.createScope({
             id: 'detail:' + String(routeId || getYummyId(data) || object.url || 'unknown'),
             root: function () { return html; },
@@ -375,6 +376,13 @@
                 togglePosterViewer(poster, data);
             });
             bindDetailButtonFocus(poster);
+            var posterColumn = $('<div class="yani-detail__poster-column"></div>');
+            var listPanel = createDetailListPanel(data);
+            var listDock = $('<div class="yani-detail__list-dock"></div>')
+                .attr('aria-label', t('user_lists'))
+                .append($('<div class="yani-detail__list-dock-title"></div>').text(t('user_lists')))
+                .append(listPanel);
+            posterColumn.append(poster, listDock);
             var info = $('<div class="yani-detail__info"></div>');
             // The title is deliberately a selector and the default landing
             // focus, so the page opens on the name and Up from actions returns
@@ -432,17 +440,15 @@
             });
             bindDetailButtonFocus(subscribeButton);
             var comments = $('<div class="yani-detail__comments"></div>');
-            var listPanel = createDetailListPanel(data);
             actions.append(button, trailersButton, searchButton);
             actions.append(subscribeButton);
             // Keep the principal actions next to the synopsis, before the
             // long viewing-order, recommendations and comments sections.
             info.append(actions);
-            info.append(listPanel);
             if (data.yani_viewing_order && data.yani_viewing_order.length) info.append(createViewingOrder(data, deps));
             loadDetailRecommendations(data, info, bindDetailScrollTargets, appendDetailNavigation, deps);
             info.append(comments);
-            html.append(poster, info);
+            html.append(posterColumn, info);
             scroll.append(html);
             bindDetailScrollTargets(html);
             loadInlineComments(data, comments);
@@ -596,12 +602,12 @@
         function createDetailListPanel(cardData) {
             var panel = $('<div class="yani-detail__list-panel"></div>');
             var actions = [
-                {key: 'watching', id: 0, icon: 'eye'},
-                {key: 'planned', id: 1, icon: 'cloud'},
-                {key: 'completed', id: 2, icon: 'flag'},
+                {key: 'watching', id: 0, icon: 'eye', shortcut: 'red'},
+                {key: 'planned', id: 1, icon: 'cloud', shortcut: 'green'},
+                {key: 'completed', id: 2, icon: 'flag', shortcut: 'blue'},
                 {key: 'dropped', id: 3, icon: 'eye-off'},
                 {key: 'postponed', id: 5, icon: 'hourglass'},
-                {key: 'favorite', favorite: true, icon: 'heart'}
+                {key: 'favorite', favorite: true, icon: 'heart', shortcut: 'yellow'}
             ];
 
             actions.forEach(function (action) {
@@ -609,6 +615,10 @@
                     .attr('title', t(action.key))
                     .attr('aria-label', t(action.key))
                     .append($('<span class="yani-detail__list-icon"></span>').html(detailListIcon(action.icon)));
+                if (action.shortcut) {
+                    item.attr('data-yani-list-shortcut', action.shortcut)
+                        .append($('<span class="yani-detail__list-shortcut yani-detail__list-shortcut--' + action.shortcut + '"></span>'));
+                }
                 item.on('hover:enter click.yaniDetailList', function () {
                     toggleDetailListState(cardData, action, panel);
                 });
@@ -617,6 +627,30 @@
             });
             updateDetailListPanel(panel, cardData);
             return panel;
+        }
+
+        function remoteListColor(event) {
+            var key = String(event && (event.key || event.code || '') || '').toLowerCase();
+            var code = Number(event && (event.keyCode || event.which));
+            if (key === 'colorf0red' || key === 'red' || code === 403) return 'red';
+            if (key === 'colorf1green' || key === 'green' || code === 404) return 'green';
+            if (key === 'colorf2yellow' || key === 'yellow' || code === 405) return 'yellow';
+            if (key === 'colorf3blue' || key === 'blue' || code === 406) return 'blue';
+            return '';
+        }
+
+        function handleRemoteListShortcut(event) {
+            if (destroyed || event.defaultPrevented || event.repeat || !html.is(':visible') ||
+                $(event.target).closest('input, textarea, select, [contenteditable=true]').length) return;
+            var enabled = Lampa.Controller && Lampa.Controller.enabled ? Lampa.Controller.enabled() : null;
+            if (!enabled || !enabled.controller || enabled.controller.yaniDetailOwner !== detailComponent) return;
+            var color = remoteListColor(event);
+            if (!color) return;
+            var target = html.find('.yani-detail__list-action[data-yani-list-shortcut="' + color + '"]').first();
+            if (!target.length) return;
+            event.preventDefault();
+            event.stopPropagation();
+            target.trigger('hover:enter');
         }
 
         function createDetailRatingAction(cardData) {
@@ -825,6 +859,10 @@
 
         comp.start = function () {
             refreshDetailWatchState();
+            if (!remoteListShortcutHandler) {
+                remoteListShortcutHandler = handleRemoteListShortcut;
+                document.addEventListener('keydown', remoteListShortcutHandler, true);
+            }
             var controller = {
                 link: detailComponent,
                 yaniDetailOwner: detailComponent,
@@ -857,6 +895,8 @@
             destroyed = true;
             $(document).off('.yaniDetail');
             closePosterViewer();
+            if (remoteListShortcutHandler) document.removeEventListener('keydown', remoteListShortcutHandler, true);
+            remoteListShortcutHandler = null;
             if (videosAbort) videosAbort.abort();
             detailFocus.destroy();
             scroll.destroy();

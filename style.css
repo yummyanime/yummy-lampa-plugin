@@ -1448,8 +1448,16 @@ body > .yani-skip-prompt {
     filter: none;
 }
 
+.yani-detail__poster-column {
+    display: flex;
+    flex: 0 0 16em;
+    flex-direction: column;
+    align-items: stretch;
+    min-width: 0;
+}
 .yani-detail__poster {
     width: 16em;
+    max-width: 100%;
     max-height: 24em;
     object-fit: cover;
     border-radius: 0.8em;
@@ -1531,13 +1539,20 @@ body > .yani-skip-prompt {
 .yani-detail__button-icon { display: inline-flex; width: 1.25em; height: 1.25em; flex: 0 0 1.25em; }
 .yani-detail__button-icon svg { display: block; width: 100%; height: 100%; fill: currentColor; }
 .yani-detail__button.focus { background: #fff; color: #111; border-color: #fff; box-shadow: 0 0 0 0.2em rgba(239, 100, 112, .95), 0 0 1.2em rgba(255, 255, 255, .55); transform: scale(1.02); }
-.yani-detail__list-panel { display: inline-flex; margin-top: .8em; overflow: hidden; border: .1em solid rgba(255,255,255,.18); border-radius: .45em; background: rgba(0,0,0,.24); }
-.yani-detail__list-action { display: flex; align-items: center; justify-content: center; width: 2.7em; height: 2.35em; border-right: .08em solid rgba(255,255,255,.15); color: rgba(255,255,255,.72); background: transparent; }
+.yani-detail__list-dock { margin-top: .8em; padding: .62em; border: .08em solid rgba(255,255,255,.14); border-radius: .68em; background: linear-gradient(145deg, rgba(35,31,43,.9), rgba(17,20,28,.82)); box-shadow: inset 0 .06em 0 rgba(255,255,255,.06); }
+.yani-detail__list-dock-title { margin: 0 .18em .48em; color: rgba(255,255,255,.62); font-size: .7em; font-weight: 700; letter-spacing: .035em; }
+.yani-detail__list-panel { display: flex; width: 100%; overflow: hidden; border: .1em solid rgba(255,255,255,.18); border-radius: .45em; background: rgba(0,0,0,.24); box-sizing: border-box; }
+.yani-detail__list-action { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; height: 2.35em; flex: 1 1 0; border-right: .08em solid rgba(255,255,255,.15); color: rgba(255,255,255,.72); background: transparent; }
 .yani-detail__list-action:last-child { border-right: 0; }
 .yani-detail__list-action.active { color: #fff; background: #ef6470; }
 .yani-detail__list-action.focus { color: #111; background: #fff; box-shadow: inset 0 0 0 .18em #ef6470; transform: scale(1.06); position: relative; z-index: 1; }
 .yani-detail__list-icon { width: 1.25em; height: 1.25em; }
 .yani-detail__list-icon svg { display: block; width: 100%; height: 100%; fill: currentColor; }
+.yani-detail__list-shortcut { position: absolute; top: .24em; right: .24em; width: .42em; height: .42em; border: .06em solid rgba(255,255,255,.72); border-radius: 50%; box-shadow: 0 0 .42em currentColor; }
+.yani-detail__list-shortcut--red { color: #ff7180; background: #ef6470; }
+.yani-detail__list-shortcut--green { color: #62dda0; background: #55d795; }
+.yani-detail__list-shortcut--yellow { color: #f4ce66; background: #efc35b; }
+.yani-detail__list-shortcut--blue { color: #73caff; background: #62b8ff; }
 
 .yani-detail__comments { margin-top: 1.5em; padding-top: 1em; border-top: 0.08em solid rgba(255, 255, 255, .18); }
 .yani-detail__comments-title { margin-bottom: 0.7em; font-size: 1.35em; font-weight: 600; }
@@ -1650,7 +1665,12 @@ body > .yani-skip-prompt {
 
 @media (max-width: 700px) {
     .yani-detail { gap: 1em; padding: 1em; }
+    .yani-detail__poster-column { flex-basis: 10em; }
     .yani-detail__poster { width: 10em; }
+    .yani-detail__list-panel { display: grid; grid-template-columns: repeat(3, 1fr); }
+    .yani-detail__list-action { border-bottom: .08em solid rgba(255,255,255,.15); }
+    .yani-detail__list-action:nth-child(3n) { border-right: 0; }
+    .yani-detail__list-action:nth-last-child(-n+3) { border-bottom: 0; }
 }
 
 .yani-player {

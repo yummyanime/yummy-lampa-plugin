@@ -9,6 +9,14 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+### Added
+
+- Color remote shortcuts on title pages: red for Watching, green for Planned, blue for Completed, and yellow for Favorites
+
+### Changed
+
+- User-list controls on title pages moved into a separate dock below the poster to keep them out of the primary Watch-button focus path
+
 ## [0.47.0] - 2026-09-21
 
 ### Changed
