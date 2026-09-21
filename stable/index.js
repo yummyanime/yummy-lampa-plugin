@@ -1285,6 +1285,43 @@ function pluginYummyAnime() {
     var config = window.LampaYaniConfig;
     var pendingRequests = {};
     var pendingRefreshes = {};
+    var mutationFlush = null;
+    var MUTATION_QUEUE_KEY = 'yani_pending_mutations_v1';
+
+    function readMutationQueue() {
+        if (!window.Lampa || !Lampa.Storage) return [];
+        try {
+            var items = JSON.parse(Lampa.Storage.get(MUTATION_QUEUE_KEY, '[]'));
+            return Array.isArray(items) ? items : [];
+        } catch (ignore) {
+            return [];
+        }
+    }
+
+    function writeMutationQueue(items) {
+        if (!window.Lampa || !Lampa.Storage) return;
+        Lampa.Storage.set(MUTATION_QUEUE_KEY, JSON.stringify((items || []).slice(-100)));
+    }
+
+    function queueMutation(path, options) {
+        var entry = {
+            id: Date.now() + ':' + Math.random().toString(36).slice(2),
+            key: String(options.mutationKey || (options.method || 'POST') + ':' + path),
+            path: path,
+            method: options.method || 'POST',
+            headers: options.headers || {},
+            body: options.body,
+            createdAt: Date.now()
+        };
+        var items = readMutationQueue().filter(function (item) { return item && item.key !== entry.key; });
+        items.push(entry);
+        writeMutationQueue(items);
+        return {queued: true, pending: items.length};
+    }
+
+    function networkMutationFailure(error) {
+        return Boolean(error && error.name !== 'AbortError' && !Number(error.status));
+    }
 
     function sleep(milliseconds) {
         return new Promise(function (resolve) { setTimeout(resolve, milliseconds); });
@@ -1415,6 +1452,11 @@ function pluginYummyAnime() {
             var refreshedOptions = Object.assign({}, options, {authRefreshChecked: true});
             return LampaYaniAuth.refreshIfNeeded().then(function () {
                 return request(path, refreshedOptions);
+            }).catch(function (error) {
+                if ((options.method || 'GET') !== 'GET' && options.queueMutation && networkMutationFailure(error)) {
+                    return queueMutation(path, options);
+                }
+                throw error;
             });
         }
         var headers = Object.assign({}, options.headers || {});
@@ -1450,7 +1492,11 @@ function pluginYummyAnime() {
             body: options.body,
             signal: options.signal
         }, method === 'GET' && options.retry !== false, options.timeout).then(function (response) {
-            if (!response.ok) throw new Error('YummyAnime API: ' + response.status);
+            if (!response.ok) {
+                var responseError = new Error('YummyAnime API: ' + response.status);
+                responseError.status = response.status;
+                throw responseError;
+            }
             return response.json();
         }).then(function (payload) {
             if (method === 'GET' && options.cache !== false && window.Lampa && Lampa.Storage) {
@@ -1459,6 +1505,9 @@ function pluginYummyAnime() {
             }
             return payload;
         }).catch(function (error) {
+            if (method !== 'GET' && options.queueMutation && networkMutationFailure(error)) {
+                return queueMutation(path, options);
+            }
             if (method === 'GET' && options.cache !== false && window.Lampa && Lampa.Storage) {
                 cached = cached || readCache(cacheKey);
                 if (cached && (options.staleFallback || Date.now() - cached.time < cacheTtl)) return markFromCache(cached.data);
@@ -1475,6 +1524,49 @@ function pluginYummyAnime() {
             throw error;
         });
         return pendingRequests[pendingKey];
+    }
+
+    function flushMutations() {
+        if (mutationFlush) return mutationFlush;
+        if (!window.LampaYaniAuth || !LampaYaniAuth.token()) return Promise.resolve({pending: readMutationQueue().length});
+        function removeFlushed(entry) {
+            var current = readMutationQueue().filter(function (item) {
+                return !(item && item.id === entry.id);
+            });
+            writeMutationQueue(current);
+        }
+        function next() {
+            var items = readMutationQueue();
+            if (!items.length) {
+                return Promise.resolve({pending: 0});
+            }
+            var entry = items[0];
+            return request(entry.path, {
+                method: entry.method,
+                auth: true,
+                cache: false,
+                headers: entry.headers,
+                body: entry.body,
+                queueMutation: false
+            }).then(function () {
+                removeFlushed(entry);
+                return next();
+            }).catch(function (error) {
+                if (Number(error && error.status) >= 400 && Number(error.status) < 500) {
+                    removeFlushed(entry);
+                    return next();
+                }
+                return {pending: readMutationQueue().length, failed: true};
+            });
+        }
+        mutationFlush = next().then(function (result) {
+            mutationFlush = null;
+            return result;
+        }, function (error) {
+            mutationFlush = null;
+            throw error;
+        });
+        return mutationFlush;
     }
 
     function externalRequest(base, path, options) {
@@ -1512,6 +1604,8 @@ function pluginYummyAnime() {
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Api = window.LampaYaniApi = {
         request: request,
+        flushMutations: flushMutations,
+        pendingMutations: function () { return readMutationQueue().length; },
         fromCache: fromCache,
         search: function (query, params) {
             params = params || {};
@@ -1673,22 +1767,26 @@ function pluginYummyAnime() {
                 method: 'PUT',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({rate: value})
+                body: JSON.stringify({rate: value}),
+                queueMutation: true,
+                mutationKey: 'rate:' + id
             });
         },
         removeRate: function (id) {
-            return request('/anime/' + encodeURIComponent(id) + '/rate', {method: 'DELETE', auth: true});
+            return request('/anime/' + encodeURIComponent(id) + '/rate', {method: 'DELETE', auth: true, queueMutation: true, mutationKey: 'rate:' + id});
         },
         addFavorite: function (id) {
             return request('/anime/' + encodeURIComponent(id) + '/list/fav', {
                 method: 'PUT',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({date: Math.floor(Date.now() / 1000)})
+                body: JSON.stringify({date: Math.floor(Date.now() / 1000)}),
+                queueMutation: true,
+                mutationKey: 'favorite:' + id
             });
         },
         removeFavorite: function (id) {
-            return request('/anime/' + encodeURIComponent(id) + '/list/fav', {method: 'DELETE', auth: true});
+            return request('/anime/' + encodeURIComponent(id) + '/list/fav', {method: 'DELETE', auth: true, queueMutation: true, mutationKey: 'favorite:' + id});
         },
         addToList: function (id, list) {
             var listIds = {watching: 0, planned: 1, completed: 2, dropped: 3, postponed: 5};
@@ -1698,11 +1796,13 @@ function pluginYummyAnime() {
                 method: 'PUT',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({list: listId, date: Math.floor(Date.now() / 1000)})
+                body: JSON.stringify({list: listId, date: Math.floor(Date.now() / 1000)}),
+                queueMutation: true,
+                mutationKey: 'list:' + id
             });
         },
         removeFromList: function (id) {
-            return request('/anime/' + encodeURIComponent(id) + '/list', {method: 'DELETE', auth: true});
+            return request('/anime/' + encodeURIComponent(id) + '/list', {method: 'DELETE', auth: true, queueMutation: true, mutationKey: 'list:' + id});
         },
         comments: function (id, skip) {
             return request('/comments/anime/' + encodeURIComponent(id) + '?limit=20&sort=new&skip=' + encodeURIComponent(skip || 0));
@@ -1769,7 +1869,9 @@ function pluginYummyAnime() {
                 method: 'PUT',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({time: Math.max(0, Number(time) || 0), duration: Math.max(0, Number(duration) || 0), times: []})
+                body: JSON.stringify({time: Math.max(0, Number(time) || 0), duration: Math.max(0, Number(duration) || 0), times: []}),
+                queueMutation: true,
+                mutationKey: 'progress:' + videoId
             });
         },
         syncVideoWatches: function (videos) {
@@ -1777,7 +1879,9 @@ function pluginYummyAnime() {
                 method: 'POST',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({videos: videos || []})
+                body: JSON.stringify({videos: videos || []}),
+                queueMutation: true,
+                mutationKey: 'progress-batch'
             });
         },
         watchHistory: function (limit, offset, control) {
@@ -1798,6 +1902,12 @@ function pluginYummyAnime() {
             })
         }
     };
+
+    if (window.addEventListener) {
+        window.addEventListener('online', function () { flushMutations(); });
+        setTimeout(function () { flushMutations(); }, 3000);
+        if (typeof setInterval === 'function') setInterval(function () { flushMutations(); }, 15 * 60 * 1000);
+    }
 }(window));
 
 (function (window) {
@@ -2267,7 +2377,8 @@ function pluginYummyAnime() {
         var params = queryParams(fullUrl);
         var animeId = params.anime_id;
         var episode = window.LampaYaniEpisode.normalize(params.episode || 1);
-        var dubbingCode = String(params.dubbing_code || '').toLowerCase();
+        var dubbingCode = String(params.dubbing_code || '').trim();
+        var dubbingLabel = String(params.dubbing || '').replace(/^\s*\u041e\u0437\u0432\u0443\u0447\u043a\u0430\s+/i, '').trim();
         if (!animeId) return Promise.reject(new Error('CVH anime id not found'));
 
         // CVH signs its CDN links for whichever agent asked for them - the
@@ -2286,11 +2397,20 @@ function pluginYummyAnime() {
         };
         var playlistUrl = 'https://plapi.cdnvideohub.com/api/v1/player/sv/playlist?pub=745&id=' + encodeURIComponent(animeId) + '&aggr=mali';
         return requestJson(playlistUrl, {headers: headers}).then(function (playlist) {
+            var serial = !playlist || playlist.isSerial !== false;
             var candidates = (playlist && Array.isArray(playlist.items) ? playlist.items : []).filter(function (item) {
-                return window.LampaYaniEpisode.same(item && item.episode, episode);
+                if (!serial) return true;
+                return item && (item.episode === null || item.episode === undefined || window.LampaYaniEpisode.same(item.episode, episode));
             });
+            function sameVoice(value, expected) {
+                return Boolean(expected) && String(value || '').trim().toLowerCase() === String(expected).trim().toLowerCase();
+            }
             var selected = candidates.filter(function (item) {
-                return String(item && item.voiceStudio || '').toLowerCase() === dubbingCode;
+                return sameVoice(item && item.voiceStudio, dubbingCode);
+            })[0] || candidates.filter(function (item) {
+                return sameVoice([item && item.voiceType, item && item.voiceStudio].filter(Boolean).join(' '), dubbingLabel);
+            })[0] || candidates.filter(function (item) {
+                return sameVoice(item && item.voiceStudio, dubbingLabel);
             })[0] || candidates[0];
             if (!selected || !selected.vkId) throw new Error('CVH episode not found');
             return requestJson('https://plapi.cdnvideohub.com/api/v1/player/sv/video/' + encodeURIComponent(selected.vkId), {headers: headers});
@@ -7562,6 +7682,19 @@ function pluginYummyAnime() {
             return voices.indexOf(last);
         }
 
+        function applySavedPlaybackPosition(card, video) {
+            var playback = card && (card.yani_resume || getPlayback(card.yani_id));
+            var Episode = window.LampaYaniEpisode;
+            var sameEpisode = Episode && Episode.same && Episode.valueOf
+                ? Episode.same(Episode.valueOf(video), playback && playback.number)
+                : Number(video && (video.number || video.index)) === Number(playback && playback.number);
+            if (!playback || !video || !sameEpisode) return video;
+            video.watched = video.watched || {};
+            video.watched.end_time = Math.max(Number(video.watched.end_time || 0), Number(playback.time || 0));
+            if (!video.duration && playback.duration) video.duration = Number(playback.duration);
+            return video;
+        }
+
         function beginPlaybackNavigation(element, collection) {
             // Temporary Select windows must not replace the detail controller and
             // focus target that need to be restored after playback.
@@ -7766,10 +7899,19 @@ function pluginYummyAnime() {
                         player: data.player || data.source || data.service || '',
                         quality: videoQualityLabel(video),
                         source: source,
-                        videos: []
+                        videos: [],
+                        episodeKeys: {}
                     };
                 }
                 groups[key].videos.push(video);
+                var Episode = window.LampaYaniEpisode;
+                var episodeKey = Episode && Episode.key && Episode.valueOf
+                    ? Episode.key(Episode.valueOf(video))
+                    : String(video.number || video.index || '').trim();
+                if (episodeKey) groups[key].episodeKeys[episodeKey] = true;
+            });
+            Object.keys(groups).forEach(function (key) {
+                groups[key].episodeCount = Object.keys(groups[key].episodeKeys).length || groups[key].videos.length;
             });
             return groups;
         }
@@ -7906,11 +8048,11 @@ function pluginYummyAnime() {
             var episodes = videos.map(function (video) {
                 return {title: episodeOptionTitle(card, video), video: video};
             });
-            if (episodes.length === 1) return launchVideo(card, group, videos, videos[0]);
+            if (episodes.length === 1) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
             showPlaybackSelect({
                 title: t('choose_episode') + ' · ' + group.title,
                 items: episodes,
-                onSelect: function (item) { launchVideo(card, group, videos, item.video); }
+                onSelect: function (item) { launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video)); }
             });
         }
 
@@ -16996,7 +17138,7 @@ function pluginYummyAnime() {
 
     function voiceOptionSubtitle(group) {
         return t('video_quality') + ': ' + (group.quality || t('quality_auto')) +
-            (group.source ? ' · ' + group.source : '') + ' · ' + group.videos.length + ' ' + t('episodes_short');
+            (group.source ? ' · ' + group.source : '') + ' · ' + Number(group.episodeCount || group.videos.length) + ' ' + t('episodes_short');
     }
 
     function enrichVoiceOptionQuality(item, target) {

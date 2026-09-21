@@ -401,7 +401,8 @@
         var params = queryParams(fullUrl);
         var animeId = params.anime_id;
         var episode = window.LampaYaniEpisode.normalize(params.episode || 1);
-        var dubbingCode = String(params.dubbing_code || '').toLowerCase();
+        var dubbingCode = String(params.dubbing_code || '').trim();
+        var dubbingLabel = String(params.dubbing || '').replace(/^\s*\u041e\u0437\u0432\u0443\u0447\u043a\u0430\s+/i, '').trim();
         if (!animeId) return Promise.reject(new Error('CVH anime id not found'));
 
         // CVH signs its CDN links for whichever agent asked for them - the
@@ -420,11 +421,20 @@
         };
         var playlistUrl = 'https://plapi.cdnvideohub.com/api/v1/player/sv/playlist?pub=745&id=' + encodeURIComponent(animeId) + '&aggr=mali';
         return requestJson(playlistUrl, {headers: headers}).then(function (playlist) {
+            var serial = !playlist || playlist.isSerial !== false;
             var candidates = (playlist && Array.isArray(playlist.items) ? playlist.items : []).filter(function (item) {
-                return window.LampaYaniEpisode.same(item && item.episode, episode);
+                if (!serial) return true;
+                return item && (item.episode === null || item.episode === undefined || window.LampaYaniEpisode.same(item.episode, episode));
             });
+            function sameVoice(value, expected) {
+                return Boolean(expected) && String(value || '').trim().toLowerCase() === String(expected).trim().toLowerCase();
+            }
             var selected = candidates.filter(function (item) {
-                return String(item && item.voiceStudio || '').toLowerCase() === dubbingCode;
+                return sameVoice(item && item.voiceStudio, dubbingCode);
+            })[0] || candidates.filter(function (item) {
+                return sameVoice([item && item.voiceType, item && item.voiceStudio].filter(Boolean).join(' '), dubbingLabel);
+            })[0] || candidates.filter(function (item) {
+                return sameVoice(item && item.voiceStudio, dubbingLabel);
             })[0] || candidates[0];
             if (!selected || !selected.vkId) throw new Error('CVH episode not found');
             return requestJson('https://plapi.cdnvideohub.com/api/v1/player/sv/video/' + encodeURIComponent(selected.vkId), {headers: headers});

@@ -104,6 +104,19 @@
             return voices.indexOf(last);
         }
 
+        function applySavedPlaybackPosition(card, video) {
+            var playback = card && (card.yani_resume || getPlayback(card.yani_id));
+            var Episode = window.LampaYaniEpisode;
+            var sameEpisode = Episode && Episode.same && Episode.valueOf
+                ? Episode.same(Episode.valueOf(video), playback && playback.number)
+                : Number(video && (video.number || video.index)) === Number(playback && playback.number);
+            if (!playback || !video || !sameEpisode) return video;
+            video.watched = video.watched || {};
+            video.watched.end_time = Math.max(Number(video.watched.end_time || 0), Number(playback.time || 0));
+            if (!video.duration && playback.duration) video.duration = Number(playback.duration);
+            return video;
+        }
+
         function beginPlaybackNavigation(element, collection) {
             // Temporary Select windows must not replace the detail controller and
             // focus target that need to be restored after playback.
@@ -308,10 +321,19 @@
                         player: data.player || data.source || data.service || '',
                         quality: videoQualityLabel(video),
                         source: source,
-                        videos: []
+                        videos: [],
+                        episodeKeys: {}
                     };
                 }
                 groups[key].videos.push(video);
+                var Episode = window.LampaYaniEpisode;
+                var episodeKey = Episode && Episode.key && Episode.valueOf
+                    ? Episode.key(Episode.valueOf(video))
+                    : String(video.number || video.index || '').trim();
+                if (episodeKey) groups[key].episodeKeys[episodeKey] = true;
+            });
+            Object.keys(groups).forEach(function (key) {
+                groups[key].episodeCount = Object.keys(groups[key].episodeKeys).length || groups[key].videos.length;
             });
             return groups;
         }
@@ -448,11 +470,11 @@
             var episodes = videos.map(function (video) {
                 return {title: episodeOptionTitle(card, video), video: video};
             });
-            if (episodes.length === 1) return launchVideo(card, group, videos, videos[0]);
+            if (episodes.length === 1) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
             showPlaybackSelect({
                 title: t('choose_episode') + ' · ' + group.title,
                 items: episodes,
-                onSelect: function (item) { launchVideo(card, group, videos, item.video); }
+                onSelect: function (item) { launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video)); }
             });
         }
 

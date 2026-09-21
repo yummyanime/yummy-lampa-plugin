@@ -12,10 +12,17 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 ### Added
 
 - Color remote shortcuts on title pages: red for Watching, green for Planned, blue for Completed, and yellow for Favorites
+- A persistent mutation queue that retries progress, list, favorite, and rating changes after connectivity returns
 
 ### Changed
 
 - User-list controls on title pages moved into a separate dock below the poster to keep them out of the primary Watch-button focus path
+- Voice choices to show the number of unique available episodes
+
+### Fixed
+
+- CVH selection for movies without episode fields and for dubbing labels that do not exactly match `dubbing_code`
+- Playback position being lost when the same episode is opened through another voice or source
 
 ## [0.47.0] - 2026-09-21
 

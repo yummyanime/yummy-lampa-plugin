@@ -99,6 +99,10 @@ for (var episode = 1; episode <= 12; episode++) {
 var grouped = api.groupVideos(episodes);
 assert.strictEqual(Object.keys(grouped).length, 1, 'quality changes must not split one dubbing/source into multiple groups');
 assert.strictEqual(grouped[Object.keys(grouped)[0]].videos.length, 12, 'all episodes must stay in the selected dubbing/source group');
+assert.strictEqual(grouped[Object.keys(grouped)[0]].episodeCount, 12, 'voice metadata must expose the unique episode count');
+assert.match(source, /function applySavedPlaybackPosition\(card, video\)/);
+assert.match(source, /Episode\.same\(Episode\.valueOf\(video\), playback && playback\.number\)/,
+    'switching a voice or source must only carry progress to the same episode');
 assert.strictEqual(api.playbackReturnState.active, false);
 api.beginPlaybackNavigation();
 assert.strictEqual(api.playbackReturnState.active, true);

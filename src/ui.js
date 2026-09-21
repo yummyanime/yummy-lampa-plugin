@@ -2953,7 +2953,7 @@
 
     function voiceOptionSubtitle(group) {
         return t('video_quality') + ': ' + (group.quality || t('quality_auto')) +
-            (group.source ? ' · ' + group.source : '') + ' · ' + group.videos.length + ' ' + t('episodes_short');
+            (group.source ? ' · ' + group.source : '') + ' · ' + Number(group.episodeCount || group.videos.length) + ' ' + t('episodes_short');
     }
 
     function enrichVoiceOptionQuality(item, target) {

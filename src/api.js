@@ -4,6 +4,43 @@
     var config = window.LampaYaniConfig;
     var pendingRequests = {};
     var pendingRefreshes = {};
+    var mutationFlush = null;
+    var MUTATION_QUEUE_KEY = 'yani_pending_mutations_v1';
+
+    function readMutationQueue() {
+        if (!window.Lampa || !Lampa.Storage) return [];
+        try {
+            var items = JSON.parse(Lampa.Storage.get(MUTATION_QUEUE_KEY, '[]'));
+            return Array.isArray(items) ? items : [];
+        } catch (ignore) {
+            return [];
+        }
+    }
+
+    function writeMutationQueue(items) {
+        if (!window.Lampa || !Lampa.Storage) return;
+        Lampa.Storage.set(MUTATION_QUEUE_KEY, JSON.stringify((items || []).slice(-100)));
+    }
+
+    function queueMutation(path, options) {
+        var entry = {
+            id: Date.now() + ':' + Math.random().toString(36).slice(2),
+            key: String(options.mutationKey || (options.method || 'POST') + ':' + path),
+            path: path,
+            method: options.method || 'POST',
+            headers: options.headers || {},
+            body: options.body,
+            createdAt: Date.now()
+        };
+        var items = readMutationQueue().filter(function (item) { return item && item.key !== entry.key; });
+        items.push(entry);
+        writeMutationQueue(items);
+        return {queued: true, pending: items.length};
+    }
+
+    function networkMutationFailure(error) {
+        return Boolean(error && error.name !== 'AbortError' && !Number(error.status));
+    }
 
     function sleep(milliseconds) {
         return new Promise(function (resolve) { setTimeout(resolve, milliseconds); });
@@ -134,6 +171,11 @@
             var refreshedOptions = Object.assign({}, options, {authRefreshChecked: true});
             return LampaYaniAuth.refreshIfNeeded().then(function () {
                 return request(path, refreshedOptions);
+            }).catch(function (error) {
+                if ((options.method || 'GET') !== 'GET' && options.queueMutation && networkMutationFailure(error)) {
+                    return queueMutation(path, options);
+                }
+                throw error;
             });
         }
         var headers = Object.assign({}, options.headers || {});
@@ -169,7 +211,11 @@
             body: options.body,
             signal: options.signal
         }, method === 'GET' && options.retry !== false, options.timeout).then(function (response) {
-            if (!response.ok) throw new Error('YummyAnime API: ' + response.status);
+            if (!response.ok) {
+                var responseError = new Error('YummyAnime API: ' + response.status);
+                responseError.status = response.status;
+                throw responseError;
+            }
             return response.json();
         }).then(function (payload) {
             if (method === 'GET' && options.cache !== false && window.Lampa && Lampa.Storage) {
@@ -178,6 +224,9 @@
             }
             return payload;
         }).catch(function (error) {
+            if (method !== 'GET' && options.queueMutation && networkMutationFailure(error)) {
+                return queueMutation(path, options);
+            }
             if (method === 'GET' && options.cache !== false && window.Lampa && Lampa.Storage) {
                 cached = cached || readCache(cacheKey);
                 if (cached && (options.staleFallback || Date.now() - cached.time < cacheTtl)) return markFromCache(cached.data);
@@ -194,6 +243,49 @@
             throw error;
         });
         return pendingRequests[pendingKey];
+    }
+
+    function flushMutations() {
+        if (mutationFlush) return mutationFlush;
+        if (!window.LampaYaniAuth || !LampaYaniAuth.token()) return Promise.resolve({pending: readMutationQueue().length});
+        function removeFlushed(entry) {
+            var current = readMutationQueue().filter(function (item) {
+                return !(item && item.id === entry.id);
+            });
+            writeMutationQueue(current);
+        }
+        function next() {
+            var items = readMutationQueue();
+            if (!items.length) {
+                return Promise.resolve({pending: 0});
+            }
+            var entry = items[0];
+            return request(entry.path, {
+                method: entry.method,
+                auth: true,
+                cache: false,
+                headers: entry.headers,
+                body: entry.body,
+                queueMutation: false
+            }).then(function () {
+                removeFlushed(entry);
+                return next();
+            }).catch(function (error) {
+                if (Number(error && error.status) >= 400 && Number(error.status) < 500) {
+                    removeFlushed(entry);
+                    return next();
+                }
+                return {pending: readMutationQueue().length, failed: true};
+            });
+        }
+        mutationFlush = next().then(function (result) {
+            mutationFlush = null;
+            return result;
+        }, function (error) {
+            mutationFlush = null;
+            throw error;
+        });
+        return mutationFlush;
     }
 
     function externalRequest(base, path, options) {
@@ -231,6 +323,8 @@
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Api = window.LampaYaniApi = {
         request: request,
+        flushMutations: flushMutations,
+        pendingMutations: function () { return readMutationQueue().length; },
         fromCache: fromCache,
         search: function (query, params) {
             params = params || {};
@@ -392,22 +486,26 @@
                 method: 'PUT',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({rate: value})
+                body: JSON.stringify({rate: value}),
+                queueMutation: true,
+                mutationKey: 'rate:' + id
             });
         },
         removeRate: function (id) {
-            return request('/anime/' + encodeURIComponent(id) + '/rate', {method: 'DELETE', auth: true});
+            return request('/anime/' + encodeURIComponent(id) + '/rate', {method: 'DELETE', auth: true, queueMutation: true, mutationKey: 'rate:' + id});
         },
         addFavorite: function (id) {
             return request('/anime/' + encodeURIComponent(id) + '/list/fav', {
                 method: 'PUT',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({date: Math.floor(Date.now() / 1000)})
+                body: JSON.stringify({date: Math.floor(Date.now() / 1000)}),
+                queueMutation: true,
+                mutationKey: 'favorite:' + id
             });
         },
         removeFavorite: function (id) {
-            return request('/anime/' + encodeURIComponent(id) + '/list/fav', {method: 'DELETE', auth: true});
+            return request('/anime/' + encodeURIComponent(id) + '/list/fav', {method: 'DELETE', auth: true, queueMutation: true, mutationKey: 'favorite:' + id});
         },
         addToList: function (id, list) {
             var listIds = {watching: 0, planned: 1, completed: 2, dropped: 3, postponed: 5};
@@ -417,11 +515,13 @@
                 method: 'PUT',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({list: listId, date: Math.floor(Date.now() / 1000)})
+                body: JSON.stringify({list: listId, date: Math.floor(Date.now() / 1000)}),
+                queueMutation: true,
+                mutationKey: 'list:' + id
             });
         },
         removeFromList: function (id) {
-            return request('/anime/' + encodeURIComponent(id) + '/list', {method: 'DELETE', auth: true});
+            return request('/anime/' + encodeURIComponent(id) + '/list', {method: 'DELETE', auth: true, queueMutation: true, mutationKey: 'list:' + id});
         },
         comments: function (id, skip) {
             return request('/comments/anime/' + encodeURIComponent(id) + '?limit=20&sort=new&skip=' + encodeURIComponent(skip || 0));
@@ -488,7 +588,9 @@
                 method: 'PUT',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({time: Math.max(0, Number(time) || 0), duration: Math.max(0, Number(duration) || 0), times: []})
+                body: JSON.stringify({time: Math.max(0, Number(time) || 0), duration: Math.max(0, Number(duration) || 0), times: []}),
+                queueMutation: true,
+                mutationKey: 'progress:' + videoId
             });
         },
         syncVideoWatches: function (videos) {
@@ -496,7 +598,9 @@
                 method: 'POST',
                 auth: true,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({videos: videos || []})
+                body: JSON.stringify({videos: videos || []}),
+                queueMutation: true,
+                mutationKey: 'progress-batch'
             });
         },
         watchHistory: function (limit, offset, control) {
@@ -517,4 +621,10 @@
             })
         }
     };
+
+    if (window.addEventListener) {
+        window.addEventListener('online', function () { flushMutations(); });
+        setTimeout(function () { flushMutations(); }, 3000);
+        if (typeof setInterval === 'function') setInterval(function () { flushMutations(); }, 15 * 60 * 1000);
+    }
 }(window));

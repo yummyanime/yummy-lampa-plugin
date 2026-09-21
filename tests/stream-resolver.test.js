@@ -9,12 +9,23 @@ global.LampaYaniEpisode = {
 };
 global.fetch = async function (url) {
     if (String(url).indexOf('plapi.cdnvideohub.com/api/v1/player/sv/playlist') >= 0) {
+        var movie = String(url).indexOf('id=999') >= 0;
         return {
             ok: true,
             text: async function () {
-                return JSON.stringify({items: [
+                return JSON.stringify(movie ? {isSerial: false, items: [
+                    {voiceStudio: '\u041e\u0420\u0422', voiceType: '\u0414\u0443\u0431\u043b\u044f\u0436', vkId: 'cvh-movie'}
+                ]} : {items: [
                     {episode: 2, voiceStudio: 'AniLibria', vkId: 'cvh-video-2'}
                 ]});
+            }
+        };
+    }
+    if (String(url).indexOf('plapi.cdnvideohub.com/api/v1/player/sv/video/cvh-movie') >= 0) {
+        return {
+            ok: true,
+            text: async function () {
+                return JSON.stringify({sources: {mpegHighUrl: 'https://vd.example.test/movie-720.mp4'}});
             }
         };
     }
@@ -136,7 +147,8 @@ Promise.all([
     LampaYaniStreamResolver.resolve('https://rutube.ru/play/embed/70e53a86c25f5dab63d1b1151bb8c619'),
     LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239999'),
     LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?token=opaque'),
-    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=AniLibria&anime_id=31240&episode=2')
+    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=AniLibria&anime_id=31240&episode=2'),
+    LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=ort&dubbing=%D0%9E%D0%B7%D0%B2%D1%83%D1%87%D0%BA%D0%B0%20%D0%94%D1%83%D0%B1%D0%BB%D1%8F%D0%B6%20%D0%9E%D0%A0%D0%A2&anime_id=999&episode=1')
 ]).then(function (results) {
     var result = results[0];
     assert.strictEqual(result.source, 'aksor');
@@ -173,6 +185,9 @@ Promise.all([
     assert.strictEqual(cvh.url, 'https://vd.example.test/?type=5&token=1080');
     assert.strictEqual(cvh.qualities['720p'], 'https://vd.example.test/?type=3&token=720');
     assert.match(cvh.headers['User-Agent'], /Chrome\/149/);
+    var cvhMovie = results[6];
+    assert.strictEqual(cvhMovie.source, 'cvh');
+    assert.strictEqual(cvhMovie.url, 'https://vd.example.test/movie-720.mp4', 'CVH movies without an episode field must resolve by the dubbing label');
     global.AndroidJS = {};
     return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239777').then(function (androidVk) {
         delete global.AndroidJS;
