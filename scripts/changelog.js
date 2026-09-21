@@ -251,6 +251,20 @@ function changelogSection(source, version) {
     return 'Release ' + String(version || '').replace(/^v/i, '');
 }
 
+function groupsHaveItems(groups) {
+    if (!groups) return false;
+    if (CATEGORIES.some(function (name) { return (groups[name] || []).length; })) return true;
+    return (groups._extra || []).some(function (extra) {
+        return extra.items && extra.items.length;
+    });
+}
+
+function unreleasedHasItems(source) {
+    const folded = /## \[Unreleased\]/i.test(source) ? foldUnreleased(source) : convertLegacy(source);
+    const unreleased = parseSections(folded).filter(function (section) { return section.kind === 'unreleased'; })[0];
+    return Boolean(unreleased && groupsHaveItems(unreleased.groups));
+}
+
 function foldFile(root) {
     const file = path.join(root || path.join(__dirname, '..'), 'CHANGELOG.md');
     const source = fs.readFileSync(file, 'utf8');
@@ -285,5 +299,6 @@ module.exports = {
     convertLegacy: convertLegacy,
     insertRelease: insertRelease,
     changelogSection: changelogSection,
+    unreleasedHasItems: unreleasedHasItems,
     foldFile: foldFile
 };

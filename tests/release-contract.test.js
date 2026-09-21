@@ -16,6 +16,7 @@ assert.strictEqual(release.normalizeVersion('v0.41.38'), '0.41.38');
 assert.match(release.changelogSection('# Changelog\n\n## 0.41.40 — 2026-08-13\n\n- First.\n\n## 0.41.39 — 2026-08-13\n\n- Old.\n', '0.41.40'), /First/);
 assert.doesNotMatch(release.changelogSection('# Changelog\n\n## 0.41.40 — 2026-08-13\n\n- First.\n\n## 0.41.39 — 2026-08-13\n\n- Old.\n', '0.41.40'), /Old/);
 assert.match(source, /--promote/);
+assert.match(source, /bump-version\.js patch/);
 assert.match(pages, /cp -R stable _pages\/stable/);
 assert.match(workflow, /gh release create/);
 assert.match(workflow, /tags:[\s\S]*v\*/);

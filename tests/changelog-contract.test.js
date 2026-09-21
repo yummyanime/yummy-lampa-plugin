@@ -63,6 +63,9 @@ const unreleased = folded.slice(folded.indexOf('## [Unreleased]'), folded.indexO
 assert.ok(unreleased.indexOf('### Fixed') < unreleased.indexOf('### Security'));
 assert.ok(unreleased.indexOf('### Security') < unreleased.indexOf('### Weird'));
 
+assert.ok(log.unreleasedHasItems(folded));
+assert.ok(!log.unreleasedHasItems(converted));
+
 const released = log.insertRelease(converted, '0.46.44', '2026-09-21', ['Fixed overlay overlap']);
 assert.match(released, /## \[Unreleased\]\s*\r?\n\s*\r?\n## \[0\.46\.44\] - 2026-09-21/);
 assert.match(released, /### Fixed[\s\S]*Overlay overlap/);

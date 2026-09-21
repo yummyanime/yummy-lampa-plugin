@@ -162,7 +162,9 @@ function usage() {
         'Test URL:        ' + TEST_URL,
         '',
         'Promote the current dist bundle to production and tag it, or roll production',
-        'back to an earlier git tag without changing the test channel.'
+        'back to an earlier git tag without changing the test channel.',
+        'This does not bump src/config.js. Cut a new version first with:',
+        '  node scripts/bump-version.js patch'
     ].join('\n');
 }
 
@@ -175,6 +177,7 @@ if (require.main === module) {
         }
         const result = promote(args);
         console.log((result.rollback ? 'Rolled production back to ' : 'Promoted production to ') + result.version);
+        console.log('Plugin version is unchanged; run node scripts/bump-version.js patch to cut a new one.');
         console.log('Production: ' + result.stableUrl);
         console.log('Test:       ' + result.testUrl);
         if (result.tagged) console.log('Created git tag ' + result.tag);

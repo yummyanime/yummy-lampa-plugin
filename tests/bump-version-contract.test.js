@@ -66,4 +66,43 @@ assert.match(changelog, /Version bump script/);
 assert.match(changelog, /## \[0\.41\.39\] - 2026-08-13/);
 
 fs.rmSync(root, {recursive: true, force: true});
+
+const keepRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'yani-version-keep-'));
+fs.mkdirSync(path.join(keepRoot, 'src'));
+fs.mkdirSync(path.join(keepRoot, 'docs'));
+fs.writeFileSync(path.join(keepRoot, 'src/config.js'), "window.LampaYaniConfig = { version: '0.47.0' };\n");
+fs.writeFileSync(path.join(keepRoot, 'README.md'), 'Current version: `0.47.0`\n');
+fs.writeFileSync(path.join(keepRoot, 'docs/README.en.md'), '');
+fs.writeFileSync(path.join(keepRoot, 'CHANGELOG.md'), [
+    '# Changelog',
+    '',
+    '## [Unreleased]',
+    '',
+    '### Fixed',
+    '',
+    '- Overlay overlap',
+    '',
+    '## [0.47.0] - 2026-09-21',
+    '',
+    '### Changed',
+    '',
+    '- Changelog format'
+].join('\n') + '\n');
+const fromUnreleased = bump.applyVersion({
+    root: keepRoot,
+    bump: 'patch',
+    date: '2026-09-21',
+    notes: [],
+    build: function () {}
+});
+assert.strictEqual(fromUnreleased.version, '0.47.1');
+const keepLog = fs.readFileSync(path.join(keepRoot, 'CHANGELOG.md'), 'utf8');
+assert.match(keepLog, /## \[0\.47\.1\] - 2026-09-21/);
+assert.match(keepLog, /Overlay overlap/);
+assert.doesNotMatch(keepLog.slice(keepLog.indexOf('## [Unreleased]'), keepLog.indexOf('## [0.47.1]')), /Overlay overlap/);
+assert.throws(function () {
+    bump.updateChangelog('# Changelog\n\n## [Unreleased]\n', '0.47.1', '2026-09-21', []);
+});
+fs.rmSync(keepRoot, {recursive: true, force: true});
+
 console.log('bump version contract tests passed');

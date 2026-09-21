@@ -88,9 +88,17 @@ function formatNotes(notes) {
     return formatted;
 }
 
+function hasCliNotes(notes) {
+    const items = Array.isArray(notes) ? notes : notes ? [notes] : [];
+    return items.some(function (note) { return String(note || '').trim(); });
+}
+
 function updateChangelog(source, version, date, notes) {
-    formatNotes(notes);
-    return changelog.insertRelease(source, version, date, notes);
+    if (hasCliNotes(notes)) formatNotes(notes);
+    else if (!changelog.unreleasedHasItems(source)) {
+        throw new Error('Provide changelog notes with -m, or add entries under [Unreleased]');
+    }
+    return changelog.insertRelease(source, version, date, hasCliNotes(notes) ? notes : []);
 }
 
 function applyVersion(options) {
@@ -145,6 +153,7 @@ function usage() {
         'Usage: node scripts/bump-version.js [patch|minor|major|<version>] [--date YYYY-MM-DD] [--dry-run] [-m note] [note...]',
         '',
         'Notes must start with Added, Changed, Deprecated, Removed, Fixed, or Security. Fix/Add/Remove/Refactor still work. Use | for related changes.',
+        'If [Unreleased] already has entries, -m can be omitted.',
         'Updates src/config.js, README version, CHANGELOG, and dist/index.js together.'
     ].join('\n');
 }
