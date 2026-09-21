@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.1',
+        version: '0.47.2',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -10878,6 +10878,24 @@ function pluginYummyAnime() {
     }
 
     function normalizeRemoteHistory(payload) {
+        var dropped = 0;
+        var droppedSample = null;
+        var normalized = normalizeRemoteItems(payload, function (item) {
+            dropped += 1;
+            if (!droppedSample) droppedSample = item;
+        });
+        // A record without a title id cannot be shown, but discarding it without
+        // a word is how a change in the API's field names turns into an empty
+        // section that nobody can explain. Console only - nothing for the viewer.
+        if (dropped) {
+            console.warn('[YummyAnime History] Dropped ' + dropped + ' of ' + (normalized.length + dropped) +
+                ' account records without an anime id; fields seen: ' +
+                Object.keys(droppedSample && typeof droppedSample === 'object' ? droppedSample : {}).slice(0, 14).join(', '));
+        }
+        return normalized;
+    }
+
+    function normalizeRemoteItems(payload, onDropped) {
         return historyPayloadItems(payload).map(function (item) {
             item = item || {};
             var screenshot = item.screenshot || {};
@@ -10886,7 +10904,10 @@ function pluginYummyAnime() {
             var animeId = item.anime_id || item.animeId || anime.anime_id || anime.id;
             var explicitEpisode = item.episode || screenshot.episode || item.number || watched.episode || '';
             var episode = explicitEpisode || item.ep_title || '';
-            if (!animeId) return null;
+            if (!animeId) {
+                if (onDropped) onDropped(item);
+                return null;
+            }
             return {
                 anime_id: animeId,
                 video_id: item.video_id || item.videoId || item.video && item.video.id || '',
@@ -10905,6 +10926,18 @@ function pluginYummyAnime() {
         }).filter(Boolean);
     }
 
+    // An empty page is normal at the end of the history. An empty page whose
+    // body is an object with keys the parser does not know is not: it is the API
+    // having changed shape, and it looks exactly like "no history".
+    function warnUnrecognizedHistory(payload, offset) {
+        var body = payload && payload.response !== undefined ? payload.response : payload;
+        if (!body || typeof body !== 'object' || Array.isArray(body)) return;
+        var keys = Object.keys(body);
+        if (!keys.length) return;
+        console.warn('[YummyAnime History] Page at offset ' + offset + ' held no records the parser recognises; ' +
+            'response keys: ' + keys.slice(0, 12).join(', '));
+    }
+
     /**
      * Reads the account history up to `maxItems`.
      *
@@ -10920,7 +10953,9 @@ function pluginYummyAnime() {
 
         function page(offset) {
             return Promise.resolve(fetchPage(size, offset, control)).then(function (payload) {
-                return {raw: historyPayloadItems(payload).length, entries: normalizeRemoteHistory(payload)};
+                var raw = historyPayloadItems(payload).length;
+                if (!raw) warnUnrecognizedHistory(payload, offset);
+                return {raw: raw, entries: normalizeRemoteHistory(payload)};
             });
         }
 
@@ -11345,7 +11380,12 @@ function pluginYummyAnime() {
         }
 
         function loadRemotePage() {
-            if (!deps.authorized()) return Promise.resolve({entries: [], count: 0});
+            if (!deps.authorized()) {
+                // Without a token the account history is never requested, and the
+                // section quietly shows only what this device remembers.
+                console.info('[YummyAnime History] Not signed in: only this device\'s history is shown');
+                return Promise.resolve({entries: [], count: 0});
+            }
             if (continueMode) {
                 return fetchHistoryRange(deps.fetchRemote, continueLimit, limit).then(function (entries) {
                     return {entries: entries, count: entries.length};

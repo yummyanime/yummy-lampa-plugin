@@ -8,7 +8,16 @@ const model = fs.readFileSync('src/ui-card-model.js', 'utf8');
 const historySource = fs.readFileSync('src/ui-playback-history.js', 'utf8');
 const menuSource = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
 const sectionsSource = fs.readFileSync('src/ui-home-sections.js', 'utf8');
-const context = {window: {}};
+const capturedWarnings = [];
+const context = {
+    window: {},
+    console: {
+        log() {},
+        info() {},
+        warn: (...args) => capturedWarnings.push(args.join(' ')),
+        error() {}
+    }
+};
 
 vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
 vm.runInNewContext(sectionsSource, context);
@@ -248,6 +257,22 @@ function countingPage(size, offset) {
 history.fetchHistoryRange(countingPage, 90, 30).then((entries) => {
     assert.strictEqual(entries.length, 90, 'every page must be collected');
     assert.ok(peak > 1, 'pages after the first must be fetched together, not chained');
-    console.log('Watch history contract checks passed');
+    // A section that shows less than the account holds has to be explainable. Three
+// silent paths led to an empty result - no token, a response shape the parser
+// does not know, and records without an anime id - so each says so in the
+// console. Nothing is shown to the viewer.
+assert.match(sectionsFile, /Not signed in: only this device/, 'a missing token must be visible in the log');
+assert.match(sectionsFile, /function warnUnrecognizedHistory\(payload, offset\)/, 'an unrecognised response shape must be reported');
+assert.match(sectionsFile, /account records without an anime id/, 'dropped records must be counted');
+
+capturedWarnings.length = 0;
+const shapeChanged = history.normalizeRemoteHistory({response: [{title: 'No id here', episode: 3}, {anime_id: 7, episode: 1}]});
+assert.strictEqual(shapeChanged.length, 1, 'the usable record must still come through');
+assert.ok(
+    capturedWarnings.some((line) => line.indexOf('Dropped 1 of 2') >= 0),
+    'the discarded record must be reported: ' + capturedWarnings.join(' | ')
+);
+
+console.log('Watch history contract checks passed');
 });
 

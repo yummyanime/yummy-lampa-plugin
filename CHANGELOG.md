@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.2] - 2026-09-21
+
+### Added
+
+- Console diagnostics to Continue Watching for a missing sign-in, an unrecognised history response and records without a title id
+
 ## [0.47.1] - 2026-09-21
 
 ### Added
