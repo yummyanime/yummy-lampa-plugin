@@ -37,7 +37,7 @@ assert.match(i18n, /messages\.uk\.auto_sync_progress/);
 
 // Every way of starting an episode must reach the account, not just the
 // internal player: a watch is a watch whichever player showed it.
-assert.match(ui, /function launchResolvedVideo[\s\S]{0,400}syncServerProgress\(selected\)/,
+assert.match(ui, /function launchResolvedVideo[\s\S]{0,520}syncServerProgress\(selected\)/,
     'the internal and external launch path must report the watch');
 assert.match(ui, /function openEmbeddedEpisode[\s\S]{0,600}syncServerProgress\(selected\)/,
     'the embedded site player must report the watch too');

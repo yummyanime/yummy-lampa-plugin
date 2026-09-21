@@ -128,6 +128,7 @@ assert.strictEqual(LampaYaniStreamResolver.canResolve('https://ru.yummyani.me/if
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://ru.yummyani.me/iframeVK.html?token=opaque'), true);
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=AniLibria&anime_id=31240&episode=2'), true);
 assert.strictEqual(LampaYaniStreamResolver.isDirectVideoUrl('https://cdn.example/video/master.mpd?token=1'), true);
+assert.strictEqual(typeof LampaYaniStreamResolver.invalidate, 'function');
 
 Promise.all([
     LampaYaniStreamResolver.resolve('https://player.aksor.tv/video/test-hash'),
@@ -196,6 +197,9 @@ Promise.all([
 // with the WebView's own agent: asking CVH with a hardcoded desktop agent
 // produced links that player could never fetch.
 const cvhSource = fs.readFileSync('src/stream-resolver.js', 'utf8');
+assert.match(cvhSource, /function streamExpiresAt\(url\)/, 'signed stream expiry must be read from the URL');
+assert.match(cvhSource, /Number\(item\.expiresAt\) - 60 \* 1000/, 'expiring links must leave the cache before playback');
+assert.match(cvhSource, /if \(options\.force\) invalidate\(url\)/, 'a player recovery must be able to force a fresh signed URL');
 assert.match(cvhSource, /function deviceUserAgent\(\)/, 'the playing agent must be resolved in one place');
 assert.match(cvhSource, /window\.navigator && window\.navigator\.userAgent/, 'the device agent is the one that plays');
 const cvhStart = cvhSource.indexOf('function resolveCvh');
@@ -214,7 +218,7 @@ assert.strictEqual(
 // srcAg parameter - so it failed in the internal Android player for the same
 // reason and takes the same fix.
 const vkStart = cvhSource.indexOf('function resolveVk');
-const vkEnd = cvhSource.indexOf('function resolve(url)', vkStart);
+const vkEnd = cvhSource.indexOf('function resolve(url', vkStart);
 assert.ok(vkStart >= 0 && vkEnd > vkStart, 'the VK resolver must exist');
 const vkBody = cvhSource.slice(vkStart, vkEnd);
 assert.ok(!/'User-Agent': CHROME_UA/.test(vkBody), 'VK must not ask for links signed for a hardcoded desktop agent');

@@ -256,16 +256,52 @@
     function cacheResult(key, result) {
         if (!key || !result) return result;
         delete cache[key];
-        cache[key] = {time: Date.now(), result: result};
+        cache[key] = {time: Date.now(), expiresAt: resultExpiresAt(result), result: result};
         cacheKeys = cacheKeys.filter(function (item) { return item !== key; });
         cacheKeys.push(key);
         while (cacheKeys.length > CACHE_LIMIT) delete cache[cacheKeys.shift()];
         return result;
     }
 
+    function streamExpiresAt(url) {
+        var match = /[?&]expires=(\d{10,16})(?:&|#|$)/i.exec(String(url || ''));
+        if (!match) return 0;
+        var value = Number(match[1]);
+        if (!isFinite(value) || value <= 0) return 0;
+        return value >= 100000000000 ? value : value * 1000;
+    }
+
+    function resultExpiresAt(result) {
+        var urls = [result && result.url];
+        var qualities = result && result.qualities;
+        if (qualities && typeof qualities === 'object') {
+            Object.keys(qualities).forEach(function (label) { urls.push(qualities[label]); });
+        }
+        return urls.reduce(function (nearest, url) {
+            var expires = streamExpiresAt(url);
+            return expires && (!nearest || expires < nearest) ? expires : nearest;
+        }, 0);
+    }
+
+    function invalidate(key) {
+        key = normalizeUrl(key);
+        if (!key) return;
+        delete cache[key];
+        cacheKeys = cacheKeys.filter(function (item) { return item !== key; });
+    }
+
     function cached(key) {
         var item = cache[key];
-        if (!item || Date.now() - item.time > 10 * 60 * 1000) return null;
+        if (!item) return null;
+        var now = Date.now();
+        var staleAt = Number(item.time || 0) + 10 * 60 * 1000;
+        // Signed CDN URLs can expire before the generic ten-minute cache.
+        // Never hand a player a URL with less than one minute left.
+        if (item.expiresAt) staleAt = Math.min(staleAt, Number(item.expiresAt) - 60 * 1000);
+        if (now >= staleAt) {
+            invalidate(key);
+            return null;
+        }
         return item.result;
     }
 
@@ -781,9 +817,11 @@
         });
     }
 
-    function resolve(url) {
+    function resolve(url, options) {
+        options = options || {};
         url = normalizeUrl(url);
         if (!url) return Promise.reject(new Error('Empty stream URL'));
+        if (options.force) invalidate(url);
         if (isDirectVideoUrl(url)) return Promise.resolve({url: url, source: 'direct'});
         if (isKodikUrl(url)) return resolveKodik(url);
         if (isCvhUrl(url)) return resolveCvh(url);
@@ -798,6 +836,7 @@
     window.LampaYani.StreamResolver = window.LampaYaniStreamResolver = {
         canResolve: function (url) { return isDirectVideoUrl(url) || isKodikUrl(url) || isCvhUrl(url) || isAksorUrl(url) || isSibnetUrl(url) || isRutubeUrl(url) || isVkUrl(url); },
         resolve: resolve,
+        invalidate: invalidate,
         isDirectVideoUrl: isDirectVideoUrl
     };
 }(window));

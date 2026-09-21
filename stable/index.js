@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.46.43',
+        version: '0.47.0',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -315,6 +315,7 @@ function pluginYummyAnime() {
     messages.ru.watch_internal_lampa = 'Внутренний плеер Lampa';
     messages.ru.watch_internal_lampa_description = 'Проигрывать прямой поток внутри Lampa';
     messages.ru.internal_player_unavailable = 'Не удалось запустить внутренний плеер Lampa';
+    messages.ru.internal_player_recovering = 'Поток прервался. Обновляю ссылку и продолжаю просмотр…';
     messages.ru.player = 'Источник';
     messages.ru.player_preference = 'Предпочтительный плеер';
     messages.ru.player_preference_description = 'Где воспроизводить прямые видеопотоки: спрашивать каждый раз, внутренний плеер Lampa или внешний Android-плеер (системный выбор приложений). Доступно только на Android';
@@ -414,6 +415,7 @@ function pluginYummyAnime() {
     messages.en.watch_internal_lampa = 'Internal Lampa player';
     messages.en.watch_internal_lampa_description = 'Play the direct stream inside Lampa';
     messages.en.internal_player_unavailable = 'Could not start the internal Lampa player';
+    messages.en.internal_player_recovering = 'The stream was interrupted. Refreshing the link and resuming…';
     messages.en.player = 'Source';
     messages.en.player_preference = 'Preferred player';
     messages.en.player_preference_description = 'Where to play direct video streams: ask every time, internal Lampa player, or an external Android player (system app chooser). Available on Android only';
@@ -828,6 +830,7 @@ function pluginYummyAnime() {
     messages.uk.watch_internal_lampa = 'Внутрішній плеєр Lampa';
     messages.uk.watch_internal_lampa_description = 'Програвати прямий потік усередині Lampa';
     messages.uk.internal_player_unavailable = 'Не вдалося запустити внутрішній плеєр Lampa';
+    messages.uk.internal_player_recovering = 'Потік перервався. Оновлюю посилання та продовжую перегляд…';
     messages.uk.playback_target = 'Спосіб перегляду';
     messages.uk.playback_target_description = 'Як відкривати прямі відеопотоки YummyAnime';
     messages.uk.playback_target_ask = 'Запитувати';
@@ -2119,16 +2122,52 @@ function pluginYummyAnime() {
     function cacheResult(key, result) {
         if (!key || !result) return result;
         delete cache[key];
-        cache[key] = {time: Date.now(), result: result};
+        cache[key] = {time: Date.now(), expiresAt: resultExpiresAt(result), result: result};
         cacheKeys = cacheKeys.filter(function (item) { return item !== key; });
         cacheKeys.push(key);
         while (cacheKeys.length > CACHE_LIMIT) delete cache[cacheKeys.shift()];
         return result;
     }
 
+    function streamExpiresAt(url) {
+        var match = /[?&]expires=(\d{10,16})(?:&|#|$)/i.exec(String(url || ''));
+        if (!match) return 0;
+        var value = Number(match[1]);
+        if (!isFinite(value) || value <= 0) return 0;
+        return value >= 100000000000 ? value : value * 1000;
+    }
+
+    function resultExpiresAt(result) {
+        var urls = [result && result.url];
+        var qualities = result && result.qualities;
+        if (qualities && typeof qualities === 'object') {
+            Object.keys(qualities).forEach(function (label) { urls.push(qualities[label]); });
+        }
+        return urls.reduce(function (nearest, url) {
+            var expires = streamExpiresAt(url);
+            return expires && (!nearest || expires < nearest) ? expires : nearest;
+        }, 0);
+    }
+
+    function invalidate(key) {
+        key = normalizeUrl(key);
+        if (!key) return;
+        delete cache[key];
+        cacheKeys = cacheKeys.filter(function (item) { return item !== key; });
+    }
+
     function cached(key) {
         var item = cache[key];
-        if (!item || Date.now() - item.time > 10 * 60 * 1000) return null;
+        if (!item) return null;
+        var now = Date.now();
+        var staleAt = Number(item.time || 0) + 10 * 60 * 1000;
+        // Signed CDN URLs can expire before the generic ten-minute cache.
+        // Never hand a player a URL with less than one minute left.
+        if (item.expiresAt) staleAt = Math.min(staleAt, Number(item.expiresAt) - 60 * 1000);
+        if (now >= staleAt) {
+            invalidate(key);
+            return null;
+        }
         return item.result;
     }
 
@@ -2644,9 +2683,11 @@ function pluginYummyAnime() {
         });
     }
 
-    function resolve(url) {
+    function resolve(url, options) {
+        options = options || {};
         url = normalizeUrl(url);
         if (!url) return Promise.reject(new Error('Empty stream URL'));
+        if (options.force) invalidate(url);
         if (isDirectVideoUrl(url)) return Promise.resolve({url: url, source: 'direct'});
         if (isKodikUrl(url)) return resolveKodik(url);
         if (isCvhUrl(url)) return resolveCvh(url);
@@ -2661,6 +2702,7 @@ function pluginYummyAnime() {
     window.LampaYani.StreamResolver = window.LampaYaniStreamResolver = {
         canResolve: function (url) { return isDirectVideoUrl(url) || isKodikUrl(url) || isCvhUrl(url) || isAksorUrl(url) || isSibnetUrl(url) || isRutubeUrl(url) || isVkUrl(url); },
         resolve: resolve,
+        invalidate: invalidate,
         isDirectVideoUrl: isDirectVideoUrl
     };
 }(window));
@@ -17126,6 +17168,7 @@ function pluginYummyAnime() {
             return openEmbeddedEpisode(card, group, selected, sibnetPageUrl);
         }
         if (!isExternalPlayableUrl(url, selected) && window.LampaYaniStreamResolver && LampaYaniStreamResolver.canResolve(url)) {
+            selected.yani_stream_origin = url;
             setLoading(true);
             LampaYaniStreamResolver.resolve(url, selected).then(function (result) {
                 setLoading(false);
@@ -17161,6 +17204,7 @@ function pluginYummyAnime() {
     function launchResolvedVideo(card, group, videos, selected, url, options) {
         options = options || {};
         var title = (card.title || 'YummyAnime') + ' · ' + t('episode') + ' ' + (selected.number || selected.index || '?') + ' · ' + group.title;
+        if (!options.recovery) selected.yani_internal_recovery = 0;
         playbackContext = {card: card, group: group, videos: videos, selected: selected};
         rememberPlayback(card, group, selected);
         syncServerProgress(selected);
@@ -17404,6 +17448,14 @@ function pluginYummyAnime() {
                 poster: card.poster || card.img || ''
             };
         }).filter(Boolean);
+    }
+
+    function videoResolverUrl(video) {
+        if (!video) return '';
+        var data = LampaYaniUiUtils.videoData(video);
+        var normalize = LampaYaniUiUtils.normalizeVideoUrl || function (url) { return url || ''; };
+        return normalize(video.yani_stream_origin || video.iframe_url || video.url || video.player_url || video.link ||
+            data.iframe_url || data.url || data.player_url || data.link);
     }
 
     function internalPlayerExtensionHint(item) {
@@ -17730,6 +17782,7 @@ function pluginYummyAnime() {
             if (state.playerPauseHandler) listener.remove('pause', state.playerPauseHandler);
             if (state.playerEndedHandler) listener.remove('ended', state.playerEndedHandler);
             if (state.playerDestroyHandler) listener.remove('destroy', state.playerDestroyHandler);
+            if (state.playerErrorHandler) listener.remove('error', state.playerErrorHandler);
         }
         if (state.video && state.endedHandler && state.video.removeEventListener) {
             state.video.removeEventListener('ended', state.endedHandler);
@@ -17772,6 +17825,9 @@ function pluginYummyAnime() {
             playerPauseHandler: null,
             playerEndedHandler: null,
             playerDestroyHandler: null,
+            playerErrorHandler: null,
+            recoveryAttempts: Number(context.selected && context.selected.yani_internal_recovery || 0),
+            recovering: false,
             lastSeenAt: Date.now()
         };
         playbackWatcher = state;
@@ -18074,10 +18130,57 @@ function pluginYummyAnime() {
             // Capture the final position while its player object still exists.
             storeObservedPlayback(generation, context, state, event, true);
         };
+        state.playerErrorHandler = function (event) {
+            recoverInternalPlayback(generation, context, state, event);
+        };
         listener.follow('timeupdate', state.playerTimeHandler);
         listener.follow('pause', state.playerPauseHandler);
         listener.follow('ended', state.playerEndedHandler);
         listener.follow('destroy', state.playerDestroyHandler);
+        listener.follow('error', state.playerErrorHandler);
+    }
+
+    function recoverInternalPlayback(generation, context, state, event) {
+        if (!event || !event.fatal || generation !== playbackWatcherGeneration || playbackWatcher !== state) return;
+        if (state.recovering || state.recoveryAttempts >= 1 || !context || !context.selected) return;
+        var origin = videoResolverUrl(context.selected);
+        if (!origin || isDirectVideoUrl(origin) || !window.LampaYaniStreamResolver ||
+            !LampaYaniStreamResolver.canResolve(origin)) return;
+
+        state.recovering = true;
+        state.recoveryAttempts += 1;
+        context.selected.yani_internal_recovery = state.recoveryAttempts;
+        storeObservedPlayback(generation, context, state, event, true);
+        var position = Math.max(0, Number(state.lastObservedPosition || 0));
+        var duration = Math.max(0, Number(state.lastObservedDuration || context.selected.duration || 0));
+        context.selected.watched = context.selected.watched || {};
+        context.selected.watched.end_time = Math.floor(position);
+        if (duration > 0) context.selected.duration = Math.floor(duration);
+        if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t('internal_player_recovering'));
+
+        LampaYaniStreamResolver.resolve(origin, {force: true}).then(function (result) {
+            if (generation !== playbackWatcherGeneration || playbackWatcher !== state || !result || !result.url) return;
+            context.selected.yani_stream_url = result.url;
+            context.selected.yani_stream_quality = result.quality || '';
+            context.selected.yani_stream_qualities = result.qualities || null;
+            context.selected.yani_stream_source = result.source || '';
+            context.selected.yani_stream_headers = result.headers || null;
+            context.selected.yani_stream_headers_required = Boolean(result.headersRequired);
+            beginPlaybackNavigation();
+            var recoverySession = playbackReturnState.session;
+            var closingVideo = state.video;
+            stopPlaybackWatcher();
+            closeInternalPlayer(closingVideo).then(function () {
+                if (playbackReturnState.session !== recoverySession || playbackContext !== context) return;
+                launchResolvedVideo(context.card, context.group, context.videos, context.selected, result.url, {
+                    autoAdvance: true,
+                    recovery: true
+                });
+            });
+        }).catch(function (error) {
+            state.recovering = false;
+            console.warn('[YummyAnime] Could not refresh an interrupted stream', error);
+        });
     }
 
     function watchPlayback(generation, context, state) {
@@ -18166,6 +18269,7 @@ function pluginYummyAnime() {
         var url = videoSourceUrl(next);
         if (!url || isExternalPlayableUrl(url, next)) return;
         if (!window.LampaYaniStreamResolver || !LampaYaniStreamResolver.canResolve(url)) return;
+        next.yani_stream_origin = url;
         LampaYaniStreamResolver.resolve(url, next).then(function (result) {
             if (!result || !result.url) return;
             next.yani_stream_url = result.url;

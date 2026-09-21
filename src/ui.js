@@ -3165,6 +3165,7 @@
             return openEmbeddedEpisode(card, group, selected, sibnetPageUrl);
         }
         if (!isExternalPlayableUrl(url, selected) && window.LampaYaniStreamResolver && LampaYaniStreamResolver.canResolve(url)) {
+            selected.yani_stream_origin = url;
             setLoading(true);
             LampaYaniStreamResolver.resolve(url, selected).then(function (result) {
                 setLoading(false);
@@ -3200,6 +3201,7 @@
     function launchResolvedVideo(card, group, videos, selected, url, options) {
         options = options || {};
         var title = (card.title || 'YummyAnime') + ' · ' + t('episode') + ' ' + (selected.number || selected.index || '?') + ' · ' + group.title;
+        if (!options.recovery) selected.yani_internal_recovery = 0;
         playbackContext = {card: card, group: group, videos: videos, selected: selected};
         rememberPlayback(card, group, selected);
         syncServerProgress(selected);
@@ -3443,6 +3445,14 @@
                 poster: card.poster || card.img || ''
             };
         }).filter(Boolean);
+    }
+
+    function videoResolverUrl(video) {
+        if (!video) return '';
+        var data = LampaYaniUiUtils.videoData(video);
+        var normalize = LampaYaniUiUtils.normalizeVideoUrl || function (url) { return url || ''; };
+        return normalize(video.yani_stream_origin || video.iframe_url || video.url || video.player_url || video.link ||
+            data.iframe_url || data.url || data.player_url || data.link);
     }
 
     function internalPlayerExtensionHint(item) {
@@ -3769,6 +3779,7 @@
             if (state.playerPauseHandler) listener.remove('pause', state.playerPauseHandler);
             if (state.playerEndedHandler) listener.remove('ended', state.playerEndedHandler);
             if (state.playerDestroyHandler) listener.remove('destroy', state.playerDestroyHandler);
+            if (state.playerErrorHandler) listener.remove('error', state.playerErrorHandler);
         }
         if (state.video && state.endedHandler && state.video.removeEventListener) {
             state.video.removeEventListener('ended', state.endedHandler);
@@ -3811,6 +3822,9 @@
             playerPauseHandler: null,
             playerEndedHandler: null,
             playerDestroyHandler: null,
+            playerErrorHandler: null,
+            recoveryAttempts: Number(context.selected && context.selected.yani_internal_recovery || 0),
+            recovering: false,
             lastSeenAt: Date.now()
         };
         playbackWatcher = state;
@@ -4113,10 +4127,57 @@
             // Capture the final position while its player object still exists.
             storeObservedPlayback(generation, context, state, event, true);
         };
+        state.playerErrorHandler = function (event) {
+            recoverInternalPlayback(generation, context, state, event);
+        };
         listener.follow('timeupdate', state.playerTimeHandler);
         listener.follow('pause', state.playerPauseHandler);
         listener.follow('ended', state.playerEndedHandler);
         listener.follow('destroy', state.playerDestroyHandler);
+        listener.follow('error', state.playerErrorHandler);
+    }
+
+    function recoverInternalPlayback(generation, context, state, event) {
+        if (!event || !event.fatal || generation !== playbackWatcherGeneration || playbackWatcher !== state) return;
+        if (state.recovering || state.recoveryAttempts >= 1 || !context || !context.selected) return;
+        var origin = videoResolverUrl(context.selected);
+        if (!origin || isDirectVideoUrl(origin) || !window.LampaYaniStreamResolver ||
+            !LampaYaniStreamResolver.canResolve(origin)) return;
+
+        state.recovering = true;
+        state.recoveryAttempts += 1;
+        context.selected.yani_internal_recovery = state.recoveryAttempts;
+        storeObservedPlayback(generation, context, state, event, true);
+        var position = Math.max(0, Number(state.lastObservedPosition || 0));
+        var duration = Math.max(0, Number(state.lastObservedDuration || context.selected.duration || 0));
+        context.selected.watched = context.selected.watched || {};
+        context.selected.watched.end_time = Math.floor(position);
+        if (duration > 0) context.selected.duration = Math.floor(duration);
+        if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t('internal_player_recovering'));
+
+        LampaYaniStreamResolver.resolve(origin, {force: true}).then(function (result) {
+            if (generation !== playbackWatcherGeneration || playbackWatcher !== state || !result || !result.url) return;
+            context.selected.yani_stream_url = result.url;
+            context.selected.yani_stream_quality = result.quality || '';
+            context.selected.yani_stream_qualities = result.qualities || null;
+            context.selected.yani_stream_source = result.source || '';
+            context.selected.yani_stream_headers = result.headers || null;
+            context.selected.yani_stream_headers_required = Boolean(result.headersRequired);
+            beginPlaybackNavigation();
+            var recoverySession = playbackReturnState.session;
+            var closingVideo = state.video;
+            stopPlaybackWatcher();
+            closeInternalPlayer(closingVideo).then(function () {
+                if (playbackReturnState.session !== recoverySession || playbackContext !== context) return;
+                launchResolvedVideo(context.card, context.group, context.videos, context.selected, result.url, {
+                    autoAdvance: true,
+                    recovery: true
+                });
+            });
+        }).catch(function (error) {
+            state.recovering = false;
+            console.warn('[YummyAnime] Could not refresh an interrupted stream', error);
+        });
     }
 
     function watchPlayback(generation, context, state) {
@@ -4205,6 +4266,7 @@
         var url = videoSourceUrl(next);
         if (!url || isExternalPlayableUrl(url, next)) return;
         if (!window.LampaYaniStreamResolver || !LampaYaniStreamResolver.canResolve(url)) return;
+        next.yani_stream_origin = url;
         LampaYaniStreamResolver.resolve(url, next).then(function (result) {
             if (!result || !result.url) return;
             next.yani_stream_url = result.url;

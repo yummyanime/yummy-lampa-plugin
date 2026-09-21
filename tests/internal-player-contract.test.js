@@ -67,5 +67,15 @@ assert.match(source, /Lampa\.Player\.runas\('lampa'\);\s*Lampa\.Player\.play\(di
     'internal playback must always use the built-in engine');
 assert.match(source, /function needsRequestHeaders\(item\)[\s\S]{0,400}yani_stream_headers_required/,
     'the requirement must come from the resolver flag, not from the mere presence of headers');
+assert.match(source, /listener\.follow\('error', state\.playerErrorHandler\)/,
+    'the internal player must observe fatal stream errors');
+assert.match(source, /function recoverInternalPlayback\(/,
+    'an interrupted signed stream must have a recovery path');
+assert.match(source, /LampaYaniStreamResolver\.resolve\(origin, \{force: true\}\)/,
+    'recovery must bypass a stale signed-stream cache');
+assert.match(source, /state\.recoveryAttempts >= 1/,
+    'recovery must run at most once per playback launch');
+assert.match(source, /watched\.end_time = Math\.floor\(position\)/,
+    'recovery must resume from the last observed position');
 assert.ok(!/function needsRequestHeaders\(item\)[\s\S]{0,400}Object\.keys\(headers\)/.test(source),
     'the presence of headers alone must not count as a requirement');

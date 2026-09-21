@@ -9,9 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.0] - 2026-09-21
+
 ### Changed
 
 - Changelog entries to Keep a Changelog categories
+- Signed-stream caching to respect URL expiration
+
+### Fixed
+
+- Interrupted signed streams in the internal Lampa player by refreshing their URL once and resuming playback
 
 ## [0.46.43] - 2026-09-21
 
