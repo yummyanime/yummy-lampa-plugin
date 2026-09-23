@@ -9,6 +9,13 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.3] - 2026-09-23
+
+### Fixed
+
+- Color remote buttons on title pages now toggle the corresponding user list on Android TV and across supported Lampa controller response shapes
+- Left and right remote navigation between title-page content and the user-list panel
+
 ## [0.47.2] - 2026-09-21
 
 ### Added
@@ -27,7 +34,7 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 - User-list controls on title pages moved into a separate dock below the poster to keep them out of the primary Watch-button focus path
 - Voice choices to show the number of unique available episodes
 
-### Fixed
+### Fixed-
 
 - CVH selection for movies without episode fields and for dubbing labels that do not exactly match `dubbing_code`
 - Playback position being lost when the same episode is opened through another voice or source

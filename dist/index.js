@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.2',
+        version: '0.47.3',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -13522,6 +13522,7 @@ function pluginYummyAnime() {
         var posterViewer = null;
         var posterExpanded = false;
         var remoteListShortcutHandler = null;
+        var listBridgeReturn = null;
         var detailFocus = LampaYaniNavigation.createScope({
             id: 'detail:' + String(routeId || getYummyId(data) || object.url || 'unknown'),
             root: function () { return html; },
@@ -13536,10 +13537,22 @@ function pluginYummyAnime() {
             }
         });
 
+        function detailControllerIsActive() {
+            if (!Lampa.Controller || !Lampa.Controller.enabled) return true;
+            var enabled = Lampa.Controller.enabled();
+            if (!enabled) return true;
+            if (typeof enabled === 'string') return enabled === 'content';
+            var active = enabled.controller || enabled;
+            var name = String(enabled.name || active.name || '');
+            if (name && name !== 'content') return false;
+            if (active.yaniDetailOwner && active.yaniDetailOwner !== detailComponent) return false;
+            if (active.link && active.link !== detailComponent) return false;
+            return true;
+        }
+
         function appendDetailNavigation(container) {
             if (destroyed || !container || !Lampa.Controller || !Lampa.Controller.enabled || !Lampa.Controller.collectionAppend) return;
-            var enabled = Lampa.Controller.enabled();
-            if (!enabled || enabled.name !== 'content' || !enabled.controller || enabled.controller.yaniDetailOwner !== detailComponent) return;
+            if (!detailControllerIsActive()) return;
             var targets = container.hasClass && container.hasClass('selector')
                 ? container.add(container.find('.selector'))
                 : container.find('.selector');
@@ -13945,18 +13958,17 @@ function pluginYummyAnime() {
         function remoteListColor(event) {
             var key = String(event && (event.key || event.code || '') || '').toLowerCase();
             var code = Number(event && (event.keyCode || event.which));
-            if (key === 'colorf0red' || key === 'red' || code === 403) return 'red';
-            if (key === 'colorf1green' || key === 'green' || code === 404) return 'green';
-            if (key === 'colorf2yellow' || key === 'yellow' || code === 405) return 'yellow';
-            if (key === 'colorf3blue' || key === 'blue' || code === 406) return 'blue';
+            if (key === 'colorf0red' || key === 'red' || code === 403 || code === 183) return 'red';
+            if (key === 'colorf1green' || key === 'green' || code === 404 || code === 184) return 'green';
+            if (key === 'colorf2yellow' || key === 'yellow' || code === 405 || code === 185) return 'yellow';
+            if (key === 'colorf3blue' || key === 'blue' || code === 406 || code === 186) return 'blue';
             return '';
         }
 
         function handleRemoteListShortcut(event) {
             if (destroyed || event.defaultPrevented || event.repeat || !html.is(':visible') ||
                 $(event.target).closest('input, textarea, select, [contenteditable=true]').length) return;
-            var enabled = Lampa.Controller && Lampa.Controller.enabled ? Lampa.Controller.enabled() : null;
-            if (!enabled || !enabled.controller || enabled.controller.yaniDetailOwner !== detailComponent) return;
+            if (!detailControllerIsActive()) return;
             var color = remoteListColor(event);
             if (!color) return;
             var target = html.find('.yani-detail__list-action[data-yani-list-shortcut="' + color + '"]').first();
@@ -14112,6 +14124,43 @@ function pluginYummyAnime() {
             element.on('hover:blur', function () { element.removeClass('focus'); });
         }
 
+        function focusedDetailElement() {
+            return html.find('.selector.focus').first();
+        }
+
+        function focusDetailElement(element) {
+            element = element && element.jquery ? element : $(element);
+            if (!element || !element.length) return false;
+            scroll.update(element, true);
+            detailFocus.remember(element[0]);
+            Lampa.Controller.collectionFocus(element, scroll.render());
+            return true;
+        }
+
+        function hasHorizontalSibling(element, direction) {
+            var siblings = element.parent().children('.selector:visible');
+            var index = siblings.index(element);
+            return direction === 'left' ? index > 0 : index >= 0 && index < siblings.length - 1;
+        }
+
+        function moveFromContentToListPanel() {
+            var current = focusedDetailElement();
+            if (!current.length || !current.closest('.yani-detail__info').length || hasHorizontalSibling(current, 'left')) return false;
+            var target = html.find('.yani-detail__list-panel .yani-detail__list-action:visible').last();
+            if (!target.length) return false;
+            listBridgeReturn = current[0];
+            return focusDetailElement(target);
+        }
+
+        function moveFromListPanelToContent() {
+            var current = focusedDetailElement();
+            if (!current.length || !current.hasClass('yani-detail__list-action') || hasHorizontalSibling(current, 'right')) return false;
+            var target = listBridgeReturn && document.documentElement.contains(listBridgeReturn)
+                ? $(listBridgeReturn)
+                : html.find('.yani-detail__button.selector:visible, .yani-detail__title.selector:visible').first();
+            return focusDetailElement(target);
+        }
+
         function bindDetailScrollTargets(container) {
             var targets = container.hasClass && container.hasClass('selector') ? container.add(container.find('.selector')) : container.find('.selector');
             targets.each(function () {
@@ -14181,8 +14230,17 @@ function pluginYummyAnime() {
                 yaniDetailOwner: detailComponent,
                 // Prefer the last focused control; only fall back to the title.
                 toggle: function () { detailFocus.restore(null, true); },
-                left: function () { if (!posterExpanded) { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); } },
-                right: function () { if (!posterExpanded) Navigator.move('right'); },
+                left: function () {
+                    if (posterExpanded) return;
+                    if (moveFromContentToListPanel()) return;
+                    if (Navigator.canmove('left')) Navigator.move('left');
+                    else Lampa.Controller.toggle('menu');
+                },
+                right: function () {
+                    if (posterExpanded) return;
+                    if (moveFromListPanelToContent()) return;
+                    Navigator.move('right');
+                },
                 up: function () { if (!posterExpanded) { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); } },
                 down: function () { if (!posterExpanded) movePageDown(scroll); },
                 back: function () { if (!closePosterViewer()) goBack(); }

@@ -18,7 +18,7 @@ assert.match(detail, /target\.getBoundingClientRect\(\)/);
 assert.match(detail, /viewport\.scrollLeft = Math\.max\(0, viewport\.scrollLeft - \(leftEdge - targetRect\.left\)\)/);
 assert.match(detail, /viewport\.scrollLeft \+= targetRect\.right - rightEdge/);
 assert.match(detail, /function appendDetailNavigation\(container\)/);
-assert.match(detail, /enabled\.controller\.yaniDetailOwner !== detailComponent/);
+assert.match(detail, /if \(!detailControllerIsActive\(\)\) return/);
 assert.match(detail, /Lampa\.Controller\.collectionAppend\(targets\)/);
 assert.match(detail, /loadDetailRecommendations\(data, info, bindDetailScrollTargets, appendDetailNavigation, deps\)/);
 assert.match(detail, /if \(appendNavigation\) appendNavigation\(row\)/);
