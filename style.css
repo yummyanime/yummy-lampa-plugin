@@ -1498,6 +1498,12 @@ body > .yani-skip-prompt {
 .yani-detail__type { display: inline-flex; margin-top: .55em; padding: .25em .58em; border: .08em solid rgba(239,100,112,.62); border-radius: 999px; background: rgba(239,100,112,.16); color: rgba(255,255,255,.92); font-size: .78em; font-weight: 700; line-height: 1.2; }
 .yani-detail__genre { padding: .24em .5em; border: .08em solid rgba(255,255,255,.28); border-radius: .35em; color: rgba(255,255,255,.82); font-size: .78em; line-height: 1.2; }
 .yani-detail__genre.focus { background: #fff; border-color: #fff; box-shadow: 0 0 0 .14em #ef6470; color: #111; transform: scale(1.04); }
+.yani-detail__credits { display: grid; gap: .38em; margin-top: .62em; }
+.yani-detail__credit-row { display: flex; align-items: flex-start; gap: .55em; min-width: 0; }
+.yani-detail__credit-label { flex: 0 0 5.8em; padding-top: .28em; color: rgba(255,255,255,.54); font-size: .74em; font-weight: 700; }
+.yani-detail__credit-values { display: flex; flex-wrap: wrap; gap: .34em; min-width: 0; }
+.yani-detail__credit { padding: .25em .52em; border: .08em solid rgba(111,197,232,.34); border-radius: 999px; background: rgba(52,92,116,.2); color: rgba(231,248,255,.9); font-size: .76em; line-height: 1.2; }
+.yani-detail__credit.focus { border-color: #fff; background: #fff; color: #111; box-shadow: 0 0 0 .14em #6fc5e8, 0 0 .8em rgba(111,197,232,.35); transform: scale(1.04); }
 .yani-detail__meta { margin: 0.8em 0 1.2em; font-size: 1.2em; }
 .yani-detail__episode-summary { display: flex; flex-wrap: wrap; gap: .38em; width: fit-content; max-width: 100%; margin: -.45em 0 .85em; padding: .34em; border: .08em solid rgba(255,255,255,.14); border-radius: .55em; background: rgba(0,0,0,.2); box-sizing: border-box; }
 .yani-detail__episode-summary.focus { border-color: #ef6470; background: rgba(239,100,112,.16); box-shadow: 0 0 0 .1em rgba(239,100,112,.55); }

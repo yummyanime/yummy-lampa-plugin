@@ -173,6 +173,7 @@
         var genreTitle = deps.genreTitle;
         var genreValue = deps.genreValue;
         var openGenreCatalog = deps.openGenreCatalog;
+        var openSubjectCatalog = deps.openSubjectCatalog;
         var beginPlaybackNavigation = deps.beginPlaybackNavigation;
         var openTitlePlaybackOptions = deps.openTitlePlaybackOptions;
         var openTrailers = deps.openTrailers;
@@ -409,6 +410,8 @@
             if (detailType) info.append($('<div class="yani-detail__type"></div>').text(detailType.full));
             var genres = detailGenres(data);
             if (genres.length) info.append(createDetailGenres(genres));
+            var credits = createDetailCredits(data);
+            if (credits.length) info.append(credits);
             if (data.release_date) info.append($('<div class="yani-detail__meta"></div>').text(data.release_date));
             var episodeSummary = createDetailEpisodeSummary(data);
             if (episodeSummary) info.append(episodeSummary);
@@ -726,6 +729,45 @@
                 block.append(chip);
             });
             return block;
+        }
+
+        function detailNamedItems(value) {
+            if (!Array.isArray(value)) return [];
+            var seen = {};
+            return value.filter(function (item) {
+                var title = String(item && (item.title || item.name) || '').trim();
+                var key = String(item && (item.id !== undefined ? item.id : item.url) || title).toLowerCase();
+                if (!title || seen[key]) return false;
+                seen[key] = true;
+                return true;
+            });
+        }
+
+        function createDetailCreditRow(kind, label, items) {
+            items = detailNamedItems(items);
+            if (!items.length) return $();
+            var row = $('<div class="yani-detail__credit-row"></div>');
+            row.append($('<span class="yani-detail__credit-label"></span>').text(label));
+            var values = $('<div class="yani-detail__credit-values"></div>');
+            items.forEach(function (subject) {
+                var chip = $('<div class="yani-detail__credit selector"></div>').text(subject.title || subject.name);
+                chip.on('hover:enter click.yaniDetailCredit', function () {
+                    if (openSubjectCatalog) openSubjectCatalog(kind, subject);
+                });
+                bindDetailButtonFocus(chip);
+                values.append(chip);
+            });
+            row.append(values);
+            return row;
+        }
+
+        function createDetailCredits(cardData) {
+            var block = $('<div class="yani-detail__credits"></div>');
+            var studios = createDetailCreditRow('studio', t('studios'), cardData.yani_studios || cardData.studios);
+            var creators = createDetailCreditRow('director', t('creators'), cardData.yani_creators || cardData.creators);
+            if (studios.length) block.append(studios);
+            if (creators.length) block.append(creators);
+            return block.children().length ? block : $();
         }
 
         function updateDetailListPanel(panel, cardData) {

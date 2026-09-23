@@ -941,6 +941,27 @@
     messages.uk.section_state_empty = 'Список порожній';
     messages.uk.section_state_empty_hint = 'Тут поки немає елементів для показу';
     messages.uk.section_retry = 'Повторити';
+    messages.ru.studios = 'Студии';
+    messages.ru.creators = 'Режиссёры';
+    messages.ru.studio = 'Студия';
+    messages.ru.creator = 'Режиссёр';
+    messages.ru.studio_catalog_description = 'Аниме студии «{name}»';
+    messages.ru.creator_catalog_description = 'Аниме режиссёра «{name}»';
+    messages.ru.original_name = 'Оригинальное имя';
+    messages.en.studios = 'Studios';
+    messages.en.creators = 'Directors';
+    messages.en.studio = 'Studio';
+    messages.en.creator = 'Director';
+    messages.en.studio_catalog_description = 'Anime by {name}';
+    messages.en.creator_catalog_description = 'Anime directed by {name}';
+    messages.en.original_name = 'Original name';
+    messages.uk.studios = 'Студії';
+    messages.uk.creators = 'Режисери';
+    messages.uk.studio = 'Студія';
+    messages.uk.creator = 'Режисер';
+    messages.uk.studio_catalog_description = 'Аніме студії «{name}»';
+    messages.uk.creator_catalog_description = 'Аніме режисера «{name}»';
+    messages.uk.original_name = 'Оригінальне ім’я';
 
     function language() {
         var value = window.Lampa && Lampa.Storage ? Lampa.Storage.get(key, 'ru') : 'ru';

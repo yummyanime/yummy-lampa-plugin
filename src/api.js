@@ -491,6 +491,26 @@
                 mutationKey: 'rate:' + id
             });
         },
+        studio: function (url, control) {
+            control = control || {};
+            return request('/anime/studio/' + encodeURIComponent(url), {
+                cacheTtl: 24 * 60 * 60 * 1000,
+                cacheFirst: true,
+                staleFallback: true,
+                forceRefresh: control.forceRefresh,
+                signal: control.signal
+            });
+        },
+        director: function (id, control) {
+            control = control || {};
+            return request('/director/' + encodeURIComponent(id), {
+                cacheTtl: 24 * 60 * 60 * 1000,
+                cacheFirst: true,
+                staleFallback: true,
+                forceRefresh: control.forceRefresh,
+                signal: control.signal
+            });
+        },
         removeRate: function (id) {
             return request('/anime/' + encodeURIComponent(id) + '/rate', {method: 'DELETE', auth: true, queueMutation: true, mutationKey: 'rate:' + id});
         },

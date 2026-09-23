@@ -9,6 +9,13 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.4] - 2026-09-23
+
+### Added
+
+- Studios and directors on title pages with direct TV-friendly navigation to their related catalogs
+- Subject headers for studio and creator catalogs, enriched from the YummyAnime detail endpoints
+
 ## [0.47.3] - 2026-09-23
 
 ### Fixed

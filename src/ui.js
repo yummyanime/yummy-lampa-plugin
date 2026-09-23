@@ -426,23 +426,44 @@
             baseParams.sort === 'top';
 
         function installGenreHeader() {
-            var context = object.genre_context;
+            var context = object.subject_context || object.genre_context;
             if (!context || genreHeader) return;
             var view = comp.render && comp.render();
             if (!view || !view.length) return;
-            var title = genreTitle(context);
+            var isSubject = Boolean(object.subject_context);
+            var title = isSubject ? String(context.title || context.name || '') : genreTitle(context);
             if (!title) return;
-            var description = genreDescription(context) || t('genre_catalog_fallback').replace('{genre}', title);
+            var description = isSubject
+                ? t(context.kind === 'studio' ? 'studio_catalog_description' : 'creator_catalog_description').replace('{name}', title)
+                : genreDescription(context) || t('genre_catalog_fallback').replace('{genre}', title);
             genreHeader = $('<div class="yani-genre-catalog-header"></div>');
             genreHeader.append('<span class="yani-genre-catalog-header__orb" aria-hidden="true"><i></i><i></i><i></i></span>');
             var copy = $('<div class="yani-genre-catalog-header__copy"></div>');
-            copy.append($('<span class="yani-genre-catalog-header__eyebrow"></span>').text(t('genre_catalog')));
+            copy.append($('<span class="yani-genre-catalog-header__eyebrow"></span>').text(t(isSubject ? (context.kind === 'studio' ? 'studio' : 'creator') : 'genre_catalog')));
             copy.append($('<strong class="yani-genre-catalog-header__title"></strong>').text(title));
             copy.append($('<p class="yani-genre-catalog-header__description"></p>').text(description));
             genreHeader.append(copy);
             view.addClass('yani-genre-catalog-view').prepend(genreHeader);
             if (comp.scroll && comp.scroll.minus) comp.scroll.minus(genreHeader);
-            loadGenreDescription(context);
+            if (isSubject) loadSubjectInformation(context);
+            else loadGenreDescription(context);
+        }
+
+        function loadSubjectInformation(context) {
+            if (genreDescriptionRequested) return;
+            var request;
+            if (context.kind === 'studio' && context.url) request = LampaYaniApi.studio(context.url);
+            else if (context.kind === 'director' && context.id !== undefined && context.id !== null) request = LampaYaniApi.director(context.id);
+            if (!request) return;
+            genreDescriptionRequested = true;
+            request.then(function (payload) {
+                var detailed = payload && payload.response ? payload.response : payload;
+                if (!detailed || !genreHeader || !genreHeader.closest('body').length) return;
+                var title = String(detailed.title || context.title || '').trim();
+                var secondary = String(detailed.title_jp || detailed.japanese_title || '').trim();
+                if (title) genreHeader.find('.yani-genre-catalog-header__title').text(title);
+                if (secondary) genreHeader.find('.yani-genre-catalog-header__description').text(t('original_name') + ': ' + secondary);
+            }).catch(function () {});
         }
 
         function loadGenreDescription(context) {
@@ -484,7 +505,7 @@
         comp.create = function () {
             var self = this;
             this.activity.loader(true);
-            LampaYaniApi.catalog(baseParams, object.genre_context ? {
+            LampaYaniApi.catalog(baseParams, object.genre_context || object.subject_context ? {
                 cacheFirst: true,
                 staleFallback: true,
                 cacheTtl: 15 * 60 * 1000
@@ -2906,6 +2927,7 @@
             genreTitle: genreTitle,
             genreValue: genreValue,
             openGenreCatalog: openGenreCatalog,
+            openSubjectCatalog: openSubjectCatalog,
             beginPlaybackNavigation: beginPlaybackNavigation,
             openTitlePlaybackOptions: openTitlePlaybackOptions,
             openTrailers: openTrailers,
@@ -4679,6 +4701,36 @@
             component: 'yani_catalog',
             genre_context: context,
             params: {limit: 30, genres: genreId}
+        });
+    }
+
+    function pushSubjectCatalog(kind, subject) {
+        var id = subject && subject.id;
+        var title = String(subject && (subject.title || subject.name) || '').trim();
+        if (!title || id === undefined || id === null) return;
+        var context = Object.assign({}, subject, {kind: kind, title: title});
+        if (!beginTileNavigation(kind + ':' + String(id))) return;
+        var params = {limit: 30};
+        params[kind === 'studio' ? 'studio_ids' : 'director_ids'] = id;
+        Lampa.Activity.push({
+            url: 'yani/' + kind + '/' + encodeURIComponent(id),
+            title: title,
+            component: 'yani_catalog',
+            subject_context: context,
+            params: params
+        });
+    }
+
+    function openSubjectCatalog(kind, subject) {
+        if (!subject) return;
+        if (subject.id !== undefined && subject.id !== null) return pushSubjectCatalog(kind, subject);
+        if (kind !== 'studio' || !subject.url) return;
+        LampaYaniApi.studio(subject.url).then(function (payload) {
+            var detailed = payload && payload.response ? payload.response : payload;
+            pushSubjectCatalog(kind, Object.assign({}, subject, detailed || {}));
+        }).catch(function (error) {
+            console.error('[YummyAnime] Studio details failed', error);
+            Lampa.Noty.show(t('catalog_load_error'));
         });
     }
 

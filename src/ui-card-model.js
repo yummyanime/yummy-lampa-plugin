@@ -129,6 +129,8 @@
                 yani_user_rating: Number(item.user && (item.user.rate || item.user.rating || item.user.score) || item.user_rate || 0) || null,
                 yani_viewing_order: Array.isArray(item.viewing_order) ? item.viewing_order : [],
                 yani_genres: item.genres || item.genre || [],
+                yani_creators: Array.isArray(item.creators) ? item.creators : [],
+                yani_studios: Array.isArray(item.studios) ? item.studios : [],
                 yani_genre_top: item.yani_genre_top && typeof item.yani_genre_top === 'object' ? item.yani_genre_top : null,
                 yani_type: item.type || null,
                 yani_status: item.anime_status || item.status || null,
