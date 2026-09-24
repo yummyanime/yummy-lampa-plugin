@@ -15,6 +15,10 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 - Studio and director catalogs now render their title when the API returns a single anime object instead of an array
 
+### Added
+
+- Cached studio logos and director photos in subject catalog headers when Jikan can match them safely
+
 ## [0.47.4] - 2026-09-23
 
 ### Added

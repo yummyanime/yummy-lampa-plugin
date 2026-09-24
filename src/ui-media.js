@@ -9,6 +9,7 @@
     var limit = 80;
     var maxActive = 2;
     var requestTimeout = 8000;
+    var subjectCache = {};
 
     function remember(key, value) {
         if (Object.prototype.hasOwnProperty.call(cache, key)) {
@@ -134,6 +135,58 @@
         return pending[key];
     }
 
+    function normalizedName(value) {
+        return String(value || '').toLowerCase().replace(/[^a-z0-9\u00c0-\u024f\u0400-\u04ff]+/g, '');
+    }
+
+    function remoteMalId(item) {
+        var ids = item && (item.remote_ids || item.yani_remote_ids) || {};
+        return ids.myanimelist_id || ids.myAnimeListId || ids.mal || ids.myanimelist || '';
+    }
+
+    function subjectImage(kind, subject, reference) {
+        var title = String(subject && (subject.title || subject.name) || '').trim();
+        var key = kind + ':' + String(subject && subject.id || title).toLowerCase();
+        if (!title) return Promise.resolve('');
+        if (Object.prototype.hasOwnProperty.call(subjectCache, key)) return Promise.resolve(subjectCache[key] || '');
+        if (pending[key]) return pending[key];
+
+        var operation;
+        if (kind === 'studio') {
+            operation = requestJson({url: 'https://api.jikan.moe/v4/producers?q=' + encodeURIComponent(title) + '&limit=8'}).then(function (payload) {
+                var rows = payload && payload.data || [];
+                var wanted = normalizedName(title);
+                var match = rows.filter(function (row) { return normalizedName(row && row.name) === wanted; })[0];
+                var images = match && match.images || {};
+                return images.jpg && (images.jpg.large_image_url || images.jpg.image_url) || images.webp && (images.webp.large_image_url || images.webp.image_url) || '';
+            });
+        } else {
+            var malId = remoteMalId(reference);
+            if (!malId) return Promise.resolve('');
+            operation = requestJson({url: 'https://api.jikan.moe/v4/anime/' + encodeURIComponent(malId) + '/staff'}).then(function (payload) {
+                var directors = (payload && payload.data || []).filter(function (row) {
+                    return Array.isArray(row && row.positions) && row.positions.some(function (position) { return /director/i.test(String(position)); });
+                });
+                var wanted = normalizedName(title);
+                var match = directors.filter(function (row) { return normalizedName(row && row.person && row.person.name) === wanted; })[0];
+                if (!match && directors.length === 1) match = directors[0];
+                var images = match && match.person && match.person.images || {};
+                return images.jpg && (images.jpg.image_url || images.jpg.large_image_url) || images.webp && (images.webp.image_url || images.webp.large_image_url) || '';
+            });
+        }
+
+        pending[key] = operation.then(function (url) {
+            delete pending[key];
+            subjectCache[key] = url || null;
+            return url || '';
+        }).catch(function () {
+            delete pending[key];
+            subjectCache[key] = null;
+            return '';
+        });
+        return pending[key];
+    }
+
     function renderElement(element, card) {
         var render = element && element.jquery ? element : element ? $(element) : $();
         if (!render.length && card && card.render) render = $(card.render(true));
@@ -187,6 +240,7 @@
     global.LampaYani = global.LampaYani || {};
     global.LampaYani.Media = global.LampaYaniMedia = {
         findAlternativePoster: find,
+        findSubjectImage: subjectImage,
         attachPosterFallback: attach,
         bindPosterFallback: bind
     };

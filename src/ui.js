@@ -414,6 +414,7 @@
         var requestedOffsets = {};
         var genreHeader;
         var genreDescriptionRequested = false;
+        var subjectReferenceAnime = null;
         var destroyed = false;
 
         object.page = 1;
@@ -437,7 +438,7 @@
                 ? t(context.kind === 'studio' ? 'studio_catalog_description' : 'creator_catalog_description').replace('{name}', title)
                 : genreDescription(context) || t('genre_catalog_fallback').replace('{genre}', title);
             genreHeader = $('<div class="yani-genre-catalog-header"></div>');
-            genreHeader.append('<span class="yani-genre-catalog-header__orb" aria-hidden="true"><i></i><i></i><i></i></span>');
+            genreHeader.append('<span class="yani-genre-catalog-header__orb" aria-hidden="true"><img alt=""><i></i><i></i><i></i></span>');
             var copy = $('<div class="yani-genre-catalog-header__copy"></div>');
             copy.append($('<span class="yani-genre-catalog-header__eyebrow"></span>').text(t(isSubject ? (context.kind === 'studio' ? 'studio' : 'creator') : 'genre_catalog')));
             copy.append($('<strong class="yani-genre-catalog-header__title"></strong>').text(title));
@@ -456,6 +457,12 @@
             else if (context.kind === 'director' && context.id !== undefined && context.id !== null) request = LampaYaniApi.director(context.id);
             if (!request) return;
             genreDescriptionRequested = true;
+            if (window.LampaYaniMedia && LampaYaniMedia.findSubjectImage) {
+                LampaYaniMedia.findSubjectImage(context.kind, context, subjectReferenceAnime).then(function (image) {
+                    if (!image || !genreHeader || !genreHeader.closest('body').length) return;
+                    genreHeader.find('.yani-genre-catalog-header__orb').addClass('has-image').find('img').attr('src', image);
+                });
+            }
             request.then(function (payload) {
                 var detailed = payload && payload.response ? payload.response : payload;
                 if (!detailed || !genreHeader || !genreHeader.closest('body').length) return;
@@ -513,6 +520,7 @@
                 .then(function (payload) {
                     if (destroyed) return;
                     var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
+                    if (object.subject_context && raw.length) subjectReferenceAnime = raw[0];
                     var results = mapUniqueCards(raw, seen);
                     requestedOffsets[baseParams.offset] = true;
                     if (raw.length < limit) object.page = maxPages;
