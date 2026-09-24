@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.4',
+        version: '0.47.5',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -1638,9 +1638,21 @@ function pluginYummyAnime() {
             return request('/anime?' + new URLSearchParams(params || {limit: 20}), Object.assign({auth: true}, options || {}));
         },
         normalize: function (payload) {
-            var response = payload && payload.response ? payload.response : payload;
+            var response = payload && payload.response !== undefined ? payload.response : payload;
             if (Array.isArray(response)) return response;
-            return response && (response.anime || response.results || response.items || response.data) || [];
+            var items = response && (
+                response.anime !== undefined ? response.anime :
+                response.results !== undefined ? response.results :
+                response.items !== undefined ? response.items :
+                response.data !== undefined ? response.data : response
+            );
+            if (Array.isArray(items)) return items;
+            if (items && typeof items === 'object' && (
+                items.anime_id !== undefined ||
+                items.animeId !== undefined ||
+                items.id !== undefined && (items.title || items.name || items.original_title)
+            )) return [items];
+            return [];
         },
         normalizeGenres: function (payload) {
             var response = payload && payload.response ? payload.response : payload;
@@ -19442,6 +19454,7 @@ function pluginYummyAnime() {
     }
 
     function mapUniqueCards(items, seen) {
+        if (!Array.isArray(items)) items = items ? [items] : [];
         return items.map(toCard).filter(function (card) {
             var key = card.yani_id || card.yani_url || card.title;
             if (seen[key]) return false;

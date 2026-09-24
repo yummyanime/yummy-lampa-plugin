@@ -5074,6 +5074,7 @@
     }
 
     function mapUniqueCards(items, seen) {
+        if (!Array.isArray(items)) items = items ? [items] : [];
         return items.map(toCard).filter(function (card) {
             var key = card.yani_id || card.yani_url || card.title;
             if (seen[key]) return false;

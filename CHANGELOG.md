@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.5] - 2026-09-24
+
+### Fixed
+
+- Studio and director catalogs now render their title when the API returns a single anime object instead of an array
+
 ## [0.47.4] - 2026-09-23
 
 ### Added

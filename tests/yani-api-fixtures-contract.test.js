@@ -110,6 +110,11 @@ catalogItems.forEach((item, index) => assertAnimeCore(item, 'catalog[' + index +
 assert.ok(catalogItems[0].rating && typeof catalogItems[0].rating === 'object', 'catalog rating object shape');
 assert.ok(catalogItems[0].user && catalogItems[0].user.list, 'catalog user.list progress shape');
 assert.ok(Number(catalogItems[0].episodes.count) > 0, 'catalog episodes.count');
+const singleDirectorTitle = catalogItems[0];
+const singleDirectorCatalog = api.normalize({response: {anime: singleDirectorTitle}});
+assert.strictEqual(singleDirectorCatalog.length, 1, 'director_ids=12164 singleton response must stay visible');
+assert.strictEqual(singleDirectorCatalog[0].anime_id, singleDirectorTitle.anime_id, 'singleton director title must be preserved');
+assert.strictEqual(api.normalize({response: singleDirectorTitle}).length, 1, 'direct singleton anime response must normalize to one row');
 
 // Detail
 const detail = loadFixture('detail.json');
