@@ -44,9 +44,11 @@
     function requestJson(source) {
         return enqueue(function () {
             var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-            var options = source.query
-                ? {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({query: 'query ($search: String) { Page(perPage: 1) { media(search: $search, type: ANIME) { coverImage { extraLarge large } } } }', variables: {search: source.query}})}
-                : {};
+            var options = source.graphql
+                ? {method: 'POST', headers: {'Content-Type': 'application/json', Accept: 'application/json'}, body: JSON.stringify({query: source.graphql, variables: source.variables || {}})}
+                : source.query
+                    ? {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({query: 'query ($search: String) { Page(perPage: 1) { media(search: $search, type: ANIME) { coverImage { extraLarge large } } } }', variables: {search: source.query}})}
+                    : {};
             if (controller) options.signal = controller.signal;
             var timer;
             var timeout = new Promise(function (resolve, reject) {
@@ -144,6 +146,82 @@
         return ids.myanimelist_id || ids.myAnimeListId || ids.mal || ids.myanimelist || '';
     }
 
+    function firstAvailable(loaders, index) {
+        index = index || 0;
+        if (index >= loaders.length) return Promise.resolve('');
+        return loaders[index]().then(function (url) {
+            return url || firstAvailable(loaders, index + 1);
+        }).catch(function () { return firstAvailable(loaders, index + 1); });
+    }
+
+    function commonsFileUrl(file) {
+        return file ? 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(file) + '?width=360' : '';
+    }
+
+    function wikimediaSubjectImage(title, studio) {
+        var api = 'https://www.wikidata.org/w/api.php?origin=*&format=json';
+        return requestJson({url: api + '&action=wbsearchentities&language=en&uselang=en&limit=8&search=' + encodeURIComponent(title)}).then(function (payload) {
+            var wanted = normalizedName(title);
+            var match = (payload && payload.search || []).filter(function (row) {
+                return normalizedName(row && row.label) === wanted;
+            })[0];
+            if (!match || !match.id) return '';
+            return requestJson({url: api + '&action=wbgetentities&props=claims&ids=' + encodeURIComponent(match.id)}).then(function (details) {
+                var entity = details && details.entities && details.entities[match.id];
+                var claims = entity && entity.claims || {};
+                var properties = studio ? ['P154', 'P18'] : ['P18'];
+                var file = '';
+                properties.some(function (property) {
+                    var claim = claims[property] && claims[property][0];
+                    file = claim && claim.mainsnak && claim.mainsnak.datavalue && claim.mainsnak.datavalue.value || '';
+                    return Boolean(file);
+                });
+                return commonsFileUrl(file);
+            });
+        });
+    }
+
+    function aniListDirectorImage(malId, title) {
+        if (!malId) return Promise.resolve('');
+        var query = 'query ($idMal: Int) { Media(idMal: $idMal, type: ANIME) { staff(perPage: 50) { edges { role node { name { full native } image { large medium } } } } } }';
+        return requestJson({url: 'https://graphql.anilist.co', graphql: query, variables: {idMal: Number(malId)}}).then(function (payload) {
+            var edges = payload && payload.data && payload.data.Media && payload.data.Media.staff && payload.data.Media.staff.edges || [];
+            var directors = edges.filter(function (edge) { return /^director$/i.test(String(edge && edge.role || '').trim()); });
+            var wanted = normalizedName(title);
+            var match = directors.filter(function (edge) {
+                var name = edge && edge.node && edge.node.name || {};
+                return normalizedName(name.full) === wanted || normalizedName(name.native) === wanted;
+            })[0];
+            if (!match && directors.length === 1) match = directors[0];
+            var image = match && match.node && match.node.image || {};
+            return image.large || image.medium || '';
+        });
+    }
+
+    function jikanStudioImage(title) {
+        return requestJson({url: 'https://api.jikan.moe/v4/producers?q=' + encodeURIComponent(title) + '&limit=8'}).then(function (payload) {
+            var rows = payload && payload.data || [];
+            var wanted = normalizedName(title);
+            var match = rows.filter(function (row) { return normalizedName(row && row.name) === wanted; })[0];
+            var images = match && match.images || {};
+            return images.jpg && (images.jpg.large_image_url || images.jpg.image_url) || images.webp && (images.webp.large_image_url || images.webp.image_url) || '';
+        });
+    }
+
+    function jikanDirectorImage(malId, title) {
+        if (!malId) return Promise.resolve('');
+        return requestJson({url: 'https://api.jikan.moe/v4/anime/' + encodeURIComponent(malId) + '/staff'}).then(function (payload) {
+            var directors = (payload && payload.data || []).filter(function (row) {
+                return Array.isArray(row && row.positions) && row.positions.some(function (position) { return /^director$/i.test(String(position).trim()); });
+            });
+            var wanted = normalizedName(title);
+            var match = directors.filter(function (row) { return normalizedName(row && row.person && row.person.name) === wanted; })[0];
+            if (!match && directors.length === 1) match = directors[0];
+            var images = match && match.person && match.person.images || {};
+            return images.jpg && (images.jpg.image_url || images.jpg.large_image_url) || images.webp && (images.webp.image_url || images.webp.large_image_url) || '';
+        });
+    }
+
     function subjectImage(kind, subject, reference) {
         var title = String(subject && (subject.title || subject.name) || '').trim();
         var key = kind + ':' + String(subject && subject.id || title).toLowerCase();
@@ -152,27 +230,18 @@
         if (pending[key]) return pending[key];
 
         var operation;
+        var malId = remoteMalId(reference);
         if (kind === 'studio') {
-            operation = requestJson({url: 'https://api.jikan.moe/v4/producers?q=' + encodeURIComponent(title) + '&limit=8'}).then(function (payload) {
-                var rows = payload && payload.data || [];
-                var wanted = normalizedName(title);
-                var match = rows.filter(function (row) { return normalizedName(row && row.name) === wanted; })[0];
-                var images = match && match.images || {};
-                return images.jpg && (images.jpg.large_image_url || images.jpg.image_url) || images.webp && (images.webp.large_image_url || images.webp.image_url) || '';
-            });
+            operation = firstAvailable([
+                function () { return wikimediaSubjectImage(title, true); },
+                function () { return jikanStudioImage(title); }
+            ]);
         } else {
-            var malId = remoteMalId(reference);
-            if (!malId) return Promise.resolve('');
-            operation = requestJson({url: 'https://api.jikan.moe/v4/anime/' + encodeURIComponent(malId) + '/staff'}).then(function (payload) {
-                var directors = (payload && payload.data || []).filter(function (row) {
-                    return Array.isArray(row && row.positions) && row.positions.some(function (position) { return /director/i.test(String(position)); });
-                });
-                var wanted = normalizedName(title);
-                var match = directors.filter(function (row) { return normalizedName(row && row.person && row.person.name) === wanted; })[0];
-                if (!match && directors.length === 1) match = directors[0];
-                var images = match && match.person && match.person.images || {};
-                return images.jpg && (images.jpg.image_url || images.jpg.large_image_url) || images.webp && (images.webp.image_url || images.webp.large_image_url) || '';
-            });
+            operation = firstAvailable([
+                function () { return aniListDirectorImage(malId, title); },
+                function () { return jikanDirectorImage(malId, title); },
+                function () { return wikimediaSubjectImage(title, false); }
+            ]);
         }
 
         pending[key] = operation.then(function (url) {

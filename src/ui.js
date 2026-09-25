@@ -438,7 +438,12 @@
                 ? t(context.kind === 'studio' ? 'studio_catalog_description' : 'creator_catalog_description').replace('{name}', title)
                 : genreDescription(context) || t('genre_catalog_fallback').replace('{genre}', title);
             genreHeader = $('<div class="yani-genre-catalog-header"></div>');
-            genreHeader.append('<span class="yani-genre-catalog-header__orb" aria-hidden="true"><img alt=""><i></i><i></i><i></i></span>');
+            var orb = $('<span class="yani-genre-catalog-header__orb" aria-hidden="true"><img alt=""><b></b><i></i><i></i><i></i></span>');
+            if (isSubject) {
+                var initials = title.split(/[\s\-_]+/).filter(Boolean).slice(0, 2).map(function (part) { return part.charAt(0); }).join('').toUpperCase();
+                orb.addClass('is-subject').find('b').text(initials || title.charAt(0).toUpperCase());
+            }
+            genreHeader.append(orb);
             var copy = $('<div class="yani-genre-catalog-header__copy"></div>');
             copy.append($('<span class="yani-genre-catalog-header__eyebrow"></span>').text(t(isSubject ? (context.kind === 'studio' ? 'studio' : 'creator') : 'genre_catalog')));
             copy.append($('<strong class="yani-genre-catalog-header__title"></strong>').text(title));

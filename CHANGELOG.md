@@ -18,6 +18,8 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 ### Added
 
 - Cached studio logos and director photos in subject catalog headers when Jikan can match them safely
+- Initial-based studio and director avatars when an external logo or photo is unavailable
+- AniList and Wikimedia image fallbacks for director portraits and studio logos
 
 ## [0.47.4] - 2026-09-23
 
