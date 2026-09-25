@@ -441,7 +441,7 @@
             var orb = $('<span class="yani-genre-catalog-header__orb" aria-hidden="true"><img alt=""><b></b><i></i><i></i><i></i></span>');
             if (isSubject) {
                 var initials = title.split(/[\s\-_]+/).filter(Boolean).slice(0, 2).map(function (part) { return part.charAt(0); }).join('').toUpperCase();
-                orb.addClass('is-subject').find('b').text(initials || title.charAt(0).toUpperCase());
+                orb.addClass('is-subject is-' + (context.kind === 'studio' ? 'studio' : 'director')).find('b').text(initials || title.charAt(0).toUpperCase());
             }
             genreHeader.append(orb);
             var copy = $('<div class="yani-genre-catalog-header__copy"></div>');
