@@ -17987,6 +17987,10 @@ function pluginYummyAnime() {
             // Only the start can be reported: the page plays inside an iframe
             // this plugin cannot read a position from.
             syncServerProgress(selected);
+            // AniSkip can control only Lampa's own video element. Embedded
+            // pages are cross-origin, so remove the unusable old prompt.
+            stopPlaybackWatcher();
+            destroySkipPrompt();
             Lampa.Activity.push({
                 url: 'yani/player',
                 title: (card && card.title || 'YummyAnime') + ' · ' + t('episode') + ' ' + ((selected && (selected.number || selected.index)) || '?'),

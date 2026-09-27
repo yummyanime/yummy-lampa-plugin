@@ -12,6 +12,7 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 ### Fixed
 
 - Alloha and CVH iframe playback now suppresses Lampa's idle screensaver and requests a platform screen wake lock until the player is closed
+- Alloha and CVH iframe playback no longer retains unusable opening or ending skip controls from Lampa's internal player
 
 ## [0.47.6] - 2026-09-27
 
