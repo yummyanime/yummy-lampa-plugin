@@ -336,6 +336,7 @@
         }
         function handleRemoteShortcut(event) {
             if (!html.is(':visible') || event.defaultPrevented || $(event.target).closest('input, textarea, select, [contenteditable=true]').length) return;
+            if (window.Lampa && Lampa.Activity && typeof Lampa.Activity.own === 'function' && !Lampa.Activity.own(comp)) return;
             var color = remoteColor(event);
             var todayIndex = dayGroups.findIndex(function (group) { return group.relativeOffset === 0; });
             if (!color) return;

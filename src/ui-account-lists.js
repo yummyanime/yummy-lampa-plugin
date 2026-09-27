@@ -238,6 +238,7 @@
         function handleRemoteShortcut(event) {
             var root = component.render ? component.render() : $();
             if (!root.length || !root.is(':visible') || event.defaultPrevented || $(event.target).closest('input, textarea, select, [contenteditable=true]').length) return;
+            if (window.Lampa && Lampa.Activity && typeof Lampa.Activity.own === 'function' && !Lampa.Activity.own(component)) return;
             var color = remoteColor(event);
             var number = Number(event && (event.keyCode || event.which));
             var byColor = {red: 'watching', green: 'planned', yellow: 'favorites', blue: 'history'};

@@ -226,6 +226,7 @@
         });
 
         function detailControllerIsActive() {
+            if (window.Lampa && Lampa.Activity && typeof Lampa.Activity.own === 'function' && !Lampa.Activity.own(detailComponent)) return false;
             if (!Lampa.Controller || !Lampa.Controller.enabled) return true;
             var enabled = Lampa.Controller.enabled();
             if (!enabled) return true;

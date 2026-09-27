@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.6',
+        version: '0.47.7',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -1781,7 +1781,10 @@ function pluginYummyAnime() {
             });
         },
         trailers: function (id) {
-            return request('/anime/' + encodeURIComponent(id) + '/trailers');
+            // An empty cached response made every title look as if it had no
+            // trailers until the cache was cleared. Trailer lists are small
+            // and may change independently of the title, so always refresh.
+            return request('/anime/' + encodeURIComponent(id) + '/trailers', {cache: false});
         },
         recommendations: function (id) {
             return request('/anime/' + encodeURIComponent(id) + '/recommendations');
@@ -5853,6 +5856,7 @@ function pluginYummyAnime() {
 
         function shortcutsEnabled(event) {
             if (!controlsReady || !toolbar || !toolbar.length || !toolbar.is(':visible')) return false;
+            if (window.Lampa && Lampa.Activity && typeof Lampa.Activity.own === 'function' && !Lampa.Activity.own(comp)) return false;
             var target = event && event.target;
             if (!target) return true;
             var tag = target && String(target.tagName || '').toLowerCase();
@@ -8974,6 +8978,57 @@ function pluginYummyAnime() {
         var openEmbedded = options.openEmbedded;
         var api = options.api || window.LampaYaniApi;
         var utils = options.utils || window.LampaYaniUiUtils;
+        var fallbackCache = {};
+
+        function malId(card) {
+            var ids = card && card.yani_remote_ids || {};
+            return Number(ids.myanimelist_id || ids.mal_id || card && card.mal_id || 0) || 0;
+        }
+
+        function aniListTrailer(mal) {
+            mal = Number(mal) || 0;
+            if (!mal || typeof fetch !== 'function') return Promise.resolve([]);
+            if (Object.prototype.hasOwnProperty.call(fallbackCache, mal)) return Promise.resolve(fallbackCache[mal]);
+            var query = 'query($id:Int){Media(idMal:$id,type:ANIME){trailer{id site thumbnail}}}';
+            return fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+                body: JSON.stringify({query: query, variables: {id: mal}})
+            }).then(function (response) {
+                if (!response.ok) throw new Error('AniList trailer request: ' + response.status);
+                return response.json();
+            }).then(function (payload) {
+                var trailer = payload && payload.data && payload.data.Media && payload.data.Media.trailer;
+                var site = String(trailer && trailer.site || '').toLowerCase();
+                var id = trailer && trailer.id;
+                var items = site === 'youtube' && id ? [{number: t('trailers'), youtube_id: String(id)}] : [];
+                fallbackCache[mal] = items;
+                return items;
+            }).catch(function (error) {
+                console.warn('[YummyAnime] AniList trailer fallback failed', error);
+                return [];
+            });
+        }
+
+        function fallbackTrailerItems(card) {
+            var knownMalId = malId(card);
+            if (knownMalId) return aniListTrailer(knownMalId);
+            if (!api || typeof api.detail !== 'function' || !card || !card.yani_id) return Promise.resolve([]);
+            return api.detail(card.yani_id).then(function (payload) {
+                var detail = payload && payload.response ? payload.response : payload;
+                return aniListTrailer(malId({yani_remote_ids: detail && detail.remote_ids || {}}));
+            }).catch(function () { return []; });
+        }
+
+        function loadTrailerItems(card) {
+            return api.trailers(card.yani_id).then(function (payload) {
+                var items = normalizeTrailerItems(payload);
+                return items.length ? items : fallbackTrailerItems(card);
+            }).catch(function (error) {
+                console.warn('[YummyAnime] Primary trailer request failed', error);
+                return fallbackTrailerItems(card);
+            });
+        }
 
         function trailerUrl(trailer) {
             if (!trailer) return '';
@@ -9055,7 +9110,7 @@ function pluginYummyAnime() {
         function legacyOpenTrailers(card) {
             if (!card || !card.yani_id) return;
             if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
-            api.trailers(card.yani_id).then(function (payload) {
+            loadTrailerItems(card).then(function (payload) {
                 if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
                 var items = mapTrailerItems(payload);
                 if (!items.length) {
@@ -9103,7 +9158,7 @@ function pluginYummyAnime() {
             this.create = function () {
                 var self = this;
                 this.activity.loader(true);
-                api.trailers(card.yani_id).then(function (payload) {
+                loadTrailerItems(card).then(function (payload) {
                     var items = normalizeTrailerItems(payload).filter(function (trailer) { return trailerUrl(trailer); });
                     render(items);
                     self.activity.loader(false);
@@ -9521,6 +9576,7 @@ function pluginYummyAnime() {
         }
         function handleRemoteShortcut(event) {
             if (!html.is(':visible') || event.defaultPrevented || $(event.target).closest('input, textarea, select, [contenteditable=true]').length) return;
+            if (window.Lampa && Lampa.Activity && typeof Lampa.Activity.own === 'function' && !Lampa.Activity.own(comp)) return;
             var color = remoteColor(event);
             var todayIndex = dayGroups.findIndex(function (group) { return group.relativeOffset === 0; });
             if (!color) return;
@@ -10975,6 +11031,7 @@ function pluginYummyAnime() {
         function handleRemoteShortcut(event) {
             var root = component.render ? component.render() : $();
             if (!root.length || !root.is(':visible') || event.defaultPrevented || $(event.target).closest('input, textarea, select, [contenteditable=true]').length) return;
+            if (window.Lampa && Lampa.Activity && typeof Lampa.Activity.own === 'function' && !Lampa.Activity.own(component)) return;
             var color = remoteColor(event);
             var number = Number(event && (event.keyCode || event.which));
             var byColor = {red: 'watching', green: 'planned', yellow: 'favorites', blue: 'history'};
@@ -13791,6 +13848,7 @@ function pluginYummyAnime() {
         });
 
         function detailControllerIsActive() {
+            if (window.Lampa && Lampa.Activity && typeof Lampa.Activity.own === 'function' && !Lampa.Activity.own(detailComponent)) return false;
             if (!Lampa.Controller || !Lampa.Controller.enabled) return true;
             var enabled = Lampa.Controller.enabled();
             if (!enabled) return true;

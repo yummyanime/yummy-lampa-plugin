@@ -19,6 +19,11 @@ assert.match(trailers, /playEmbedded\(embed, title\)/, 'iframe trailers must ope
 assert.match(trailers, /trailer\.iframe_url/, 'Yani trailers use iframe_url');
 assert.match(trailers, /trailer\.number/, 'trailer titles should prefer the API number/label');
 assert.match(trailers, /t\('no_trailers'\)/);
+assert.match(trailers, /function loadTrailerItems\(card\)/, 'trailers must use a shared primary and fallback loader');
+assert.match(trailers, /Media\(idMal:\$id,type:ANIME\)\{trailer\{id site thumbnail\}\}/,
+    'empty YummyAnime trailer responses must fall back to AniList by MAL id');
+assert.match(trailers, /api\.detail\(card\.yani_id\)/,
+    'fallback must recover the MAL id from title detail when a compact card does not contain it');
 assert.match(trailers, /Lampa\.Controller\.collectionFocus\(/, 'standalone trailer list must remain TV-focusable');
 
 const context = {window: {}};

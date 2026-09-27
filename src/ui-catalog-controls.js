@@ -308,6 +308,7 @@
 
         function shortcutsEnabled(event) {
             if (!controlsReady || !toolbar || !toolbar.length || !toolbar.is(':visible')) return false;
+            if (window.Lampa && Lampa.Activity && typeof Lampa.Activity.own === 'function' && !Lampa.Activity.own(comp)) return false;
             var target = event && event.target;
             if (!target) return true;
             var tag = target && String(target.tagName || '').toLowerCase();

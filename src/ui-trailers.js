@@ -62,6 +62,57 @@
         var openEmbedded = options.openEmbedded;
         var api = options.api || window.LampaYaniApi;
         var utils = options.utils || window.LampaYaniUiUtils;
+        var fallbackCache = {};
+
+        function malId(card) {
+            var ids = card && card.yani_remote_ids || {};
+            return Number(ids.myanimelist_id || ids.mal_id || card && card.mal_id || 0) || 0;
+        }
+
+        function aniListTrailer(mal) {
+            mal = Number(mal) || 0;
+            if (!mal || typeof fetch !== 'function') return Promise.resolve([]);
+            if (Object.prototype.hasOwnProperty.call(fallbackCache, mal)) return Promise.resolve(fallbackCache[mal]);
+            var query = 'query($id:Int){Media(idMal:$id,type:ANIME){trailer{id site thumbnail}}}';
+            return fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+                body: JSON.stringify({query: query, variables: {id: mal}})
+            }).then(function (response) {
+                if (!response.ok) throw new Error('AniList trailer request: ' + response.status);
+                return response.json();
+            }).then(function (payload) {
+                var trailer = payload && payload.data && payload.data.Media && payload.data.Media.trailer;
+                var site = String(trailer && trailer.site || '').toLowerCase();
+                var id = trailer && trailer.id;
+                var items = site === 'youtube' && id ? [{number: t('trailers'), youtube_id: String(id)}] : [];
+                fallbackCache[mal] = items;
+                return items;
+            }).catch(function (error) {
+                console.warn('[YummyAnime] AniList trailer fallback failed', error);
+                return [];
+            });
+        }
+
+        function fallbackTrailerItems(card) {
+            var knownMalId = malId(card);
+            if (knownMalId) return aniListTrailer(knownMalId);
+            if (!api || typeof api.detail !== 'function' || !card || !card.yani_id) return Promise.resolve([]);
+            return api.detail(card.yani_id).then(function (payload) {
+                var detail = payload && payload.response ? payload.response : payload;
+                return aniListTrailer(malId({yani_remote_ids: detail && detail.remote_ids || {}}));
+            }).catch(function () { return []; });
+        }
+
+        function loadTrailerItems(card) {
+            return api.trailers(card.yani_id).then(function (payload) {
+                var items = normalizeTrailerItems(payload);
+                return items.length ? items : fallbackTrailerItems(card);
+            }).catch(function (error) {
+                console.warn('[YummyAnime] Primary trailer request failed', error);
+                return fallbackTrailerItems(card);
+            });
+        }
 
         function trailerUrl(trailer) {
             if (!trailer) return '';
@@ -143,7 +194,7 @@
         function legacyOpenTrailers(card) {
             if (!card || !card.yani_id) return;
             if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
-            api.trailers(card.yani_id).then(function (payload) {
+            loadTrailerItems(card).then(function (payload) {
                 if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
                 var items = mapTrailerItems(payload);
                 if (!items.length) {
@@ -191,7 +242,7 @@
             this.create = function () {
                 var self = this;
                 this.activity.loader(true);
-                api.trailers(card.yani_id).then(function (payload) {
+                loadTrailerItems(card).then(function (payload) {
                     var items = normalizeTrailerItems(payload).filter(function (trailer) { return trailerUrl(trailer); });
                     render(items);
                     self.activity.loader(false);

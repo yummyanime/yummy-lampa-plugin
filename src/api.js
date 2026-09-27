@@ -479,7 +479,10 @@
             });
         },
         trailers: function (id) {
-            return request('/anime/' + encodeURIComponent(id) + '/trailers');
+            // An empty cached response made every title look as if it had no
+            // trailers until the cache was cleared. Trailer lists are small
+            // and may change independently of the title, so always refresh.
+            return request('/anime/' + encodeURIComponent(id) + '/trailers', {cache: false});
         },
         recommendations: function (id) {
             return request('/anime/' + encodeURIComponent(id) + '/recommendations');

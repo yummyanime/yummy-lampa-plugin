@@ -9,10 +9,14 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.7] - 2026-09-28
+
 ### Fixed
 
 - Alloha and CVH iframe playback now suppresses Lampa's idle screensaver and requests a platform screen wake lock until the player is closed
 - Alloha and CVH iframe playback no longer retains unusable opening or ending skip controls from Lampa's internal player
+- Color remote buttons now act only on the currently open screen instead of triggering filters, schedule days or lists in the parent screen beneath a title card
+- Trailer lists now bypass stale empty cache entries and fall back to the title's AniList trailer when YummyAnime returns no playable trailers
 
 ## [0.47.6] - 2026-09-27
 
