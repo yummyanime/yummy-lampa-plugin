@@ -9,11 +9,13 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
-## [0.47.5] - 2026-09-24
+## [0.47.6] - 2026-09-27
 
 ### Fixed
 
-- Studio and director catalogs now render their title when the API returns a single anime object instead of an array
+- Final catalog rows can now scroll fully into view with their poster, title and focus frame visible
+
+## [0.47.5] - 2026-09-24
 
 ### Added
 
@@ -21,6 +23,10 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 - Initial-based studio and director avatars when an external logo or photo is unavailable
 - AniList and Wikimedia image fallbacks for director portraits and studio logos
 - Aspect-aware studio logo and director portrait frames that show the complete image without square cropping
+
+### Fixed
+
+- Studio and director catalogs now render their title when the API returns a single anime object instead of an array
 
 ## [0.47.4] - 2026-09-23
 

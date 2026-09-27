@@ -94,6 +94,8 @@ assert.match(css, /\.yani-catalog-command-deck__heading/);
 assert.match(css, /\.yani-catalog-filter__count/);
 assert.match(css, /\.yani-catalog-view \.category-full[\s\S]{0,900}grid-template-columns:\s*repeat\(auto-fit/);
 assert.match(css, /\.yani-catalog-view \.category-full[\s\S]{0,900}row-gap:\s*2\.8em/);
+assert.match(css, /\.yani-genre-catalog-view \.items-cards[\s\S]{0,300}padding-bottom:\s*8em/);
+assert.match(css, /\.yani-genre-catalog-view \.items-cards[\s\S]{0,350}scroll-padding-bottom:\s*8em/);
 assert.match(css, /\.yani-catalog-view \.card \.card__title[\s\S]{0,600}margin-top:\s*\.85em/);
 assert.match(css, /\.yani-user-lists-view \.items-cards[\s\S]{0,500}display:\s*flex/);
 assert.match(css, /\.yani-card-rails \.items-cards[\s\S]{0,500}display:\s*flex/);

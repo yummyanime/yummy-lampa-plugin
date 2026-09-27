@@ -20,6 +20,15 @@
     row-gap: 2.8em;
 }
 
+/* Keep the final row fully scrollable above Lampa's viewport edge. */
+.yani-catalog-view .category-full,
+.yani-catalog-view .items-cards,
+.yani-genre-catalog-view .category-full,
+.yani-genre-catalog-view .items-cards {
+    padding-bottom: 8em;
+    scroll-padding-bottom: 8em;
+}
+
 .yani-catalog-view .category-full .card,
 .yani-catalog-view .items-cards .card,
 .yani-genre-catalog-view .category-full .card,
