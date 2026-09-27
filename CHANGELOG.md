@@ -9,11 +9,15 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+### Fixed
+
+- Alloha and CVH iframe playback now suppresses Lampa's idle screensaver and requests a platform screen wake lock until the player is closed
+
 ## [0.47.6] - 2026-09-27
 
 ### Fixed
 
-- Final catalog rows can now scroll fully into view with their poster, title and focus frame visible
+- Final catalog rows now have an enlarged scroll reserve so posters, multiline titles and focus frames remain fully visible on short TV viewports
 
 ## [0.47.5] - 2026-09-24
 

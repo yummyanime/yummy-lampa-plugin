@@ -8,6 +8,10 @@
         // here is worth losing the player over.
         var t = deps.t || function (name) { return name; };
         var closing = false;
+        var screensaverPreviousState = null;
+        var screensaverClaimed = false;
+        var wakeLock = null;
+        var wakeLockRequest = null;
         var html = $('<div class="yani-player"></div>');
         var iframe = $('<iframe class="yani-player__iframe" frameborder="0" allowfullscreen></iframe>');
         // Claiming the screen must never be able to take the player down with
@@ -22,6 +26,73 @@
             } catch (error) {}
         }
 
+        function requestWakeLock() {
+            if (closing || wakeLock || wakeLockRequest) return;
+            try {
+                if (!window.navigator || !window.navigator.wakeLock ||
+                    typeof window.navigator.wakeLock.request !== 'function') return;
+                if (window.document && window.document.hidden) return;
+                wakeLockRequest = window.navigator.wakeLock.request('screen');
+                Promise.resolve(wakeLockRequest).then(function (lock) {
+                    wakeLockRequest = null;
+                    if (closing) {
+                        if (lock && typeof lock.release === 'function') lock.release();
+                        return;
+                    }
+                    wakeLock = lock || null;
+                    if (wakeLock && typeof wakeLock.addEventListener === 'function') {
+                        wakeLock.addEventListener('release', function () { wakeLock = null; });
+                    }
+                }).catch(function () { wakeLockRequest = null; });
+            } catch (error) { wakeLockRequest = null; }
+        }
+
+        function onVisibilityChange() {
+            if (!window.document || !window.document.hidden) requestWakeLock();
+        }
+
+        function holdPlaybackAwake() {
+            if (screensaverClaimed) return;
+            screensaverClaimed = true;
+            try {
+                var screensaver = window.Lampa && Lampa.Screensaver;
+                if (screensaver) {
+                    screensaverPreviousState = typeof screensaver.enabled === 'boolean' ? screensaver.enabled : null;
+                    if (typeof screensaver.stop === 'function') screensaver.stop();
+                    if (typeof screensaver.disable === 'function') screensaver.disable();
+                }
+            } catch (error) {}
+            try {
+                if (window.document && window.document.addEventListener) {
+                    window.document.addEventListener('visibilitychange', onVisibilityChange);
+                }
+            } catch (error) {}
+            requestWakeLock();
+        }
+
+        function releasePlaybackAwake() {
+            if (!screensaverClaimed) return;
+            screensaverClaimed = false;
+            try {
+                if (window.document && window.document.removeEventListener) {
+                    window.document.removeEventListener('visibilitychange', onVisibilityChange);
+                }
+            } catch (error) {}
+            try {
+                if (wakeLock && typeof wakeLock.release === 'function') wakeLock.release();
+            } catch (error) {}
+            wakeLock = null;
+            try {
+                var screensaver = window.Lampa && Lampa.Screensaver;
+                if (screensaverPreviousState === true && screensaver && typeof screensaver.enable === 'function') {
+                    screensaver.enable();
+                } else if (screensaverPreviousState === false && screensaver && typeof screensaver.disable === 'function') {
+                    screensaver.disable();
+                }
+            } catch (error) {}
+            screensaverPreviousState = null;
+        }
+
         function close() {
             if (closing) return;
             closing = true;
@@ -29,6 +100,7 @@
             // controller. This prevents its media and key handlers surviving
             // behind the title card after Back.
             iframe.attr('src', 'about:blank');
+            releasePlaybackAwake();
             claimScreen(false);
             if (deps.goBack) deps.goBack();
         }
@@ -125,6 +197,7 @@
                     html.append(back.on('mousemove mouseenter', revealBack));
                 }
                 claimScreen(true);
+                holdPlaybackAwake();
                 this.activity.loader(false);
                 this.activity.toggle();
             },
@@ -145,6 +218,7 @@
                 closing = true;
                 if (revealTimer) clearTimeout(revealTimer);
                 if (back) back.off().remove();
+                releasePlaybackAwake();
                 claimScreen(false);
                 iframe.off().attr('src', 'about:blank');
                 iframe.remove();

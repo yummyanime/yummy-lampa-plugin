@@ -25,8 +25,8 @@
 .yani-catalog-view .items-cards,
 .yani-genre-catalog-view .category-full,
 .yani-genre-catalog-view .items-cards {
-    padding-bottom: 8em;
-    scroll-padding-bottom: 8em;
+    padding-bottom: 14em;
+    scroll-padding-bottom: 14em;
 }
 
 .yani-catalog-view .category-full .card,
