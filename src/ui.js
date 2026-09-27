@@ -449,7 +449,9 @@
             copy.append($('<strong class="yani-genre-catalog-header__title"></strong>').text(title));
             copy.append($('<p class="yani-genre-catalog-header__description"></p>').text(description));
             genreHeader.append(copy);
-            view.addClass('yani-genre-catalog-view').prepend(genreHeader);
+            view.addClass('yani-genre-catalog-view');
+            if (isSubject) view.addClass('yani-subject-catalog-view');
+            view.prepend(genreHeader);
             if (comp.scroll && comp.scroll.minus) comp.scroll.minus(genreHeader);
             if (isSubject) loadSubjectInformation(context);
             else loadGenreDescription(context);

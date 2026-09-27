@@ -18,6 +18,8 @@ assert.match(detail, /openSubjectCatalog\(kind, subject\)/);
 assert.match(ui, /params\[kind === 'studio' \? 'studio_ids' : 'director_ids'\] = id/);
 assert.match(ui, /subject_context: context/);
 assert.match(ui, /function loadSubjectInformation\(context\)/);
+assert.match(ui, /if \(isSubject\) view\.addClass\('yani-subject-catalog-view'\)/);
 assert.match(css, /\.yani-detail__credit\.focus/);
+assert.match(css, /\.yani-subject-catalog-view \.category-full,[\s\S]{0,260}grid-template-columns:\s*repeat\(auto-fill,\s*minmax\(12\.6em,\s*12\.6em\)\)/);
 
 console.log('detail subject catalog contract checks passed');

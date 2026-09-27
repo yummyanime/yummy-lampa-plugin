@@ -138,6 +138,13 @@
     height: 100%;
 }
 
+/* A short director/studio result must keep the same card width as a full catalog. */
+.yani-subject-catalog-view .category-full,
+.yani-subject-catalog-view .items-cards {
+    grid-template-columns: repeat(auto-fill, minmax(12.6em, 12.6em));
+    justify-content: start;
+}
+
 .yani-catalog-command-deck {
     position: relative;
     z-index: 4;
