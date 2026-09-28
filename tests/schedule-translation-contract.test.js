@@ -9,6 +9,12 @@ assert.doesNotMatch(schedule, /createAvailability/);
 assert.match(schedule, /videosCache = \{\}/);
 assert.match(schedule, /ratingCache = \{\}/);
 assert.match(schedule, /function translationGroupsFromVideos\(videos, episode\)/);
+assert.match(schedule, /if \(count > 0 && aired >= count\) return 0/,
+    'a stale next_date must not create episode 13 when the season is complete at 12');
+assert.match(schedule, /releaseDate && releaseEpisodeNumber\(entry\) > 0/,
+    'invalid previous and next schedule entries must be removed before rendering');
+assert.match(schedule, /var count = Math\.max\(0, Math\.floor\(Number\(episodes\.count \|\| 0\)\)\)/,
+    'episode totals must be normalized before formatting');
 assert.match(schedule, /playbackSourceId\(Object\.assign\(\{\}, video \|\| \{\}, data \|\| \{\}\)\)/);
 assert.match(schedule, /if \(!isPlaybackSourceEnabled\(sourceId\)\) return/);
 assert.match(schedule, /if \(episode && number && Number\(number\) !== Number\(episode\)\) return/);

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.7',
+        version: '0.47.8',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -9274,13 +9274,25 @@ function pluginYummyAnime() {
         function dayLabel(date, relativeOffset) { var prefix = relativeOffset === 0 ? t('today') + ', ' : relativeOffset === 1 ? t('tomorrow') + ', ' : ''; try { return prefix + date.toLocaleDateString(locale(), {weekday: 'long', day: 'numeric', month: 'long'}); } catch (error) { return prefix + date.toLocaleDateString(); } }
         function timeLabel(date) { try { return date.toLocaleTimeString(locale(), {hour: '2-digit', minute: '2-digit'}); } catch (error) { return ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2); } }
         function dateTimeLabel(date) { try { return date.toLocaleString(locale(), {day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'}); } catch (error) { return date.toLocaleString(); } }
-        function episodeLabel(episodes, isAired) { var aired = Number(episodes.aired || 0), count = Number(episodes.count || 0); if (count === 1 && aired === 0) return t('release'); var number = isAired ? aired : aired + 1; return count > 1 ? t('episode') + ' ' + number + ' ' + t('of') + ' ' + count : t('episode') + ' ' + number; }
+        function episodeLabel(entry) {
+            var episodes = entry && entry.item && entry.item.episodes || {};
+            var count = Math.max(0, Math.floor(Number(episodes.count || 0)));
+            var number = releaseEpisodeNumber(entry);
+            if (count === 1 && number === 1) return t('release');
+            if (!(number > 0)) return '';
+            return count > 1 && number <= count
+                ? t('episode') + ' ' + number + ' ' + t('of') + ' ' + count
+                : t('episode') + ' ' + number;
+        }
         function releaseEpisodeNumber(entry) {
             var episodes = entry && entry.item && entry.item.episodes || {};
-            var aired = Number(episodes.aired || 0);
-            var count = Number(episodes.count || 0);
-            if (count === 1 && aired === 0) return 1;
-            return entry && entry.aired ? Math.max(1, aired) : aired + 1;
+            var aired = Math.max(0, Math.floor(Number(episodes.aired || 0)));
+            var count = Math.max(0, Math.floor(Number(episodes.count || 0)));
+            if (entry && entry.aired) return aired;
+            // Keep the API date (broadcasts can move), but do not invent an
+            // episode after a season that the same response marks complete.
+            if (count > 0 && aired >= count) return 0;
+            return aired + 1;
         }
         function appendYummyRating(host, card) {
             host = host && host.jquery ? host : $(host);
@@ -9428,7 +9440,7 @@ function pluginYummyAnime() {
             info.append($('<div class="yani-schedule__title"></div>').text(card.title));
             info.append(rating);
             enrichItemRating(rating, card);
-            info.append($('<div class="yani-schedule__episode"></div>').text(episodeLabel(episodes, entry.aired)));
+            info.append($('<div class="yani-schedule__episode"></div>').text(episodeLabel(entry)));
             info.append(translations);
             release.append($('<div class="yani-schedule__time"></div>').text(timeLabel(releaseDate))); release.append($('<div class="yani-schedule__timezone"></div>').text(t('local_time')));
             row.append(poster, info, release);
@@ -9437,7 +9449,7 @@ function pluginYummyAnime() {
             // native Lampa match first can show a transient "not found" page
             // before the inevitable YummyAnime fallback, so go straight to
             // the known detail card.
-            var opened = false, open = function () { if (opened) return; opened = true; card.yani_schedule = episodeLabel(episodes, entry.aired) + ', ' + dateTimeLabel(releaseDate); deps.openYummyDetail(card, false); setTimeout(function () { opened = false; }, 500); };
+            var opened = false, open = function () { if (opened) return; opened = true; card.yani_schedule = episodeLabel(entry) + ', ' + dateTimeLabel(releaseDate); deps.openYummyDetail(card, false); setTimeout(function () { opened = false; }, 500); };
             row.on('hover:focus', function (event) { var target = event.currentTarget || event.target; content.find('.yani-schedule__item.focus').removeClass('focus'); row.addClass('focus'); last = target; scroll.update($(target), true); });
             row.on('hover:blur', function () { row.removeClass('focus'); }); row.on('hover:enter click.yaniSchedule', open);
             return row;
@@ -9510,7 +9522,8 @@ function pluginYummyAnime() {
                     {value: episodes.next_date, aired: false}
                 ].forEach(function (release) {
                     var releaseDate = timestampDate(release.value);
-                    if (releaseDate) normalized.push({item: item, date: releaseDate, aired: release.aired});
+                    var entry = {item: item, date: releaseDate, aired: release.aired};
+                    if (releaseDate && releaseEpisodeNumber(entry) > 0) normalized.push(entry);
                 });
             });
             return normalized;

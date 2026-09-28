@@ -9,6 +9,13 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.8] - 2026-09-28
+
+### Fixed
+
+- Fix schedule episode and translation numbers when the API retains `next_date` after the announced season is complete
+- Fix invalid previous schedule entries when the API reports no aired episodes
+
 ## [0.47.7] - 2026-09-28
 
 ### Fixed
