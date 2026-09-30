@@ -143,22 +143,6 @@
             return host.replace(/^m\./, '').replace(/^youtu\.be$/, 'youtube.com');
         }
 
-        function playLampaPlayer(url, title) {
-            var player = (typeof Lampa !== 'undefined' && Lampa.Player) || (window.Lampa && window.Lampa.Player);
-            if (!player || typeof player.play !== 'function') return false;
-            try {
-                if (player.runas) player.runas('lampa');
-                player.play({
-                    title: title || t('trailers'),
-                    url: url
-                });
-                return true;
-            } catch (error) {
-                console.warn('[YummyAnime] Lampa player failed to start a trailer', error);
-                return false;
-            }
-        }
-
         function playEmbedded(url, title) {
             if (typeof openEmbedded !== 'function') return false;
             try {
@@ -174,9 +158,12 @@
             if (!url) return;
             var youtube = isYouTubeTrailer(url);
             var embed = youtube ? youtubeEmbedUrl(url) : url;
-            if (youtube && playLampaPlayer(url, title)) return;
+            // Lampa's file player does not start for a YouTube page, and that
+            // is what almost every trailer is. Open the YouTube app first, and
+            // the embedded player when that app is not available.
+            if (youtube && openExternalVideo && openExternalVideo(url, title, {youtubeIntent: true})) return;
             if (playEmbedded(embed, title)) return;
-            if (openExternalVideo && openExternalVideo(url, title, {youtubeIntent: youtube})) return;
+            if (!youtube && openExternalVideo && openExternalVideo(url, title, {youtubeIntent: false})) return;
             Lampa.Noty.show(t('no_trailers'));
         }
 
@@ -208,6 +195,10 @@
                 showYummySelect({
                     title: t('trailers'),
                     items: items,
+                    // Closing the list normally returns focus to the title card.
+                    // Doing that after a choice pulls the controller off the
+                    // player before the trailer can start, so the video never appears.
+                    yaniRestore: false,
                     onSelect: function (item) { openTrailer(item.url, item.title); }
                 });
             }).catch(function (error) {

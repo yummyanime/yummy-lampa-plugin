@@ -13,8 +13,9 @@ assert.match(ui, /function openEmbeddedTrailer\(url, title\)[\s\S]{0,400}compone
 assert.doesNotMatch(ui, /function TrailerList\(/, 'TrailerList implementation must stay outside the main UI monolith');
 assert.match(trailers, /window\.LampaYaniTrailers\s*=\s*\{/, 'trailers module must expose a namespaced API');
 assert.match(trailers, /function legacyOpenTrailers\([\s\S]*showYummySelect\(/, 'legacy selector must preserve restorable navigation');
-assert.match(trailers, /openExternalVideo\(url, title, \{youtubeIntent: youtube\}\)/, 'YouTube trailers may still use the Android YouTube route');
-assert.match(trailers, /player\.play\(\{/, 'YouTube trailers must start in the Lampa player');
+assert.match(trailers, /openExternalVideo\(url, title, \{youtubeIntent: true\}\)/, 'YouTube trailers open in the YouTube app');
+assert.match(trailers, /yaniRestore:\s*false/, 'choosing a trailer must leave the player in control');
+assert.doesNotMatch(trailers, /player\.play\(\{/, 'a YouTube page must not be handed to Lampa\'s file player');
 assert.match(trailers, /playEmbedded\(embed, title\)/, 'iframe trailers must open the embedded player');
 assert.match(trailers, /trailer\.iframe_url/, 'Yani trailers use iframe_url');
 assert.match(trailers, /trailer\.number/, 'trailer titles should prefer the API number/label');
@@ -29,6 +30,7 @@ assert.match(trailers, /Lampa\.Controller\.collectionFocus\(/, 'standalone trail
 const context = {window: {}};
 vm.runInNewContext(trailers, context);
 const api = context.window.LampaYaniTrailers;
+assert.strictEqual(api.youtubeVideoId('https://youtube.com/embed/f5ZEiJyqDKU?enablejsapi=1'), 'f5ZEiJyqDKU');
 assert.strictEqual(api.youtubeVideoId('https://www.youtube.com/embed/MGRm4IzK1SQ'), 'MGRm4IzK1SQ');
 assert.strictEqual(api.youtubeVideoId('https://www.youtube.com/watch?v=MGRm4IzK1SQ'), 'MGRm4IzK1SQ');
 assert.strictEqual(api.youtubeWatchUrl('https://youtu.be/MGRm4IzK1SQ'), 'https://www.youtube.com/watch?v=MGRm4IzK1SQ');
@@ -37,7 +39,8 @@ assert.deepStrictEqual(api.normalizeTrailerItems({
     response: [{iframe_url: 'https://www.youtube.com/embed/abcABCabc12', number: 'Preview'}]
 }).map(function (item) { return item.iframe_url; }), ['https://www.youtube.com/embed/abcABCabc12']);
 
-const calls = {player: 0, embedded: [], external: 0};
+const calls = {player: 0, embedded: [], external: 0, lastExternal: null};
+var externalResult = false;
 const fakeLampa = {
     Player: {
         runas: function () {},
@@ -69,14 +72,29 @@ const controller = runtime.window.LampaYaniTrailers.create({
     t: function (key) { return key; },
     goBack: function () {},
     showSelect: function () {},
-    openExternalVideo: function () { calls.external += 1; return false; },
+    openExternalVideo: function (url, title, options) {
+        calls.external += 1;
+        calls.lastExternal = {url: url, title: title, youtubeIntent: options && options.youtubeIntent};
+        return externalResult;
+    },
     openEmbedded: function (url, title) { calls.embedded.push({url: url, title: title}); return true; },
     api: {trailers: function () { return Promise.resolve({response: []}); }},
     utils: runtime.window.LampaYaniUiUtils
 });
+controller.openTrailer('https://youtube.com/embed/f5ZEiJyqDKU?enablejsapi=1', 'PV1');
+assert.strictEqual(calls.player, 0, 'YouTube trailers must not be sent to Lampa.Player');
+assert.strictEqual(calls.external, 1, 'YouTube trailers try the YouTube app first');
+assert.strictEqual(calls.lastExternal.youtubeIntent, true);
+assert.strictEqual(calls.embedded.length, 1, 'embedded player opens when the YouTube app is unavailable');
+assert.match(calls.embedded[0].url, /youtube\.com\/embed\/f5ZEiJyqDKU/);
+
+externalResult = true;
+calls.embedded = [];
+calls.external = 0;
 controller.openTrailer('https://www.youtube.com/embed/MGRm4IzK1SQ', 'Preview');
-assert.strictEqual(calls.player, 1, 'YouTube trailers must start in Lampa.Player');
-assert.strictEqual(calls.embedded.length, 0, 'embedded player is only a fallback for YouTube');
+assert.strictEqual(calls.external, 1);
+assert.strictEqual(calls.embedded.length, 0, 'the embedded player stays closed when YouTube opens');
+externalResult = false;
 
 calls.player = 0;
 fakeLampa.Player = null;

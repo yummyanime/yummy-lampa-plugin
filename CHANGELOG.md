@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.9] - 2026-10-01
+
+### Fixed
+
+- YouTube trailers open in the YouTube app, or in the embedded player when that app is unavailable, because Lampa's file player never starts for those links
+
 ## [0.47.8] - 2026-09-28
 
 ### Fixed
