@@ -14,6 +14,23 @@ assert.doesNotMatch(ui, /function TrailerList\(/, 'TrailerList implementation mu
 assert.match(trailers, /window\.LampaYaniTrailers\s*=\s*\{/, 'trailers module must expose a namespaced API');
 assert.match(trailers, /function legacyOpenTrailers\([\s\S]*showYummySelect\(/, 'legacy selector must preserve restorable navigation');
 assert.match(trailers, /openExternalVideo\(url, title, \{youtubeIntent: true\}\)/, 'YouTube trailers open in the YouTube app');
+
+// A hand-built `intent://...package=com.google.android.youtube...end` string
+// only resolves if the receiving native bridge calls Android's own
+// `Intent.parseUri(url, URI_INTENT_SCHEME)` before starting it. Lampa's actual
+// "open browser" bridges do a plain `Uri.parse` + ACTION_VIEW instead, which has
+// no handler for a literal "intent" scheme - that is what produced "No
+// application can perform this action" for every YouTube trailer. The fix is to
+// stop building that string at all and hand Android a plain, App-Links-verified
+// https URL, exactly how YummyTV opens trailers (ExternalIntentUtils.kt: a bare
+// ACTION_VIEW + CATEGORY_BROWSABLE on the unmodified URL).
+assert.doesNotMatch(ui, /'intent:\/\//, 'no intent-URI scheme may be constructed for external playback');
+assert.doesNotMatch(ui, /function youtubeIntentUrl\(/, 'the intent-URI builder must be gone, not just unused');
+assert.match(
+    ui,
+    /options\.youtubeIntent && openAndroidAppUri\(url\)\) return true;\s*\n\s*return openExternalUri\(url\);/,
+    'the YouTube trailer URL itself, unmodified, must be what gets opened'
+);
 assert.match(trailers, /yaniRestore:\s*false/, 'choosing a trailer must leave the player in control');
 assert.doesNotMatch(trailers, /player\.play\(\{/, 'a YouTube page must not be handed to Lampa\'s file player');
 assert.match(trailers, /playEmbedded\(embed, title\)/, 'iframe trailers must open the embedded player');

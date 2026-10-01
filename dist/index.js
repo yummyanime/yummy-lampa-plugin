@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.9',
+        version: '0.47.10',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -19436,8 +19436,6 @@ function pluginYummyAnime() {
         options = options || {};
         url = options.youtubeIntent ? externalTrailerUrl(url) : LampaYaniUiUtils.normalizeVideoUrl(url);
         if (options.requireDirect && !isExternalPlayableUrl(url, options.source)) return false;
-        var intentUrl = options.youtubeIntent ? youtubeIntentUrl(url) : '';
-        var externalUrl = intentUrl || url;
         var playlist = Array.isArray(options.playlist) ? options.playlist.map(function (item) {
             return {
                 title: cleanPlaybackTitle(item.title),
@@ -19476,11 +19474,20 @@ function pluginYummyAnime() {
                 return true;
             })) return true;
         }
-        if (options.youtubeIntent) {
-            if (openAndroidAppUri(externalUrl)) return true;
-            if (url !== externalUrl && openAndroidAppUri(url)) return true;
-        }
-        return openExternalUri(externalUrl);
+        // A plain https YouTube URL, not a hand-built `intent://...package=
+        // com.google.android.youtube...end` string. That form only resolves if
+        // whoever receives it calls Android's own `Intent.parseUri(url,
+        // URI_INTENT_SCHEME)` before starting it; Lampa's native "open
+        // browser" bridges instead do a plain `Uri.parse` + ACTION_VIEW, which
+        // has no handler for a literal "intent" scheme and surfaces as "No
+        // application can perform this action" - exactly the failure this was
+        // written to work around. A verified https:// link needs none of that:
+        // Android's own package manager already routes it to the installed
+        // YouTube app via App Links, which is also how YummyTV opens trailers
+        // (see ExternalIntentUtils.kt - a plain ACTION_VIEW + CATEGORY_BROWSABLE
+        // on the unmodified URL, no intent-URI construction at all).
+        if (options.youtubeIntent && openAndroidAppUri(url)) return true;
+        return openExternalUri(url);
     }
 
     function openExternalUri(externalUrl) {
@@ -19714,13 +19721,6 @@ function pluginYummyAnime() {
             return fallback ? fallback[1] : '';
         }
         return '';
-    }
-
-    function youtubeIntentUrl(url) {
-        var id = youtubeVideoId(url);
-        if (!id || !Lampa.Platform || !Lampa.Platform.is || !Lampa.Platform.is('android')) return '';
-        var watch = 'https://www.youtube.com/watch?v=' + encodeURIComponent(id);
-        return 'intent://www.youtube.com/watch?v=' + encodeURIComponent(id) + '#Intent;scheme=https;package=com.google.android.youtube;S.browser_fallback_url=' + encodeURIComponent(watch) + ';end';
     }
 
     function copyParams(params) {

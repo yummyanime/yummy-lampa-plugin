@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.10] - 2026-10-01
+
+### Fixed
+
+- YouTube trailers failing on Android with "No application can perform this action" by opening a plain https YouTube URL instead of a hand-built intent:// string
+
 ## [0.47.9] - 2026-10-01
 
 ### Fixed
