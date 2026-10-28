@@ -30,7 +30,12 @@
         locale: locale,
         getPlayback: function (id) { return getPlayback(id); },
         mediaMeta: function (item) { return mediaMeta(item); },
-        loadVideos: function (id, options) { return videoData.payload(id, options); }
+        loadVideos: function (id, options) { return videoData.payload(id, options); },
+        clearEpisodeProgress: function (card, videos) {
+            var operation = clearEpisodeProgress(card, videos);
+            videoData.invalidate(card && card.yani_id);
+            return operation;
+        }
     });
     var cardRenderElement = cardRenderers.cardRenderElement;
     var addCardMediaBadges = cardRenderers.addCardMediaBadges;
@@ -157,6 +162,7 @@
     var ensureRemoteHistory = playbackHistoryApi.ensureRemoteHistory;
     var autoProgressSyncEnabled = playbackHistoryApi.autoProgressSyncEnabled;
     var syncServerProgress = playbackHistoryApi.syncServerProgress;
+    var clearEpisodeProgress = playbackHistoryApi.clearEpisodeProgress;
     var renderHistoryProgress = playbackHistoryApi.renderHistoryProgress;
     var refreshVisiblePlaybackProgress = playbackHistoryApi.refreshVisiblePlaybackProgress;
     var updatePlaybackProgress = playbackHistoryApi.updatePlaybackProgress;

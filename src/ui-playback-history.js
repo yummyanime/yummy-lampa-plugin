@@ -249,6 +249,46 @@
             });
         }
 
+        function clearEpisodeProgress(card, videos) {
+            videos = Array.isArray(videos) ? videos.filter(Boolean) : [];
+            var episode = videos.length ? window.LampaYaniEpisode.valueOf(videos[0]) : '';
+            if (!card || !card.yani_id || !episode) return Promise.reject(new Error('Episode progress target is missing'));
+            videos.forEach(function (video) {
+                if (!video.watched || typeof video.watched !== 'object') video.watched = {};
+                video.watched.end_time = 0;
+                video.watched.time = 0;
+                video.watched.completed = false;
+                video.watched.finished = false;
+            });
+
+            var history = playbackHistory();
+            var saved = history[String(card.yani_id)];
+            if (saved && window.LampaYaniEpisode.same(saved.number, episode)) {
+                saved.time = 0;
+                saved.resume_next = false;
+                if (positiveNumber(saved.max_episode) === positiveNumber(episode)) {
+                    saved.max_episode = Math.max(0, positiveNumber(episode) - 1);
+                }
+                if (positiveNumber(card.yani_watched_episodes) === positiveNumber(episode)) {
+                    card.yani_watched_episodes = saved.max_episode;
+                }
+                saved.updated_at = Date.now();
+                persistHistory(history);
+                card.yani_resume = Object.assign({}, saved, {last_watched_episode: 0});
+                refreshVisiblePlaybackProgress(card);
+            } else {
+                publishPlaybackHistoryChange(card);
+            }
+
+            var ids = videos.map(function (video) { return Number(video.video_id || video.id || 0); })
+                .filter(function (id, index, items) { return id > 0 && items.indexOf(id) === index; });
+            if (!ids.length || !window.LampaYaniAuth || !window.LampaYaniAuth.token() ||
+                !window.LampaYaniApi || !window.LampaYaniApi.removeVideoWatches) {
+                return Promise.resolve({local: true, removed: ids.length});
+            }
+            return window.LampaYaniApi.removeVideoWatches(ids);
+        }
+
         function renderHistoryProgress(rendered, playback) {
             var view = $('.card__view', rendered).first();
             if (!view.length) return;
@@ -416,6 +456,7 @@
             ensureRemoteHistory: ensureRemoteHistory,
             autoProgressSyncEnabled: autoProgressSyncEnabled,
             syncServerProgress: syncServerProgress,
+            clearEpisodeProgress: clearEpisodeProgress,
             renderHistoryProgress: renderHistoryProgress,
             refreshVisiblePlaybackProgress: refreshVisiblePlaybackProgress,
             updatePlaybackProgress: updatePlaybackProgress,

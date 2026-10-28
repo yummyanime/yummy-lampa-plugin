@@ -663,6 +663,20 @@
                 mutationKey: 'progress-batch'
             });
         },
+        removeVideoWatches: function (videoIds) {
+            var ids = (videoIds || []).map(Number).filter(function (id, index, items) {
+                return id > 0 && items.indexOf(id) === index;
+            });
+            if (!ids.length) return Promise.resolve({response: true});
+            return request('/video', {
+                method: 'DELETE',
+                auth: true,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({video_ids: ids}),
+                queueMutation: true,
+                mutationKey: 'progress-remove:' + ids.slice().sort(function (a, b) { return a - b; }).join(',')
+            });
+        },
         lastWatches: function (watches, control) {
             control = control || {};
             var query = (watches || []).slice(0, 8).filter(Boolean).map(function (watch) {

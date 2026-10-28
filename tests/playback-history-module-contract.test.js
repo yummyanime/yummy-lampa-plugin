@@ -100,6 +100,15 @@ assert.strictEqual(saved.video_id, 99);
 assert.strictEqual(saved.time, 100);
 assert.strictEqual(api.getPlayback(42).player, 'kodik');
 assert.ok(!api.autoProgressSyncEnabled());
+const resetVideos = [
+    {number: 3, video_id: 99, duration: 1200, watched: {end_time: 100}},
+    {number: 3, video_id: 100, duration: 1200, watched: {end_time: 80}}
+];
+api.clearEpisodeProgress({yani_id: 42, yani_resume: saved}, resetVideos);
+assert.strictEqual(api.getPlayback(42).time, 0);
+assert.strictEqual(api.getPlayback(42).max_episode, 2);
+assert.strictEqual(resetVideos[0].watched.end_time, 0);
+assert.strictEqual(resetVideos[1].watched.end_time, 0);
 
 vm.runInNewContext(fs.readFileSync('src/ui-home-sections.js', 'utf8'), context);
 const imported = api.importRemoteEntries([{

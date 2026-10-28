@@ -40,6 +40,7 @@
         var yummyTvAnimeId = deps.yummyTvAnimeId || function () { return ''; };
         var openYummyTv = deps.openYummyTv || function () { return false; };
         var loadVideos = deps.loadVideos || function (id, options) { return LampaYaniApi.videos(id, options); };
+        var clearEpisodeProgress = deps.clearEpisodeProgress || function () { return Promise.resolve(); };
 
         var cancelExternalRestore = deps.cancelExternalRestore || function () {};
         var playbackSession = 0;
@@ -450,7 +451,7 @@
                 if (voices.length === 1) {
                     rememberPlayer(voices[0].group);
                     enrichEpisodeTitles(card, voices[0].group);
-                    return chooseEpisode(card, voices[0].group);
+                    return chooseEpisode(card, voices[0].group, videos);
                 }
                 var selectedVoice = markLastWatchedVoice(voices, card);
                 showPlaybackSelect({
@@ -461,7 +462,7 @@
                     onSelect: function (item) {
                         rememberPlayer(item.group);
                         enrichEpisodeTitles(card, item.group);
-                        chooseEpisode(card, item.group);
+                        chooseEpisode(card, item.group, videos);
                     }
                 });
             }).catch(function (error) {
@@ -482,7 +483,46 @@
             });
         }
 
-        function chooseEpisode(card, group) {
+        function episodeHasProgress(video) {
+            var watched = video && video.watched;
+            return Boolean(watched && (Number(watched.end_time || watched.time || 0) > 0 || watched.completed || watched.finished));
+        }
+
+        function resettableEpisodes(card, videos) {
+            var playback = card && (card.yani_resume || getPlayback(card.yani_id));
+            var items = [];
+            var seen = {};
+            (videos || []).forEach(function (video) {
+                var value = window.LampaYaniEpisode.valueOf(video);
+                var key = window.LampaYaniEpisode.key(value);
+                if (!key || seen[key]) return;
+                var local = playback && Number(playback.time || 0) > 0 && window.LampaYaniEpisode.same(playback.number, value);
+                if (!local && !episodeHasProgress(video)) return;
+                seen[key] = true;
+                items.push({title: t('episode') + ' ' + value, episode: value, video: video});
+            });
+            return items;
+        }
+
+        function resetEpisode(card, allVideos, item) {
+            var affected = (allVideos || []).filter(function (video) {
+                return window.LampaYaniEpisode.same(window.LampaYaniEpisode.valueOf(video), item.episode);
+            });
+            if (!affected.length && item.video) affected = [item.video];
+            if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
+            Promise.resolve(clearEpisodeProgress(card, affected)).then(function () {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                Lampa.Noty.show(t('episode_progress_cleared'));
+                restorePlaybackInteraction();
+            }).catch(function (error) {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                console.warn('[YummyAnime] Episode progress reset failed', error);
+                Lampa.Noty.show(t('episode_progress_clear_error'));
+                restorePlaybackInteraction();
+            });
+        }
+
+        function chooseEpisode(card, group, allVideos) {
             var videos = group.videos.slice().sort(function (a, b) {
                 var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
                 var numberB = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(b));
@@ -500,11 +540,29 @@
             var episodes = videos.map(function (video) {
                 return {title: episodeOptionTitle(card, video), video: video};
             });
-            if (episodes.length === 1) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            allVideos = Array.isArray(allVideos) ? allVideos : group.videos;
+            var resetItems = resettableEpisodes(card, allVideos);
+            if (episodes.length === 1 && !resetItems.length) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            if (resetItems.length) {
+                episodes.push({
+                    title: t('reset_episode_progress'),
+                    subtitle: t('reset_episode_progress_description'),
+                    action: 'reset'
+                });
+            }
             showPlaybackSelect({
                 title: t('choose_episode') + ' · ' + group.title,
                 items: episodes,
-                onSelect: function (item) { launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video)); }
+                onSelect: function (item) {
+                    if (item.action === 'reset') {
+                        return showPlaybackSelect({
+                            title: t('reset_episode_progress'),
+                            items: resetItems,
+                            onSelect: function (resetItem) { resetEpisode(card, allVideos, resetItem); }
+                        });
+                    }
+                    launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video));
+                }
             });
         }
 

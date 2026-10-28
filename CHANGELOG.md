@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.24] - 2026-10-28
+
+### Added
+
+- A TV-friendly action for resetting one episode across every dubbing source
+
+### Fixed
+
+- Cleared local progress being restored from cached video metadata
+
 ## [0.47.23] - 2026-10-28
 
 ### Fixed

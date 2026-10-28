@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.23',
+        version: '0.47.24',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -325,6 +325,10 @@ function pluginYummyAnime() {
     messages.ru.watch_internal_lampa_description = 'Проигрывать прямой поток внутри Lampa';
     messages.ru.internal_player_unavailable = 'Не удалось запустить внутренний плеер Lampa';
     messages.ru.internal_player_recovering = 'Поток прервался. Обновляю ссылку и продолжаю просмотр…';
+    messages.ru.reset_episode_progress = 'Сбросить прогресс серии';
+    messages.ru.reset_episode_progress_description = 'Выбрать начатую или просмотренную серию';
+    messages.ru.episode_progress_cleared = 'Прогресс серии сброшен';
+    messages.ru.episode_progress_clear_error = 'Локальный прогресс сброшен, но не удалось синхронизировать аккаунт';
     messages.ru.player = 'Источник';
     messages.ru.player_preference = 'Предпочтительный плеер';
     messages.ru.player_preference_description = 'Где воспроизводить прямые видеопотоки: спрашивать каждый раз, внутренний плеер Lampa или внешний Android-плеер (системный выбор приложений). Доступно только на Android';
@@ -426,6 +430,10 @@ messages.ru.cvh_region_blocked = 'Видео CVH недоступно в ваш�
     messages.en.watch_internal_lampa_description = 'Play the direct stream inside Lampa';
     messages.en.internal_player_unavailable = 'Could not start the internal Lampa player';
     messages.en.internal_player_recovering = 'The stream was interrupted. Refreshing the link and resuming…';
+    messages.en.reset_episode_progress = 'Reset episode progress';
+    messages.en.reset_episode_progress_description = 'Choose a started or watched episode';
+    messages.en.episode_progress_cleared = 'Episode progress was reset';
+    messages.en.episode_progress_clear_error = 'Local progress was reset, but account sync failed';
     messages.en.player = 'Source';
     messages.en.player_preference = 'Preferred player';
     messages.en.player_preference_description = 'Where to play direct video streams: ask every time, internal Lampa player, or an external Android player (system app chooser). Available on Android only';
@@ -845,6 +853,10 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.watch_internal_lampa_description = 'Програвати прямий потік усередині Lampa';
     messages.uk.internal_player_unavailable = 'Не вдалося запустити внутрішній плеєр Lampa';
     messages.uk.internal_player_recovering = 'Потік перервався. Оновлюю посилання та продовжую перегляд…';
+    messages.uk.reset_episode_progress = 'Скинути прогрес серії';
+    messages.uk.reset_episode_progress_description = 'Вибрати розпочату або переглянуту серію';
+    messages.uk.episode_progress_cleared = 'Прогрес серії скинуто';
+    messages.uk.episode_progress_clear_error = 'Локальний прогрес скинуто, але не вдалося синхронізувати обліковий запис';
     messages.uk.playback_target = 'Спосіб перегляду';
     messages.uk.playback_target_description = 'Як відкривати прямі відеопотоки YummyAnime';
     messages.uk.playback_target_ask = 'Запитувати';
@@ -1978,6 +1990,20 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 body: JSON.stringify({videos: videos || []}),
                 queueMutation: true,
                 mutationKey: 'progress-batch'
+            });
+        },
+        removeVideoWatches: function (videoIds) {
+            var ids = (videoIds || []).map(Number).filter(function (id, index, items) {
+                return id > 0 && items.indexOf(id) === index;
+            });
+            if (!ids.length) return Promise.resolve({response: true});
+            return request('/video', {
+                method: 'DELETE',
+                auth: true,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({video_ids: ids}),
+                queueMutation: true,
+                mutationKey: 'progress-remove:' + ids.slice().sort(function (a, b) { return a - b; }).join(',')
             });
         },
         lastWatches: function (watches, control) {
@@ -7813,6 +7839,46 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             });
         }
 
+        function clearEpisodeProgress(card, videos) {
+            videos = Array.isArray(videos) ? videos.filter(Boolean) : [];
+            var episode = videos.length ? window.LampaYaniEpisode.valueOf(videos[0]) : '';
+            if (!card || !card.yani_id || !episode) return Promise.reject(new Error('Episode progress target is missing'));
+            videos.forEach(function (video) {
+                if (!video.watched || typeof video.watched !== 'object') video.watched = {};
+                video.watched.end_time = 0;
+                video.watched.time = 0;
+                video.watched.completed = false;
+                video.watched.finished = false;
+            });
+
+            var history = playbackHistory();
+            var saved = history[String(card.yani_id)];
+            if (saved && window.LampaYaniEpisode.same(saved.number, episode)) {
+                saved.time = 0;
+                saved.resume_next = false;
+                if (positiveNumber(saved.max_episode) === positiveNumber(episode)) {
+                    saved.max_episode = Math.max(0, positiveNumber(episode) - 1);
+                }
+                if (positiveNumber(card.yani_watched_episodes) === positiveNumber(episode)) {
+                    card.yani_watched_episodes = saved.max_episode;
+                }
+                saved.updated_at = Date.now();
+                persistHistory(history);
+                card.yani_resume = Object.assign({}, saved, {last_watched_episode: 0});
+                refreshVisiblePlaybackProgress(card);
+            } else {
+                publishPlaybackHistoryChange(card);
+            }
+
+            var ids = videos.map(function (video) { return Number(video.video_id || video.id || 0); })
+                .filter(function (id, index, items) { return id > 0 && items.indexOf(id) === index; });
+            if (!ids.length || !window.LampaYaniAuth || !window.LampaYaniAuth.token() ||
+                !window.LampaYaniApi || !window.LampaYaniApi.removeVideoWatches) {
+                return Promise.resolve({local: true, removed: ids.length});
+            }
+            return window.LampaYaniApi.removeVideoWatches(ids);
+        }
+
         function renderHistoryProgress(rendered, playback) {
             var view = $('.card__view', rendered).first();
             if (!view.length) return;
@@ -7980,6 +8046,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             ensureRemoteHistory: ensureRemoteHistory,
             autoProgressSyncEnabled: autoProgressSyncEnabled,
             syncServerProgress: syncServerProgress,
+            clearEpisodeProgress: clearEpisodeProgress,
             renderHistoryProgress: renderHistoryProgress,
             refreshVisiblePlaybackProgress: refreshVisiblePlaybackProgress,
             updatePlaybackProgress: updatePlaybackProgress,
@@ -8036,6 +8103,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var yummyTvAnimeId = deps.yummyTvAnimeId || function () { return ''; };
         var openYummyTv = deps.openYummyTv || function () { return false; };
         var loadVideos = deps.loadVideos || function (id, options) { return LampaYaniApi.videos(id, options); };
+        var clearEpisodeProgress = deps.clearEpisodeProgress || function () { return Promise.resolve(); };
 
         var cancelExternalRestore = deps.cancelExternalRestore || function () {};
         var playbackSession = 0;
@@ -8446,7 +8514,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 if (voices.length === 1) {
                     rememberPlayer(voices[0].group);
                     enrichEpisodeTitles(card, voices[0].group);
-                    return chooseEpisode(card, voices[0].group);
+                    return chooseEpisode(card, voices[0].group, videos);
                 }
                 var selectedVoice = markLastWatchedVoice(voices, card);
                 showPlaybackSelect({
@@ -8457,7 +8525,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     onSelect: function (item) {
                         rememberPlayer(item.group);
                         enrichEpisodeTitles(card, item.group);
-                        chooseEpisode(card, item.group);
+                        chooseEpisode(card, item.group, videos);
                     }
                 });
             }).catch(function (error) {
@@ -8478,7 +8546,46 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             });
         }
 
-        function chooseEpisode(card, group) {
+        function episodeHasProgress(video) {
+            var watched = video && video.watched;
+            return Boolean(watched && (Number(watched.end_time || watched.time || 0) > 0 || watched.completed || watched.finished));
+        }
+
+        function resettableEpisodes(card, videos) {
+            var playback = card && (card.yani_resume || getPlayback(card.yani_id));
+            var items = [];
+            var seen = {};
+            (videos || []).forEach(function (video) {
+                var value = window.LampaYaniEpisode.valueOf(video);
+                var key = window.LampaYaniEpisode.key(value);
+                if (!key || seen[key]) return;
+                var local = playback && Number(playback.time || 0) > 0 && window.LampaYaniEpisode.same(playback.number, value);
+                if (!local && !episodeHasProgress(video)) return;
+                seen[key] = true;
+                items.push({title: t('episode') + ' ' + value, episode: value, video: video});
+            });
+            return items;
+        }
+
+        function resetEpisode(card, allVideos, item) {
+            var affected = (allVideos || []).filter(function (video) {
+                return window.LampaYaniEpisode.same(window.LampaYaniEpisode.valueOf(video), item.episode);
+            });
+            if (!affected.length && item.video) affected = [item.video];
+            if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
+            Promise.resolve(clearEpisodeProgress(card, affected)).then(function () {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                Lampa.Noty.show(t('episode_progress_cleared'));
+                restorePlaybackInteraction();
+            }).catch(function (error) {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                console.warn('[YummyAnime] Episode progress reset failed', error);
+                Lampa.Noty.show(t('episode_progress_clear_error'));
+                restorePlaybackInteraction();
+            });
+        }
+
+        function chooseEpisode(card, group, allVideos) {
             var videos = group.videos.slice().sort(function (a, b) {
                 var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
                 var numberB = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(b));
@@ -8496,11 +8603,29 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var episodes = videos.map(function (video) {
                 return {title: episodeOptionTitle(card, video), video: video};
             });
-            if (episodes.length === 1) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            allVideos = Array.isArray(allVideos) ? allVideos : group.videos;
+            var resetItems = resettableEpisodes(card, allVideos);
+            if (episodes.length === 1 && !resetItems.length) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            if (resetItems.length) {
+                episodes.push({
+                    title: t('reset_episode_progress'),
+                    subtitle: t('reset_episode_progress_description'),
+                    action: 'reset'
+                });
+            }
             showPlaybackSelect({
                 title: t('choose_episode') + ' · ' + group.title,
                 items: episodes,
-                onSelect: function (item) { launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video)); }
+                onSelect: function (item) {
+                    if (item.action === 'reset') {
+                        return showPlaybackSelect({
+                            title: t('reset_episode_progress'),
+                            items: resetItems,
+                            onSelect: function (resetItem) { resetEpisode(card, allVideos, resetItem); }
+                        });
+                    }
+                    launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video));
+                }
             });
         }
 
@@ -15024,7 +15149,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         locale: locale,
         getPlayback: function (id) { return getPlayback(id); },
         mediaMeta: function (item) { return mediaMeta(item); },
-        loadVideos: function (id, options) { return videoData.payload(id, options); }
+        loadVideos: function (id, options) { return videoData.payload(id, options); },
+        clearEpisodeProgress: function (card, videos) {
+            var operation = clearEpisodeProgress(card, videos);
+            videoData.invalidate(card && card.yani_id);
+            return operation;
+        }
     });
     var cardRenderElement = cardRenderers.cardRenderElement;
     var addCardMediaBadges = cardRenderers.addCardMediaBadges;
@@ -15151,6 +15281,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var ensureRemoteHistory = playbackHistoryApi.ensureRemoteHistory;
     var autoProgressSyncEnabled = playbackHistoryApi.autoProgressSyncEnabled;
     var syncServerProgress = playbackHistoryApi.syncServerProgress;
+    var clearEpisodeProgress = playbackHistoryApi.clearEpisodeProgress;
     var renderHistoryProgress = playbackHistoryApi.renderHistoryProgress;
     var refreshVisiblePlaybackProgress = playbackHistoryApi.refreshVisiblePlaybackProgress;
     var updatePlaybackProgress = playbackHistoryApi.updatePlaybackProgress;

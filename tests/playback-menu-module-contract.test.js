@@ -18,7 +18,7 @@ assert.doesNotMatch(ui, /function showYummyActions\(/);
 assert.doesNotMatch(ui, /function chooseEpisode\(/);
 assert.match(source, /function showPlaybackSelect\(params\)/);
 assert.match(source, /function openVideos\(card, resume\)/);
-assert.match(source, /function chooseEpisode\(card, group\)/);
+assert.match(source, /function chooseEpisode\(card, group, allVideos\)/);
 assert.match(source, /androidExternalPlayerAvailable/);
 assert.doesNotMatch(source, /internalPlayerAvailable|canInternal/,
     'the playback picker must keep the internal option available for CVH');

@@ -62,10 +62,16 @@ vm.runInNewContext(fs.readFileSync('src/api.js', 'utf8'), context);
     await api.syncVideoProgress(1001, 30, 120);
     await api.syncVideoProgress(1001, 60, 120);
     assert.strictEqual(api.pendingMutations(), 2, 'progress updates for one video must be coalesced');
+    await api.removeVideoWatches([1001, 1002, 1001]);
+    assert.strictEqual(api.pendingMutations(), 3, 'episode reset must be queued while offline');
+    const queuedReset = JSON.parse(values.yani_pending_mutations_v1).filter(function (item) {
+        return String(item.key || '').indexOf('progress-remove:') === 0;
+    })[0];
+    assert.deepStrictEqual(JSON.parse(queuedReset.body), {video_ids: [1001, 1002]});
     responseMode = '429';
     const throttled = await api.flushMutations();
     assert.strictEqual(throttled.retryable, true, 'HTTP 429 must stay queued for a later flush');
-    assert.strictEqual(api.pendingMutations(), 2, 'a temporary response must not drop queued mutations');
+    assert.strictEqual(api.pendingMutations(), 3, 'a temporary response must not drop queued mutations');
     const queuedAfterThrottle = JSON.parse(values.yani_pending_mutations_v1);
     assert.strictEqual(queuedAfterThrottle[0].attemptCount, 1, 'temporary server failures must have a bounded attempt count');
 
