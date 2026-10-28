@@ -69,7 +69,7 @@
         }
 
         function normalizeVoiceName(value) {
-            return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            return voiceGroupPart(value);
         }
 
         function lastWatchedVoice(voices, card) {
@@ -305,6 +305,17 @@
             return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase();
         }
 
+        function voiceGroupPart(value) {
+            var normalized = groupPart(value).replace(/^\ufeff/, '');
+            var subtitles = /^(субтитры|sub)(?:\s+|$)/.test(normalized) || /(?:\.|\s)subtitles?$/.test(normalized);
+            var name = normalized
+                .replace(/^(озвучка|дубляж|dub|dubbing|субтитры|sub)\s+/, '')
+                .replace(/(?:\.|\s)subtitles?$/, '')
+                .replace(/[\s_-]+/g, '');
+            if (name === 'jam' || name === 'jamclub') return (subtitles ? 'subtitles|' : 'voice|') + 'jamclub';
+            return normalized;
+        }
+
         function groupVideos(videos) {
             var groups = {};
             (videos || []).forEach(function (video) {
@@ -316,7 +327,7 @@
                 // using quality in this key used to split e.g. 2 episodes out
                 // of a 12-episode group into a separate picker entry.
                 var provider = data.player_id || data.player || data.source || data.service || source;
-                var key = groupPart(title) + '|' + groupPart(provider);
+                var key = voiceGroupPart(title) + '|' + groupPart(provider);
                 if (!groups[key]) {
                     groups[key] = {
                         title: title,

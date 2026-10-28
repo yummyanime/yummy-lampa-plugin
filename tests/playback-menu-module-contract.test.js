@@ -108,6 +108,18 @@ var unevenSources = api.groupVideos([
 assert.strictEqual(Object.keys(unevenSources).length, 2, 'the same dubbing on different sources must remain separate');
 assert.strictEqual(unevenSources['studio|kodik'].latestEpisode, '12', 'Kodik must report only its own latest episode');
 assert.strictEqual(unevenSources['studio|cvh'].latestEpisode, '11', 'CVH must not inherit the latest episode from Kodik');
+var jamAliases = api.groupVideos([
+    {number: '1', iframe_url: 'https://kodik.example/1', data: {dubbing: 'JAM', player: 'Kodik', player_id: 'kodik'}},
+    {number: '2', iframe_url: 'https://kodik.example/2', data: {dubbing: 'Озвучка JAM CLUB', player: 'Kodik', player_id: 'kodik'}}
+]);
+assert.strictEqual(Object.keys(jamAliases).length, 1, 'JAM and JAM CLUB from one source must be one dubbing');
+assert.strictEqual(jamAliases['voice|jamclub|kodik'].episodeCount, 2, 'the JAM alias group must retain every episode');
+var jamBoundaries = api.groupVideos([
+    {number: '1', iframe_url: 'https://kodik.example/1', data: {dubbing: 'JAM', player: 'Kodik', player_id: 'kodik'}},
+    {number: '1', iframe_url: 'https://cvh.example/1', data: {dubbing: 'JAM CLUB', player: 'CVH', player_id: 'cvh'}},
+    {number: '1', iframe_url: 'https://kodik.example/sub-1', data: {dubbing: 'Субтитры JAM CLUB', player: 'Kodik', player_id: 'kodik'}}
+]);
+assert.strictEqual(Object.keys(jamBoundaries).length, 3, 'JAM aliases must not merge different sources or subtitles');
 assert.match(source, /function applySavedPlaybackPosition\(card, video\)/);
 assert.match(source, /Episode\.same\(Episode\.valueOf\(video\), playback && playback\.number\)/,
     'switching a voice or source must only carry progress to the same episode');

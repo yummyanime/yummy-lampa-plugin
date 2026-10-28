@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.23] - 2026-10-28
+
+### Fixed
+
+- JAM and JAM CLUB being shown as separate dubbings while keeping sources and subtitles isolated
+
 ## [0.47.22] - 2026-10-28
 
 ### Added
