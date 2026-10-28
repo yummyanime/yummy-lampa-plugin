@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.21',
+        version: '0.47.22',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -26,6 +26,9 @@ function pluginYummyAnime() {
         cacheEntries: 220,
         videosCacheTtl: 120000,
         videosCacheEntries: 20,
+        videosStaleCacheTtl: 24 * 60 * 60 * 1000,
+        videosPersistentEntries: 6,
+        videosPersistentMaxBytes: 350000,
         requestTimeout: 15000,
         requestRetries: 2
     };
@@ -6126,9 +6129,95 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         };
         var ttl = Number(deps.ttl || config.videosCacheTtl || 120000);
         var maxEntries = Number(deps.maxEntries || config.videosCacheEntries || 20);
+        var staleTtl = Number(deps.staleTtl || config.videosStaleCacheTtl || 24 * 60 * 60 * 1000);
+        var persistentEntries = Number(deps.persistentEntries || config.videosPersistentEntries || 6);
+        var persistentMaxBytes = Number(deps.persistentMaxBytes || config.videosPersistentMaxBytes || 350000);
         var now = deps.now || function () { return Date.now(); };
+        var storage = deps.storage || window.Lampa && window.Lampa.Storage;
+        var language = deps.language || function () {
+            return window.LampaYaniI18n && window.LampaYaniI18n.getLanguage
+                ? window.LampaYaniI18n.getLanguage()
+                : 'ru';
+        };
         var entries = {};
         var order = [];
+        var storageIndexKey = 'lampa_yummyanime_videos_cache_index_v1';
+
+        function persistentKey(key) {
+            return 'lampa_yummyanime_videos_cache_v1_' + String(language() || 'ru') + '_' + key;
+        }
+
+        function storageGet(key, fallback) {
+            if (!storage || !storage.get) return fallback;
+            try { return storage.get(key, fallback); } catch (ignore) { return fallback; }
+        }
+
+        function storageSet(key, value) {
+            if (!storage || !storage.set) return false;
+            try {
+                storage.set(key, value);
+                return true;
+            } catch (ignore) { return false; }
+        }
+
+        function storageRemove(key) {
+            if (!storage || !storage.remove) return;
+            try { storage.remove(key); } catch (ignore) {}
+        }
+
+        function readStorageIndex() {
+            var value = storageGet(storageIndexKey, '[]');
+            try { return Array.isArray(value) ? value : JSON.parse(value || '[]'); }
+            catch (ignore) { return []; }
+        }
+
+        function writeStorageIndex(keys) {
+            storageSet(storageIndexKey, JSON.stringify(keys));
+        }
+
+        function rememberPersistentKey(key) {
+            var keys = readStorageIndex().filter(function (item) { return item !== key; });
+            keys.push(key);
+            while (keys.length > persistentEntries) storageRemove(keys.shift());
+            writeStorageIndex(keys);
+        }
+
+        function readPersistent(key, maxAge) {
+            var storageKey = persistentKey(key);
+            var value = storageGet(storageKey, '');
+            if (!value) return null;
+            try {
+                var saved = typeof value === 'string' ? JSON.parse(value) : value;
+                var age = now() - Number(saved && saved.at || 0);
+                if (!saved || saved.payload === undefined || age < 0 || age >= maxAge) return null;
+                return {payload: saved.payload, at: Number(saved.at), age: age};
+            } catch (ignore) { return null; }
+        }
+
+        function writePersistent(key, payload) {
+            var storageKey = persistentKey(key);
+            var serialized;
+            try { serialized = JSON.stringify({at: now(), payload: payload}); }
+            catch (ignore) { return; }
+            // Very large /videos responses can exhaust WebView localStorage on
+            // weak devices. They remain in the bounded in-memory cache only.
+            if (!serialized || serialized.length > persistentMaxBytes) return;
+            if (storageSet(storageKey, serialized)) rememberPersistentKey(storageKey);
+        }
+
+        function removePersistent(key) {
+            var storageKey = persistentKey(key);
+            storageRemove(storageKey);
+            writeStorageIndex(readStorageIndex().filter(function (item) { return item !== storageKey; }));
+        }
+
+        function persistentSnapshot(key, maxAge) {
+            var entry = entries[key];
+            if (entry && !entry.inflight && entry.payload !== null && now() - entry.at < maxAge) {
+                return {payload: entry.payload, at: entry.at, age: now() - entry.at};
+            }
+            return readPersistent(key, maxAge);
+        }
 
         function remember(key) {
             var index = order.indexOf(key);
@@ -6222,6 +6311,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 entry.payload = payload;
                 entry.at = now();
                 remember(key);
+                writePersistent(key, payload);
                 settleWaiters(entry, null, payload);
             }).catch(function (error) {
                 entry.inflight = false;
@@ -6237,12 +6327,22 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var key = String(id || '');
             if (!key) return Promise.reject(new Error('YummyAnime video id is missing'));
             var entry = entries[key];
-            if (entry && !entry.inflight && entry.payload && now() - entry.at < ttl) {
+            if (!options.forceRefresh && entry && !entry.inflight && entry.payload !== null && now() - entry.at < ttl) {
                 if (options.signal && options.signal.aborted) return Promise.reject(abortError());
                 remember(key);
                 return Promise.resolve(entry.payload);
             }
             if (entry && entry.inflight) return attachWaiter(key, entry, options.signal);
+            if (!options.forceRefresh) {
+                var saved = readPersistent(key, ttl);
+                if (saved) {
+                    entry = {inflight: false, controller: null, waiters: [], at: saved.at, payload: saved.payload};
+                    entries[key] = entry;
+                    remember(key);
+                    if (options.signal && options.signal.aborted) return Promise.reject(abortError());
+                    return Promise.resolve(saved.payload);
+                }
+            }
             entry = start(key, id);
             return attachWaiter(key, entry, options.signal);
         }
@@ -6251,21 +6351,52 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             return payload(id, options).then(videosFromPayload);
         }
 
+        function markDisplayOnly(videos) {
+            try {
+                Object.defineProperty(videos, '_yaniStaleDisplay', {value: true, configurable: true});
+            } catch (ignore) {
+                videos._yaniStaleDisplay = true;
+            }
+            return videos;
+        }
+
+        function stagedList(id, options, onCached) {
+            options = options || {};
+            var key = String(id || '');
+            if (!key) return Promise.reject(new Error('YummyAnime video id is missing'));
+            if (options.signal && options.signal.aborted) return Promise.reject(abortError());
+            var snapshot = persistentSnapshot(key, staleTtl);
+            if (!snapshot || snapshot.age < ttl) return list(id, options);
+
+            var cachedVideos = markDisplayOnly(videosFromPayload(snapshot.payload));
+            if (typeof onCached === 'function') {
+                onCached(cachedVideos, {cached: true, stale: true, age: snapshot.age});
+            }
+            return list(id, Object.assign({}, options, {forceRefresh: true})).catch(function (error) {
+                if (isAbort(error)) throw error;
+                return cachedVideos;
+            });
+        }
+
         function invalidate(id) {
             var key = String(id || '');
             if (!key) {
                 Object.keys(entries).forEach(function (item) {
                     if (entries[item] && !entries[item].inflight) forget(item, entries[item]);
                 });
+                readStorageIndex().forEach(storageRemove);
+                writeStorageIndex([]);
                 return;
             }
             var entry = entries[key];
             if (entry && !entry.inflight) forget(key, entry);
+            removePersistent(key);
         }
 
         return {
             payload: payload,
             list: list,
+            stagedList: stagedList,
             invalidate: invalidate,
             videosFromPayload: videosFromPayload
         };
@@ -14049,14 +14180,25 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         }
 
         function loadDetailVideos() {
+            var onCached = arguments[0];
             var load = deps.loadVideos || function (id, options) {
                 return LampaYaniApi.videos(id, options).then(function (payload) {
                     var videos = payload && payload.response ? payload.response : payload;
                     return Object.prototype.toString.call(videos) === '[object Array]' ? videos : [];
                 });
             };
-            return load(data.yani_id, {signal: videosAbort && videosAbort.signal}).then(function (videos) {
-                if (deps.importVideosProgress) deps.importVideosProgress(data, videos);
+            var options = {
+                signal: videosAbort && videosAbort.signal,
+                onCached: typeof onCached === 'function' ? function (videos) {
+                    // A saved snapshot is display-only: importing its old watch
+                    // fields could overwrite progress recorded after the cache.
+                    onCached(videos);
+                } : null
+            };
+            return load(data.yani_id, options).then(function (videos) {
+                if (deps.importVideosProgress && !(videos && videos._yaniStaleDisplay)) {
+                    deps.importVideosProgress(data, videos);
+                }
                 return videos;
             });
         }
@@ -14273,16 +14415,25 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 render(LampaYaniUiUtils.detailEpisodeStats(cardData, lastVideos, getPlayback(cardData.yani_id)));
             };
 
+            function applyVideos(videos, complete) {
+                if (destroyed) return;
+                lastVideos = Array.isArray(videos) ? videos : [];
+                if (complete) {
+                    loaded = true;
+                    loading = false;
+                    block.removeClass('loading');
+                }
+                refreshDetailWatchState();
+            }
+
             function enrich() {
                 if (loading || loaded) return;
                 loading = true;
                 block.addClass('loading');
-                loadDetailVideos().then(function (videos) {
-                    lastVideos = Array.isArray(videos) ? videos : [];
-                    loaded = true;
-                    loading = false;
-                    block.removeClass('loading');
-                    refreshDetailWatchState();
+                loadDetailVideos(function (cachedVideos) {
+                    applyVideos(cachedVideos, false);
+                }).then(function (videos) {
+                    applyVideos(videos, true);
                 }).catch(function (error) {
                     loading = false;
                     loaded = true;
@@ -14348,9 +14499,16 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return row;
             }
 
-            loadDetailVideos().then(function (videos) {
+            var renderedSignature = '';
+            function renderVideos(videos, complete) {
                 if (destroyed) return;
                 var groups = detailTranslationGroups(videos);
+                var signature = JSON.stringify(groups);
+                if (signature === renderedSignature) {
+                    if (complete) block.removeClass('loading');
+                    return;
+                }
+                renderedSignature = signature;
                 block.removeClass('loading').empty();
                 block.append($('<div class="yani-detail__translations-title"></div>').text(t('available_translations')));
                 var voices = renderRow('voices', t('voice_teams'), groups.voices);
@@ -14360,6 +14518,13 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 if (!voices && !subtitles) block.append($('<div class="yani-detail__translations-empty"></div>').text(t('translations_unknown')));
                 bindDetailScrollTargets(block);
                 appendDetailNavigation(block);
+                if (!complete) block.addClass('loading');
+            }
+
+            loadDetailVideos(function (cachedVideos) {
+                renderVideos(cachedVideos, false);
+            }).then(function (videos) {
+                renderVideos(videos, true);
             }).catch(function () {
                 block.removeClass('loading').addClass('unavailable');
                 block.find('.yani-detail__translations-skeleton').remove();
@@ -17780,7 +17945,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             movePageDown: movePageDown,
             goBack: goBack,
             cleanCommentText: cleanCommentText,
-            loadVideos: function (id, options) { return videoData.list(id, options); },
+            loadVideos: function (id, options) {
+                options = options || {};
+                return typeof options.onCached === 'function'
+                    ? videoData.stagedList(id, options, options.onCached)
+                    : videoData.list(id, options);
+            },
             importVideosProgress: importVideosProgress
         });
     }

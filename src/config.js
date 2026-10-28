@@ -5,7 +5,7 @@
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.21',
+        version: '0.47.22',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -18,6 +18,9 @@
         cacheEntries: 220,
         videosCacheTtl: 120000,
         videosCacheEntries: 20,
+        videosStaleCacheTtl: 24 * 60 * 60 * 1000,
+        videosPersistentEntries: 6,
+        videosPersistentMaxBytes: 350000,
         requestTimeout: 15000,
         requestRetries: 2
     };

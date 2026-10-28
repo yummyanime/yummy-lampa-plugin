@@ -14,11 +14,17 @@ const config = fs.readFileSync('src/config.js', 'utf8');
 assert.match(build, /src\/ui-video-data\.js/);
 assert.match(config, /videosCacheTtl: 120000/);
 assert.match(config, /videosCacheEntries: 20/);
+assert.match(config, /videosStaleCacheTtl:/);
+assert.match(config, /videosPersistentEntries: 6/);
+assert.match(config, /videosPersistentMaxBytes: 350000/);
 assert.doesNotMatch(api, /videosMemory/);
 assert.match(ui, /LampaYaniVideoData\.create/);
 assert.match(ui, /loadVideos: function \(id, options\) \{ return videoData\.payload\(id, options\); \}/);
-assert.match(ui, /loadVideos: function \(id, options\) \{ return videoData\.list\(id, options\); \}/);
+assert.match(ui, /videoData\.stagedList\(id, options, options\.onCached\)/);
+assert.match(ui, /: videoData\.list\(id, options\)/);
 assert.match(detail, /function loadDetailVideos\(\)/);
+assert.match(detail, /var onCached = arguments\[0\]/);
+assert.match(detail, /onCached: typeof onCached === 'function'/);
 assert.match(detail, /videosAbort\.abort\(\)/);
 assert.match(menu, /loadVideosForPlayback\(card\.yani_id\)/);
 assert.match(renderers, /loadVideos\(card\.yani_id\)/);
@@ -29,9 +35,25 @@ function abortError() {
     return error;
 }
 
+function fakeStorage() {
+    const values = {};
+    return {
+        values: values,
+        get: function (key, fallback) { return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : fallback; },
+        set: function (key, value) { values[key] = value; },
+        remove: function (key) { delete values[key]; }
+    };
+}
+
 function createManager(options) {
     const context = {
-        window: {LampaYaniConfig: {videosCacheTtl: 120000, videosCacheEntries: 20}},
+        window: {LampaYaniConfig: {
+            videosCacheTtl: 120000,
+            videosCacheEntries: 20,
+            videosStaleCacheTtl: 86400000,
+            videosPersistentEntries: 6,
+            videosPersistentMaxBytes: 350000
+        }},
         AbortController: AbortController,
         Promise: Promise,
         Error: Error
@@ -120,6 +142,55 @@ function deferredFetch() {
     await assert.rejects(only, function (error) { return error.name === 'AbortError'; });
     await Promise.resolve();
     assert.strictEqual(last.calls[0].options.signal.aborted, true, 'closing the last waiter must abort the network request');
+
+    const persistent = fakeStorage();
+    const firstNetwork = deferredFetch();
+    const firstManager = createManager({
+        fetch: firstNetwork.fetch,
+        storage: persistent,
+        ttl: 1000,
+        staleTtl: 10000,
+        now: function () { return clock.now; }
+    });
+    clock.now = 5000;
+    const storedRequest = firstManager.list(77);
+    firstNetwork.calls[0].resolve({response: [{number: 1, dubbing: 'A'}]});
+    await storedRequest;
+
+    clock.now = 7000;
+    const refreshNetwork = deferredFetch();
+    const secondManager = createManager({
+        fetch: refreshNetwork.fetch,
+        storage: persistent,
+        ttl: 1000,
+        staleTtl: 10000,
+        now: function () { return clock.now; }
+    });
+    let cachedStage = null;
+    const staged = secondManager.stagedList(77, {}, function (videos, state) {
+        cachedStage = {videos: videos, state: state};
+    });
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(cachedStage.videos)), [{number: 1, dubbing: 'A'}]);
+    assert.strictEqual(cachedStage.videos._yaniStaleDisplay, true, 'cached stage must be display-only');
+    assert.strictEqual(cachedStage.state.stale, true, 'expired display data must be marked as stale');
+    assert.strictEqual(refreshNetwork.calls.length, 1, 'stale display data must refresh in the background');
+    refreshNetwork.calls[0].resolve({response: [{number: 2, dubbing: 'B'}]});
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(await staged)), [{number: 2, dubbing: 'B'}]);
+
+    clock.now = 9000;
+    const failedNetwork = deferredFetch();
+    const offlineManager = createManager({
+        fetch: failedNetwork.fetch,
+        storage: persistent,
+        ttl: 1000,
+        staleTtl: 10000,
+        now: function () { return clock.now; }
+    });
+    const offline = offlineManager.stagedList(77, {}, function () {});
+    failedNetwork.calls[0].reject(new Error('offline'));
+    const offlineVideos = await offline;
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(offlineVideos)), [{number: 2, dubbing: 'B'}], 'a refresh failure must keep the saved display snapshot');
+    assert.strictEqual(offlineVideos._yaniStaleDisplay, true, 'offline fallback must stay display-only');
 
     console.log('video data manager contract tests passed');
 })().catch(function (error) {

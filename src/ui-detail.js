@@ -287,14 +287,25 @@
         }
 
         function loadDetailVideos() {
+            var onCached = arguments[0];
             var load = deps.loadVideos || function (id, options) {
                 return LampaYaniApi.videos(id, options).then(function (payload) {
                     var videos = payload && payload.response ? payload.response : payload;
                     return Object.prototype.toString.call(videos) === '[object Array]' ? videos : [];
                 });
             };
-            return load(data.yani_id, {signal: videosAbort && videosAbort.signal}).then(function (videos) {
-                if (deps.importVideosProgress) deps.importVideosProgress(data, videos);
+            var options = {
+                signal: videosAbort && videosAbort.signal,
+                onCached: typeof onCached === 'function' ? function (videos) {
+                    // A saved snapshot is display-only: importing its old watch
+                    // fields could overwrite progress recorded after the cache.
+                    onCached(videos);
+                } : null
+            };
+            return load(data.yani_id, options).then(function (videos) {
+                if (deps.importVideosProgress && !(videos && videos._yaniStaleDisplay)) {
+                    deps.importVideosProgress(data, videos);
+                }
                 return videos;
             });
         }
@@ -511,16 +522,25 @@
                 render(LampaYaniUiUtils.detailEpisodeStats(cardData, lastVideos, getPlayback(cardData.yani_id)));
             };
 
+            function applyVideos(videos, complete) {
+                if (destroyed) return;
+                lastVideos = Array.isArray(videos) ? videos : [];
+                if (complete) {
+                    loaded = true;
+                    loading = false;
+                    block.removeClass('loading');
+                }
+                refreshDetailWatchState();
+            }
+
             function enrich() {
                 if (loading || loaded) return;
                 loading = true;
                 block.addClass('loading');
-                loadDetailVideos().then(function (videos) {
-                    lastVideos = Array.isArray(videos) ? videos : [];
-                    loaded = true;
-                    loading = false;
-                    block.removeClass('loading');
-                    refreshDetailWatchState();
+                loadDetailVideos(function (cachedVideos) {
+                    applyVideos(cachedVideos, false);
+                }).then(function (videos) {
+                    applyVideos(videos, true);
                 }).catch(function (error) {
                     loading = false;
                     loaded = true;
@@ -586,9 +606,16 @@
                 return row;
             }
 
-            loadDetailVideos().then(function (videos) {
+            var renderedSignature = '';
+            function renderVideos(videos, complete) {
                 if (destroyed) return;
                 var groups = detailTranslationGroups(videos);
+                var signature = JSON.stringify(groups);
+                if (signature === renderedSignature) {
+                    if (complete) block.removeClass('loading');
+                    return;
+                }
+                renderedSignature = signature;
                 block.removeClass('loading').empty();
                 block.append($('<div class="yani-detail__translations-title"></div>').text(t('available_translations')));
                 var voices = renderRow('voices', t('voice_teams'), groups.voices);
@@ -598,6 +625,13 @@
                 if (!voices && !subtitles) block.append($('<div class="yani-detail__translations-empty"></div>').text(t('translations_unknown')));
                 bindDetailScrollTargets(block);
                 appendDetailNavigation(block);
+                if (!complete) block.addClass('loading');
+            }
+
+            loadDetailVideos(function (cachedVideos) {
+                renderVideos(cachedVideos, false);
+            }).then(function (videos) {
+                renderVideos(videos, true);
             }).catch(function () {
                 block.removeClass('loading').addClass('unavailable');
                 block.find('.yani-detail__translations-skeleton').remove();

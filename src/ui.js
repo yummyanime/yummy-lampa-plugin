@@ -2962,7 +2962,12 @@
             movePageDown: movePageDown,
             goBack: goBack,
             cleanCommentText: cleanCommentText,
-            loadVideos: function (id, options) { return videoData.list(id, options); },
+            loadVideos: function (id, options) {
+                options = options || {};
+                return typeof options.onCached === 'function'
+                    ? videoData.stagedList(id, options, options.onCached)
+                    : videoData.list(id, options);
+            },
             importVideosProgress: importVideosProgress
         });
     }

@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.22] - 2026-10-28
+
+### Added
+
+- Staged episode loading with a bounded persistent display cache
+
+### Fixed
+
+- Stale episode snapshots affecting playback or watch progress
+
 ## [0.47.21] - 2026-10-21
 
 ### Fixed
