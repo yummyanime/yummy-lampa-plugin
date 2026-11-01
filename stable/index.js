@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.27',
+        version: '0.47.28',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -1339,6 +1339,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var config = window.LampaYaniConfig;
     var pendingRequests = {};
     var pendingRefreshes = {};
+    var episodeThumbnailCache = {};
     var mutationFlush = null;
     var MUTATION_QUEUE_KEY = 'yani_pending_mutations_v1';
     var MUTATION_MAX_ATTEMPTS = 8;
@@ -1811,6 +1812,36 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 throw error;
             });
             return episodeInfoCache[key];
+        },
+        episodeThumbnails: function (malId) {
+            if (!malId) return Promise.resolve({});
+            var key = String(malId);
+            if (episodeThumbnailCache[key]) return episodeThumbnailCache[key];
+            function page(number) {
+                return externalRequest('https://api.tenrai.org/v1', '/anime/' + encodeURIComponent(malId) + '/episodes?page=' + number, {
+                    timeout: 6000,
+                    retry: false
+                });
+            }
+            episodeThumbnailCache[key] = page(1).then(function (first) {
+                var pages = Math.max(1, Math.min(30, Number(first && first.pagination && first.pagination.last_visible_page || 1)));
+                var requests = [];
+                for (var number = 2; number <= pages; number += 1) requests.push(page(number).catch(function () { return {data: []}; }));
+                return Promise.all(requests).then(function (rest) {
+                    var items = (first && first.data || []).slice();
+                    rest.forEach(function (payload) { items = items.concat(payload && payload.data || []); });
+                    var result = {};
+                    items.forEach(function (item) {
+                        var image = item && item.images && item.images.jpg && item.images.jpg.image_url;
+                        if (image && item.mal_id) result[String(item.mal_id)] = image;
+                    });
+                    return result;
+                });
+            }).catch(function () {
+                delete episodeThumbnailCache[key];
+                return {};
+            });
+            return episodeThumbnailCache[key];
         },
         malTitles: malTitles,
         detail: function (id) {
@@ -8198,6 +8229,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var voiceOptionSubtitle = deps.voiceOptionSubtitle || function () { return ''; };
         var videoQualityLabel = deps.videoQualityLabel || function () { return ''; };
         var getPreferredPlayer = deps.getPreferredPlayer || function () { return ''; };
+        var getPreferredVoice = deps.getPreferredVoice || function () { return ''; };
         var allohaIframeEnabled = deps.allohaIframeEnabled || function () { return false; };
         var groupPlaybackPriority = deps.groupPlaybackPriority || function () { return 0; };
         var videoPlaybackPriority = deps.videoPlaybackPriority || function () { return 0; };
@@ -8254,7 +8286,22 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
         function lastWatchedVoice(voices, card) {
             var playback = card && (card.yani_resume || getPlayback(card.yani_id));
-            if (!playback || !voices || !voices.length) return null;
+            if (!voices || !voices.length) return null;
+            if (!playback) {
+                var preferredVoice = normalizeVoiceName(getPreferredVoice());
+                if (!preferredVoice) return null;
+                var preferredPlayer = getPreferredPlayer();
+                var preferred = voices.filter(function (voice) {
+                    return normalizeVoiceName(voice.group && voice.group.title) === preferredVoice;
+                });
+                if (preferredPlayer) {
+                    var exact = preferred.filter(function (voice) {
+                        return playerMatchesPreference(voice.group, preferredPlayer);
+                    });
+                    if (exact.length) return exact[0];
+                }
+                return preferred[0] || null;
+            }
             var videoId = playback.video_id ? String(playback.video_id) : '';
             var byVideo = videoId && voices.filter(function (voice) {
                 return voice.group && voice.group.videos && voice.group.videos.some(function (video) {
@@ -11742,6 +11789,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 duration: Math.max(0, Number(item.duration || watched.duration || 0)),
                 updated_at: historyTimestamp(item.date || item.updated_at || item.created_at || watched.updated_at || watched.date),
                 remote: true
+                ,mal_id: item.mal_id || item.malId || anime.mal_id || anime.malId || anime.remote_ids && (anime.remote_ids.mal || anime.remote_ids.mal_id) || ''
             };
         }).filter(Boolean);
     }
@@ -11808,6 +11856,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 title: item.title || item.card && item.card.title || '',
                 poster: historyPoster(item.poster || item.card && item.card.poster),
                 screenshot: historyScreenshot(item.screenshot || item.screenshot_url),
+                mal_id: item.mal_id || item.malId || item.card && item.card.yani_remote_ids && item.card.yani_remote_ids.mal || '',
                 player: String(item.player || ''),
                 voice: String(item.voice || ''),
                 time: Math.max(0, Number(item.time || 0)),
@@ -15346,6 +15395,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         voiceOptionSubtitle: function (group) { return voiceOptionSubtitle(group); },
         videoQualityLabel: function (video) { return videoQualityLabel(video); },
         getPreferredPlayer: function () { return getPreferredPlayer(); },
+        getPreferredVoice: function () { return getPreferredVoice(); },
         allohaIframeEnabled: function () { return allohaIframeEnabled(); },
         groupPlaybackPriority: function (group) { return groupPlaybackPriority(group); },
         videoPlaybackPriority: function (video, group) { return videoPlaybackPriority(video, group); },
@@ -15832,6 +15882,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     }
 
     function Home(object) {
+        var homeStartedOnce = false;
+        var refreshEpisodeDashboard = function () { return Promise.resolve(); };
         var scroll = new Lampa.Scroll({mask: true, over: true, step: 250});
         scroll.minus();
         var html = $('<div class="yani-home" data-yani-section="explore"></div>');
@@ -16928,9 +16980,16 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 }
 
                 if (dashboardCache.available) renderDashboardSnapshot(dashboardCache.dashboard, 'cached', dashboardCache.updated_at);
-                LampaYaniHomeInsights.dashboard({
-                    feed: function () { return LampaYaniApi.feed(homeRequestControl()); },
-                    schedule: function () { return LampaYaniApi.schedule(homeRequestControl()); },
+                function refreshDashboardInsights(forceRefresh) {
+                    var requestControl = homeRequestControl();
+                    if (forceRefresh) {
+                        requestControl.forceRefresh = true;
+                        requestControl.cacheFirst = false;
+                        requestControl.backgroundRefresh = false;
+                    }
+                    return LampaYaniHomeInsights.dashboard({
+                    feed: function () { return LampaYaniApi.feed(requestControl); },
+                    schedule: function () { return LampaYaniApi.schedule(requestControl); },
                     now: Date.now()
                 }).then(function (dashboard) {
                     if (destroyed) return;
@@ -16952,6 +17011,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     });
                     console.warn('[YummyAnime Home] Dashboard insights are unavailable', error);
                 });
+                }
+                refreshDashboardInsights(false);
+                refreshEpisodeDashboard = function () { return refreshDashboardInsights(true); };
             }
         };
 
@@ -16966,6 +17028,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return;
             }
             refreshContinueWatching();
+            if (homeStartedOnce) refreshEpisodeDashboard();
+            homeStartedOnce = true;
             Lampa.Controller.add('content', {
                 toggle: function () {
                     var target = last && document.documentElement.contains(last) ? last : false;
@@ -17980,10 +18044,13 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var card = toCard(Object.assign({}, entry.card || {}, {
                 anime_id: entry.anime_id,
                 title: entry.title || entry.card && entry.card.title,
-                poster: entry.poster || entry.card && entry.card.poster,
+                poster: entry.screenshot || entry.poster || entry.card && entry.card.poster,
                 updated_at: entry.updated_at || 0
             }));
             card.yani_list_progress = entry.duration > 0 ? Math.max(0, Math.min(1, Number(entry.time || 0) / Number(entry.duration))) : 0;
+            card.yani_episode_number = entry.number || '';
+            card.yani_screenshot = entry.screenshot || '';
+            card.yani_remote_ids = Object.assign({}, card.yani_remote_ids || {}, entry.mal_id ? {mal: entry.mal_id} : {});
             return card;
         });
     }
@@ -17999,14 +18066,46 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             if (!card.poster && poster) card.poster = card.img = poster;
         });
 
-        var missing = cards.filter(function (card) { return card.yani_id && !card.poster; }).slice(0, 10);
+        function videoFrame(card) {
+            return videoData.payload(card.yani_id).then(function (payload) {
+                var groups = payload && payload.response ? payload.response : payload;
+                var videos = [];
+                (Array.isArray(groups) ? groups : []).forEach(function (group) {
+                    videos = videos.concat(group && group.videos || []);
+                });
+                var wanted = window.LampaYaniEpisode.normalize(card.yani_episode_number || '');
+                var video = videos.filter(function (item) {
+                    return window.LampaYaniEpisode.same(window.LampaYaniEpisode.valueOf(item), wanted);
+                })[0] || {};
+                var data = LampaYaniUiUtils.videoData(video);
+                return video.screenshot || video.thumbnail || video.preview || data.screenshot || data.thumbnail || data.preview || '';
+            }).catch(function () { return ''; });
+        }
+
+        function resolveEpisodeFrame(card, detailed) {
+            if (card.yani_screenshot) return Promise.resolve(card.yani_screenshot);
+            var remote = detailed && detailed.yani_remote_ids || card.yani_remote_ids || {};
+            var malId = remote.mal || remote.mal_id || remote.myanimelist;
+            var tenrai = malId && card.yani_episode_number
+                ? LampaYaniApi.episodeThumbnails(malId).then(function (images) {
+                    return images[String(window.LampaYaniEpisode.normalize(card.yani_episode_number))] || '';
+                })
+                : Promise.resolve('');
+            return tenrai.then(function (image) { return image || videoFrame(card); });
+        }
+
+        var missing = cards.filter(function (card) { return card.yani_id && !card.yani_screenshot; }).slice(0, 10);
         function next(offset) {
             if (offset >= missing.length) return Promise.resolve(cards);
             return Promise.all(missing.slice(offset, offset + 2).map(function (card) {
                 return LampaYaniApi.detail(card.yani_id).then(function (payload) {
                     var value = payload && payload.response ? payload.response : payload;
                     var detailed = toCard(value || {});
-                    if (detailed.poster) card.poster = card.img = detailed.poster;
+                    card.yani_remote_ids = detailed.yani_remote_ids || card.yani_remote_ids;
+                    return resolveEpisodeFrame(card, detailed).then(function (frame) {
+                        if (frame) card.poster = card.img = card.yani_screenshot = frame;
+                        else if (!card.poster && detailed.poster) card.poster = card.img = detailed.poster;
+                    });
                 }).catch(function () {});
             })).then(function () { return next(offset + 2); });
         }
@@ -19826,6 +19925,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return Lampa.Storage.get('yani_last_player', '') || '';
     }
 
+    function getPreferredVoice() {
+        if (!Lampa.Storage) return '';
+        return Lampa.Storage.get('yani_last_voice', '') || '';
+    }
+
     function playerMatchesPreference(group, preference) {
         if (!preference) return false;
         var value = String(group && (group.player || group.title) || '').toLowerCase();
@@ -19833,7 +19937,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     }
 
     function rememberPlayer(group) {
-        if (Lampa.Storage) Lampa.Storage.set('yani_last_player', playerKey(group));
+        if (!Lampa.Storage) return;
+        Lampa.Storage.set('yani_last_player', playerKey(group));
+        var voice = window.LampaYaniUiUtils && window.LampaYaniUiUtils.voiceGroupPart
+            ? window.LampaYaniUiUtils.voiceGroupPart(group && group.title)
+            : String(group && group.title || '').trim().toLowerCase();
+        if (voice) Lampa.Storage.set('yani_last_voice', voice);
     }
 
     function episodeOptionTitle(card, video) {

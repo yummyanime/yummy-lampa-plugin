@@ -19,6 +19,7 @@
         var voiceOptionSubtitle = deps.voiceOptionSubtitle || function () { return ''; };
         var videoQualityLabel = deps.videoQualityLabel || function () { return ''; };
         var getPreferredPlayer = deps.getPreferredPlayer || function () { return ''; };
+        var getPreferredVoice = deps.getPreferredVoice || function () { return ''; };
         var allohaIframeEnabled = deps.allohaIframeEnabled || function () { return false; };
         var groupPlaybackPriority = deps.groupPlaybackPriority || function () { return 0; };
         var videoPlaybackPriority = deps.videoPlaybackPriority || function () { return 0; };
@@ -75,7 +76,22 @@
 
         function lastWatchedVoice(voices, card) {
             var playback = card && (card.yani_resume || getPlayback(card.yani_id));
-            if (!playback || !voices || !voices.length) return null;
+            if (!voices || !voices.length) return null;
+            if (!playback) {
+                var preferredVoice = normalizeVoiceName(getPreferredVoice());
+                if (!preferredVoice) return null;
+                var preferredPlayer = getPreferredPlayer();
+                var preferred = voices.filter(function (voice) {
+                    return normalizeVoiceName(voice.group && voice.group.title) === preferredVoice;
+                });
+                if (preferredPlayer) {
+                    var exact = preferred.filter(function (voice) {
+                        return playerMatchesPreference(voice.group, preferredPlayer);
+                    });
+                    if (exact.length) return exact[0];
+                }
+                return preferred[0] || null;
+            }
             var videoId = playback.video_id ? String(playback.video_id) : '';
             var byVideo = videoId && voices.filter(function (voice) {
                 return voice.group && voice.group.videos && voice.group.videos.some(function (video) {

@@ -72,6 +72,7 @@
                 duration: Math.max(0, Number(item.duration || watched.duration || 0)),
                 updated_at: historyTimestamp(item.date || item.updated_at || item.created_at || watched.updated_at || watched.date),
                 remote: true
+                ,mal_id: item.mal_id || item.malId || anime.mal_id || anime.malId || anime.remote_ids && (anime.remote_ids.mal || anime.remote_ids.mal_id) || ''
             };
         }).filter(Boolean);
     }
@@ -138,6 +139,7 @@
                 title: item.title || item.card && item.card.title || '',
                 poster: historyPoster(item.poster || item.card && item.card.poster),
                 screenshot: historyScreenshot(item.screenshot || item.screenshot_url),
+                mal_id: item.mal_id || item.malId || item.card && item.card.yani_remote_ids && item.card.yani_remote_ids.mal || '',
                 player: String(item.player || ''),
                 voice: String(item.voice || ''),
                 time: Math.max(0, Number(item.time || 0)),

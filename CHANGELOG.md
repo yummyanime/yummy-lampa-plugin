@@ -9,6 +9,14 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.28] - 2026-11-01
+
+### Added
+
+- Remembered dubbing fallback and preselect it when alternatives are available
+- Dashboard episode-data refresh after returning from child screens
+- Episode artwork fallback from YummyAnime history through Tenrai to source thumbnails
+
 ## [0.47.27] - 2026-11-01
 
 ### Added

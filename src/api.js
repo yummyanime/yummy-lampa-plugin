@@ -4,6 +4,7 @@
     var config = window.LampaYaniConfig;
     var pendingRequests = {};
     var pendingRefreshes = {};
+    var episodeThumbnailCache = {};
     var mutationFlush = null;
     var MUTATION_QUEUE_KEY = 'yani_pending_mutations_v1';
     var MUTATION_MAX_ATTEMPTS = 8;
@@ -476,6 +477,36 @@
                 throw error;
             });
             return episodeInfoCache[key];
+        },
+        episodeThumbnails: function (malId) {
+            if (!malId) return Promise.resolve({});
+            var key = String(malId);
+            if (episodeThumbnailCache[key]) return episodeThumbnailCache[key];
+            function page(number) {
+                return externalRequest('https://api.tenrai.org/v1', '/anime/' + encodeURIComponent(malId) + '/episodes?page=' + number, {
+                    timeout: 6000,
+                    retry: false
+                });
+            }
+            episodeThumbnailCache[key] = page(1).then(function (first) {
+                var pages = Math.max(1, Math.min(30, Number(first && first.pagination && first.pagination.last_visible_page || 1)));
+                var requests = [];
+                for (var number = 2; number <= pages; number += 1) requests.push(page(number).catch(function () { return {data: []}; }));
+                return Promise.all(requests).then(function (rest) {
+                    var items = (first && first.data || []).slice();
+                    rest.forEach(function (payload) { items = items.concat(payload && payload.data || []); });
+                    var result = {};
+                    items.forEach(function (item) {
+                        var image = item && item.images && item.images.jpg && item.images.jpg.image_url;
+                        if (image && item.mal_id) result[String(item.mal_id)] = image;
+                    });
+                    return result;
+                });
+            }).catch(function () {
+                delete episodeThumbnailCache[key];
+                return {};
+            });
+            return episodeThumbnailCache[key];
         },
         malTitles: malTitles,
         detail: function (id) {

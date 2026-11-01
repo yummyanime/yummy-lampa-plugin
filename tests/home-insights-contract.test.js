@@ -9,7 +9,8 @@ const css = fs.readFileSync('style.css', 'utf8');
 
 assert.match(build, /src\/ui-home-insights\.js/);
 assert.match(ui, /LampaYaniHomeInsights\.dashboard\(\{/);
-assert.match(ui, /schedule: function \(\) \{ return LampaYaniApi\.schedule\(homeRequestControl\(\)\); \}/);
+assert.match(ui, /schedule: function \(\) \{ return LampaYaniApi\.schedule\(requestControl\); \}/);
+assert.match(ui, /refreshEpisodeDashboard = function \(\) \{ return refreshDashboardInsights\(true\); \}/);
 assert.match(ui, /yani-home__count/);
 assert.match(ui, /yani-home__item-insight/);
 assert.match(ui, /LampaYaniHomeInsights\.personalInsight/);
