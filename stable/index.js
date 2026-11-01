@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.24',
+        version: '0.47.25',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -2889,7 +2889,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     }
 
     function vkResolvedResult(cacheKey, html, sourceUrl) {
-        if (/embedErrorCallback\s*\?\.?\s*\(\s*8\s*\)/i.test(String(html || ''))) throw new Error('VK video unavailable');
+        if (vkPageUnavailable(html)) throw new Error('VK video unavailable');
         var qualities = vkQualityMap(html, sourceUrl);
         var labels = Object.keys(qualities);
         if (!labels.length) throw new Error('VK stream links not found');
@@ -2915,6 +2915,26 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         });
     }
 
+    function vkPageUnavailable(html) {
+        html = String(html || '');
+        return /embedErrorCallback\s*\?\.?\s*\(\s*8\s*\)/i.test(html) || /id=["']video_ext_msg["']/i.test(html);
+    }
+
+    function requestVkPlayerHtml(url, requestHeaders, attempt) {
+        attempt = Number(attempt) || 1;
+        return requestText(url, {headers: requestHeaders}).then(function (html) {
+            // VK intermittently returns a valid but stripped video_ext page
+            // without stream links. A short retry usually returns the full
+            // payload. Do not retry explicit unavailability or network errors.
+            if (Object.keys(vkQualityMap(html, url)).length || vkPageUnavailable(html) || attempt >= 5) return html;
+            return new Promise(function (resolve) {
+                setTimeout(resolve, 400);
+            }).then(function () {
+                return requestVkPlayerHtml(url, requestHeaders, attempt + 1);
+            });
+        });
+    }
+
     function resolveVk(iframeUrl) {
         var fullUrl = normalizeUrl(iframeUrl);
         var hit = cached(fullUrl);
@@ -2931,14 +2951,14 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         }
         if (playerUrl || /video_ext\.php/i.test(fullUrl)) {
             playerUrl = playerUrl || fullUrl;
-            return requestText(playerUrl, {headers: headers(fullUrl)}).then(function (html) {
+            return requestVkPlayerHtml(playerUrl, headers(fullUrl)).then(function (html) {
                 return vkResolvedResult(fullUrl, html, playerUrl);
             });
         }
         return requestText(fullUrl, {headers: headers(fullUrl)}).then(function (iframeHtml) {
             var discoveredUrl = vkVideoExtUrl(iframeHtml, fullUrl);
             if (!discoveredUrl || discoveredUrl === fullUrl) return vkResolvedResult(fullUrl, iframeHtml, fullUrl);
-            return requestText(discoveredUrl, {headers: headers(fullUrl)}).then(function (playerHtml) {
+            return requestVkPlayerHtml(discoveredUrl, headers(fullUrl)).then(function (playerHtml) {
                 return vkResolvedResult(fullUrl, playerHtml, discoveredUrl);
             }).catch(function () {
                 return vkResolvedResult(fullUrl, iframeHtml, fullUrl);

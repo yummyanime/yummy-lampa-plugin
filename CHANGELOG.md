@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.25] - 2026-11-01
+
+### Fixed
+
+- VK playback when `video_ext` temporarily returns a stripped page without stream links
+
 ## [0.47.24] - 2026-10-28
 
 ### Added

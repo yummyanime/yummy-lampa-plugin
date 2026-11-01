@@ -7,6 +7,7 @@ global.LampaYaniEpisode = {
     normalize: function (value) { return String(value == null ? '' : value).trim(); },
     same: function (left, right) { return Number(left) === Number(right); }
 };
+var strippedVkCalls = 0;
 global.fetch = async function (url) {
     if (String(url).indexOf('plapi.cdnvideohub.com/api/v1/player/sv/playlist') >= 0) {
         if (String(url).indexOf('id=777') >= 0) {
@@ -130,6 +131,17 @@ global.fetch = async function (url) {
             }
         };
     }
+    if (String(url).indexOf('vk.com/video_ext.php?oid=-228989270&id=456239555') >= 0) {
+        strippedVkCalls++;
+        return {
+            ok: true,
+            text: async function () {
+                return strippedVkCalls === 1
+                    ? '<html><body>temporarily stripped</body></html>'
+                    : '<script>url720 = "https:\/\/vkvd.test\/stream\/720.mp4?token=retry";</script>';
+            }
+        };
+    }
     throw new Error('Unexpected request: ' + url);
 };
 
@@ -196,6 +208,10 @@ Promise.all([
         delete global.AndroidJS;
         assert.strictEqual(androidVk.quality, '1080p');
         assert.strictEqual(androidVk.url, 'https://vkvd346.okcdn.ru/video/1080/track.m3u8');
+        return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeVK.html?id=-228989270_456239555');
+    }).then(function (retriedVk) {
+        assert.strictEqual(strippedVkCalls, 2, 'a stripped VK player page must be requested again');
+        assert.strictEqual(retriedVk.url, 'https://vkvd.test/stream/720.mp4?token=retry');
         return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=AniLibria&anime_id=31240&episode=2', {force: true});
     }).then(function (forcedCvh) {
         assert.strictEqual(forcedCvh.url, 'https://vd.example.test/?type=5&token=1080', 'forced CVH recovery must switch a named CDN host to failoverHost');
