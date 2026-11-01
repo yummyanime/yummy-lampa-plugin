@@ -525,11 +525,12 @@
         comp.create = function () {
             var self = this;
             this.activity.loader(true);
-            LampaYaniApi.catalog(baseParams, object.genre_context || object.subject_context ? {
+            LampaYaniApi.catalog(baseParams, {
                 cacheFirst: true,
                 staleFallback: true,
-                cacheTtl: 15 * 60 * 1000
-            } : {})
+                cacheTtl: 15 * 60 * 1000,
+                backgroundRefresh: true
+            })
                 .then(function (payload) {
                     if (destroyed) return;
                     var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
@@ -5225,6 +5226,11 @@
             component: 'yani',
             param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
             field: {name: t('auto_sync_progress'), description: t('auto_sync_progress_description')}
+        });
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_auto_manage_lists', type: 'trigger', default: false},
+            field: {name: t('auto_manage_lists'), description: t('auto_manage_lists_description')}
         });
 
         Lampa.SettingsApi.addParam({

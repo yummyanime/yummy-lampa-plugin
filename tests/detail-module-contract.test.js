@@ -36,6 +36,7 @@ assert.match(detail, /code === 185/);
 assert.match(detail, /code === 186/);
 assert.match(detail, /active \? LampaYaniApi\.removeFavorite\(cardData\.yani_id\) : LampaYaniApi\.addFavorite\(cardData\.yani_id\)/);
 assert.match(detail, /active \? LampaYaniApi\.removeFromList\(cardData\.yani_id\) : LampaYaniApi\.addToList\(cardData\.yani_id, action\.id\)/);
+assert.doesNotMatch(detail, /Promise\.all\(\[LampaYaniApi\.ratingBuckets/);
 assert.match(detail, /document\.addEventListener\('keydown', remoteListShortcutHandler, true\)/);
 assert.match(detail, /document\.removeEventListener\('keydown', remoteListShortcutHandler, true\)/);
 assert.match(detail, /function createDetailRatingAction\(cardData\)/);

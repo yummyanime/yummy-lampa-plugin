@@ -27,6 +27,8 @@
         var HISTORY_CACHE_MS = 500;
         var historyChangeTimer = 0;
         var pendingHistoryCard = null;
+        var autoListPending = {};
+        var autoListRetryAt = {};
 
         function publishPlaybackHistoryChange(card) {
             if (card) pendingHistoryCard = card;
@@ -120,6 +122,9 @@
                 },
                 updated_at: Date.now()
             };
+            saved.half_watched_episodes = Object.assign({}, previous && previous.half_watched_episodes || {});
+            saved.finished_episodes = Object.assign({}, previous && previous.finished_episodes || {});
+            saved.auto_list_id = previous && previous.auto_list_id;
             var ids = Object.keys(history).sort(function (a, b) {
                 return Number(history[b].updated_at || 0) - Number(history[a].updated_at || 0);
             });
@@ -229,6 +234,44 @@
             return value !== false && value !== 'false';
         }
 
+        function autoManageListsEnabled() {
+            if (!window.LampaYaniAuth || !window.LampaYaniAuth.token() || !window.Lampa || !window.Lampa.Storage || !window.Lampa.Storage.get) return false;
+            var value = window.Lampa.Storage.get('yani_auto_manage_lists', false);
+            return value === true || value === 'true';
+        }
+
+        function maybeAutoManageList(card, saved, video, position, duration) {
+            if (!autoManageListsEnabled() || !card || !card.yani_id || !saved || !window.LampaYaniApi || !window.LampaYaniApi.addToList) return;
+            var episode = window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(video));
+            var ratio = Number(duration) > 0 ? Number(position) / Number(duration) : 0;
+            if (episode && ratio >= 0.5) saved.half_watched_episodes[episode] = true;
+            if (episode && episodeFinished(position, duration, video && video.watched)) saved.finished_episodes[episode] = true;
+
+            var halfCount = Object.keys(saved.half_watched_episodes || {}).length;
+            var aired = episodeCeiling(card) || positiveNumber(saved.episodes_aired);
+            var allFinished = aired > 0;
+            for (var number = 1; number <= aired && allFinished; number++) {
+                allFinished = Boolean(saved.finished_episodes[window.LampaYaniEpisode.key(number)]);
+            }
+            var currentList = card.yani_list_id;
+            var target = allFinished ? {id: 2, key: 'completed'} : halfCount >= 2 ? {id: 0, key: 'watching'} : null;
+            if (!target || Number(currentList) === 3 || Number(currentList) === target.id || Number(saved.auto_list_id) === target.id) return;
+            var key = String(card.yani_id) + ':' + target.id;
+            if (autoListPending[key] || Date.now() < Number(autoListRetryAt[key] || 0)) return;
+            autoListPending[key] = true;
+            window.LampaYaniApi.addToList(card.yani_id, target.key).then(function () {
+                delete autoListPending[key];
+                saved.auto_list_id = target.id;
+                card.yani_list_id = target.id;
+                persistHistory(playbackHistory());
+                publishPlaybackHistoryChange(card);
+            }).catch(function (error) {
+                delete autoListPending[key];
+                autoListRetryAt[key] = Date.now() + 30 * 60 * 1000;
+                console.warn('[YummyAnime] Automatic list update failed', error);
+            });
+        }
+
         var unsyncableWarned = {};
 
         function syncServerProgress(video) {
@@ -329,6 +372,7 @@
             if (duration > 0) video.duration = Math.floor(duration);
             var saved = rememberPlayback(context.card, context.group, video);
             if (saved) {
+                maybeAutoManageList(context.card, saved, video, position, duration);
                 context.card.yani_resume = {
                     number: saved.number,
                     max_episode: saved.max_episode,
@@ -455,6 +499,7 @@
             pullRemoteProgress: pullRemoteProgress,
             ensureRemoteHistory: ensureRemoteHistory,
             autoProgressSyncEnabled: autoProgressSyncEnabled,
+            autoManageListsEnabled: autoManageListsEnabled,
             syncServerProgress: syncServerProgress,
             clearEpisodeProgress: clearEpisodeProgress,
             renderHistoryProgress: renderHistoryProgress,

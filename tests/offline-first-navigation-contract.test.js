@@ -16,6 +16,7 @@ assert.match(apiSource, /genres: function \(control\)[\s\S]{0,350}cacheFirst: tr
 assert.match(apiSource, /schedule: function \(control\)[\s\S]{0,350}cacheFirst: true/);
 assert.match(apiSource, /collectionCatalog: function[\s\S]{0,450}cacheFirst: true/);
 assert.match(apiSource, /collectionDetail: function[\s\S]{0,500}cacheFirst: true/);
+assert.match(ui, /LampaYaniApi\.catalog\(baseParams, \{[\s\S]{0,220}cacheFirst: true[\s\S]{0,220}backgroundRefresh: true/);
 assert.match(schedule, /schedule\(\{forceRefresh: forceRefresh === true\}\)/);
 assert.match(schedule, /document\.addEventListener\('yani:cache-updated', cacheUpdateHandler\)/);
 assert.match(schedule, /focusScope\.restore\(fallback, true\)/);

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.26',
+        version: '0.47.27',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -128,6 +128,8 @@ function pluginYummyAnime() {
     messages.ru.sync_history_error = 'Не удалось синхронизировать историю';
     messages.ru.auto_sync_progress = 'Автосинхронизация прогресса';
     messages.ru.auto_sync_progress_description = 'Автоматически сохранять в аккаунте YummyAnime прогресс внутреннего плеера Lampa и подтягивать серверный прогресс на главный экран, в историю и карточку тайтла. При отключении доступна ручная синхронизация на странице аккаунта';
+    messages.ru.auto_manage_lists = 'Автоматически обновлять списки';
+    messages.ru.auto_manage_lists_description = 'После двух серий, просмотренных минимум наполовину, добавить тайтл в «Смотрю». После завершения всех вышедших серий — в «Просмотрено». Список «Брошено» не изменяется';
     messages.ru.add_to_lampa_history = 'Добавлять в историю Lampa';
     messages.ru.add_to_lampa_history_description = 'Добавлять начатые в YummyAnime тайтлы во встроенную историю просмотра Lampa';
     messages.ru.user_lists = 'Мои списки';
@@ -233,6 +235,8 @@ function pluginYummyAnime() {
     messages.en.sync_history_error = 'Failed to synchronize history';
     messages.en.auto_sync_progress = 'Automatic progress sync';
     messages.en.auto_sync_progress_description = 'Automatically save internal Lampa player progress to the YummyAnime account and pull server progress onto the home screen, history and title card. When disabled, manual sync is available on the account page';
+    messages.en.auto_manage_lists = 'Update lists automatically';
+    messages.en.auto_manage_lists_description = 'Add a title to Watching after two episodes are at least half watched. Move it to Completed after every released episode is finished. Dropped titles are never changed';
     messages.en.add_to_lampa_history = 'Add to Lampa history';
     messages.en.add_to_lampa_history_description = 'Add titles started in YummyAnime to Lampa built-in watch history';
     messages.en.user_lists = 'My Lists';
@@ -777,6 +781,8 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.sync_history_error = 'Не вдалося синхронізувати історію';
     messages.uk.auto_sync_progress = 'Автосинхронізація прогресу';
     messages.uk.auto_sync_progress_description = 'Автоматично зберігати в обліковому записі YummyAnime прогрес внутрішнього плеєра Lampa і підтягувати серверний прогрес на головний екран, в історію та картку тайтла. Після вимкнення доступна ручна синхронізація на сторінці облікового запису';
+    messages.uk.auto_manage_lists = 'Автоматично оновлювати списки';
+    messages.uk.auto_manage_lists_description = 'Після двох серій, переглянутих щонайменше наполовину, додати тайтл до «Дивлюся». Після завершення всіх серій, що вийшли, — до «Переглянуто». Список «Покинуто» не змінюється';
     messages.uk.add_to_lampa_history = 'Додавати до історії Lampa';
     messages.uk.add_to_lampa_history_description = 'Додавати розпочаті в YummyAnime тайтли до вбудованої історії перегляду Lampa';
     messages.uk.user_lists = 'Мої списки';
@@ -7682,6 +7688,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var HISTORY_CACHE_MS = 500;
         var historyChangeTimer = 0;
         var pendingHistoryCard = null;
+        var autoListPending = {};
+        var autoListRetryAt = {};
 
         function publishPlaybackHistoryChange(card) {
             if (card) pendingHistoryCard = card;
@@ -7775,6 +7783,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 },
                 updated_at: Date.now()
             };
+            saved.half_watched_episodes = Object.assign({}, previous && previous.half_watched_episodes || {});
+            saved.finished_episodes = Object.assign({}, previous && previous.finished_episodes || {});
+            saved.auto_list_id = previous && previous.auto_list_id;
             var ids = Object.keys(history).sort(function (a, b) {
                 return Number(history[b].updated_at || 0) - Number(history[a].updated_at || 0);
             });
@@ -7884,6 +7895,44 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             return value !== false && value !== 'false';
         }
 
+        function autoManageListsEnabled() {
+            if (!window.LampaYaniAuth || !window.LampaYaniAuth.token() || !window.Lampa || !window.Lampa.Storage || !window.Lampa.Storage.get) return false;
+            var value = window.Lampa.Storage.get('yani_auto_manage_lists', false);
+            return value === true || value === 'true';
+        }
+
+        function maybeAutoManageList(card, saved, video, position, duration) {
+            if (!autoManageListsEnabled() || !card || !card.yani_id || !saved || !window.LampaYaniApi || !window.LampaYaniApi.addToList) return;
+            var episode = window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(video));
+            var ratio = Number(duration) > 0 ? Number(position) / Number(duration) : 0;
+            if (episode && ratio >= 0.5) saved.half_watched_episodes[episode] = true;
+            if (episode && episodeFinished(position, duration, video && video.watched)) saved.finished_episodes[episode] = true;
+
+            var halfCount = Object.keys(saved.half_watched_episodes || {}).length;
+            var aired = episodeCeiling(card) || positiveNumber(saved.episodes_aired);
+            var allFinished = aired > 0;
+            for (var number = 1; number <= aired && allFinished; number++) {
+                allFinished = Boolean(saved.finished_episodes[window.LampaYaniEpisode.key(number)]);
+            }
+            var currentList = card.yani_list_id;
+            var target = allFinished ? {id: 2, key: 'completed'} : halfCount >= 2 ? {id: 0, key: 'watching'} : null;
+            if (!target || Number(currentList) === 3 || Number(currentList) === target.id || Number(saved.auto_list_id) === target.id) return;
+            var key = String(card.yani_id) + ':' + target.id;
+            if (autoListPending[key] || Date.now() < Number(autoListRetryAt[key] || 0)) return;
+            autoListPending[key] = true;
+            window.LampaYaniApi.addToList(card.yani_id, target.key).then(function () {
+                delete autoListPending[key];
+                saved.auto_list_id = target.id;
+                card.yani_list_id = target.id;
+                persistHistory(playbackHistory());
+                publishPlaybackHistoryChange(card);
+            }).catch(function (error) {
+                delete autoListPending[key];
+                autoListRetryAt[key] = Date.now() + 30 * 60 * 1000;
+                console.warn('[YummyAnime] Automatic list update failed', error);
+            });
+        }
+
         var unsyncableWarned = {};
 
         function syncServerProgress(video) {
@@ -7984,6 +8033,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             if (duration > 0) video.duration = Math.floor(duration);
             var saved = rememberPlayback(context.card, context.group, video);
             if (saved) {
+                maybeAutoManageList(context.card, saved, video, position, duration);
                 context.card.yani_resume = {
                     number: saved.number,
                     max_episode: saved.max_episode,
@@ -8110,6 +8160,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             pullRemoteProgress: pullRemoteProgress,
             ensureRemoteHistory: ensureRemoteHistory,
             autoProgressSyncEnabled: autoProgressSyncEnabled,
+            autoManageListsEnabled: autoManageListsEnabled,
             syncServerProgress: syncServerProgress,
             clearEpisodeProgress: clearEpisodeProgress,
             renderHistoryProgress: renderHistoryProgress,
@@ -14952,23 +15003,30 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             section.find('.yani-detail__community-title').text(t('community_stats'));
             container.append(section);
             bindDetailScrollTargets(section);
-            Promise.all([LampaYaniApi.ratingBuckets(cardData.yani_id), LampaYaniApi.listStats(cardData.yani_id)]).then(function (responses) {
-                var rates = normalizeDetailStats(responses[0]);
-                var lists = normalizeDetailStats(responses[1]);
-                if (!rates.length && !lists.length) return section.remove();
-                var grid = section.find('.yani-detail__community-grid');
+            var grid = section.find('.yani-detail__community-grid');
+            var settled = 0;
+            function finish() {
+                settled++;
+                if (settled === 2 && !grid.children().length) section.remove();
+            }
+            LampaYaniApi.ratingBuckets(cardData.yani_id).then(function (payload) {
+                var rates = normalizeDetailStats(payload);
                 rates.slice(0, 10).forEach(function (item) {
                     var label = item.rating || item.value || item.name || item.title;
                     var count = item.count || item.counters || item.total || 0;
                     if (label !== undefined) grid.append($('<div class="yani-detail__community-item"></div>').text(String(label) + ': ' + String(count)));
                 });
+                finish();
+            }).catch(finish);
+            LampaYaniApi.listStats(cardData.yani_id).then(function (payload) {
+                var lists = normalizeDetailStats(payload);
                 lists.slice(0, 8).forEach(function (item) {
                     var label = item.list && (item.list.title || item.list.name) || item.title || item.name || item.status;
                     var count = item.count || item.total || item.counters || 0;
                     if (label) grid.append($('<div class="yani-detail__community-item"></div>').text(String(label) + ': ' + String(count)));
                 });
-                if (!grid.children().length) section.remove();
-            }).catch(function () { section.remove(); });
+                finish();
+            }).catch(finish);
         }
 
         function normalizeDetailStats(payload) {
@@ -15709,11 +15767,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         comp.create = function () {
             var self = this;
             this.activity.loader(true);
-            LampaYaniApi.catalog(baseParams, object.genre_context || object.subject_context ? {
+            LampaYaniApi.catalog(baseParams, {
                 cacheFirst: true,
                 staleFallback: true,
-                cacheTtl: 15 * 60 * 1000
-            } : {})
+                cacheTtl: 15 * 60 * 1000,
+                backgroundRefresh: true
+            })
                 .then(function (payload) {
                     if (destroyed) return;
                     var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
@@ -20409,6 +20468,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             component: 'yani',
             param: {name: 'yani_auto_sync_progress', type: 'trigger', default: true},
             field: {name: t('auto_sync_progress'), description: t('auto_sync_progress_description')}
+        });
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_auto_manage_lists', type: 'trigger', default: false},
+            field: {name: t('auto_manage_lists'), description: t('auto_manage_lists_description')}
         });
 
         Lampa.SettingsApi.addParam({

@@ -6,6 +6,11 @@ const history = fs.readFileSync('src/ui-playback-history.js', 'utf8');
 const i18n = fs.readFileSync('src/i18n.js', 'utf8');
 
 assert.match(ui, /name: 'yani_auto_sync_progress', type: 'trigger', default: true/);
+assert.match(ui, /name: 'yani_auto_manage_lists', type: 'trigger', default: false/);
+assert.match(history, /function maybeAutoManageList\(card, saved, video, position, duration\)/);
+assert.match(history, /halfCount >= 2/);
+assert.match(history, /allFinished \? \{id: 2, key: 'completed'\}/);
+assert.match(history, /Number\(currentList\) === 3/);
 assert.match(ui, /autoProgressSyncEnabled/);
 assert.match(history, /function autoProgressSyncEnabled\(\)/);
 assert.match(history, /function pullRemoteProgress/);
@@ -33,6 +38,9 @@ assert.match(ui, /LampaYaniPlaybackHistory\.create/);
 assert.match(i18n, /messages\.ru\.auto_sync_progress/);
 assert.match(i18n, /messages\.en\.auto_sync_progress/);
 assert.match(i18n, /messages\.uk\.auto_sync_progress/);
+assert.match(i18n, /messages\.ru\.auto_manage_lists/);
+assert.match(i18n, /messages\.en\.auto_manage_lists/);
+assert.match(i18n, /messages\.uk\.auto_manage_lists/);
 
 
 // Every way of starting an episode must reach the account, not just the

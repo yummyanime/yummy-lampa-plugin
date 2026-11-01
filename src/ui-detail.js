@@ -858,23 +858,30 @@
             section.find('.yani-detail__community-title').text(t('community_stats'));
             container.append(section);
             bindDetailScrollTargets(section);
-            Promise.all([LampaYaniApi.ratingBuckets(cardData.yani_id), LampaYaniApi.listStats(cardData.yani_id)]).then(function (responses) {
-                var rates = normalizeDetailStats(responses[0]);
-                var lists = normalizeDetailStats(responses[1]);
-                if (!rates.length && !lists.length) return section.remove();
-                var grid = section.find('.yani-detail__community-grid');
+            var grid = section.find('.yani-detail__community-grid');
+            var settled = 0;
+            function finish() {
+                settled++;
+                if (settled === 2 && !grid.children().length) section.remove();
+            }
+            LampaYaniApi.ratingBuckets(cardData.yani_id).then(function (payload) {
+                var rates = normalizeDetailStats(payload);
                 rates.slice(0, 10).forEach(function (item) {
                     var label = item.rating || item.value || item.name || item.title;
                     var count = item.count || item.counters || item.total || 0;
                     if (label !== undefined) grid.append($('<div class="yani-detail__community-item"></div>').text(String(label) + ': ' + String(count)));
                 });
+                finish();
+            }).catch(finish);
+            LampaYaniApi.listStats(cardData.yani_id).then(function (payload) {
+                var lists = normalizeDetailStats(payload);
                 lists.slice(0, 8).forEach(function (item) {
                     var label = item.list && (item.list.title || item.list.name) || item.title || item.name || item.status;
                     var count = item.count || item.total || item.counters || 0;
                     if (label) grid.append($('<div class="yani-detail__community-item"></div>').text(String(label) + ': ' + String(count)));
                 });
-                if (!grid.children().length) section.remove();
-            }).catch(function () { section.remove(); });
+                finish();
+            }).catch(finish);
         }
 
         function normalizeDetailStats(payload) {

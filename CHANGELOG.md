@@ -9,6 +9,17 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.27] - 2026-11-01
+
+### Added
+
+- Optional automatic Watching and Completed list updates based on real episode progress
+
+### Changed
+
+- General catalog first pages now open from cache and refresh in the background
+- Title community ratings and list statistics now load independently
+
 ## [0.47.26] - 2026-11-01
 
 ### Changed
