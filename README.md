@@ -2,7 +2,7 @@
 
 The official YummyAnime plugin for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.47.28`
+Current version: `0.47.29`
 
 Official website: [yummyani.me](https://yummyani.me)
 
@@ -94,6 +94,8 @@ When both a direct resolver and the source web player are available, the extensi
 
 The optional YummyTV integration is shown only on Android TV and is disabled by default. It only opens the title in the separately installed YummyTV application, is not an Alloha resolver, and is not required for the extension.
 
+
+Moon iframe pages are resolved to HLS/MP4 on Android through Lampa's native request layer, which can send the required request headers. Browser and WebOS builds keep the original embedded player because browser CORS rules prevent the same direct resolution. Mikai catalog discovery is not bundled: its availability endpoint belongs to YummyTV and requires an application signature that must not be exposed in a JavaScript plugin.
 
 ## Additional information
 

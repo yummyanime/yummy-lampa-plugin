@@ -147,6 +147,36 @@ global.fetch = async function (url) {
 
 eval(fs.readFileSync(require.resolve('../src/stream-resolver.js'), 'utf8'));
 
+function moonPage(file, key) {
+    key = key || 's3cr3t';
+    var raw = Buffer.from(file, 'utf8');
+    var encryptedFile = Buffer.alloc(raw.length);
+    for (var i = 0; i < raw.length; i++) encryptedFile[i] = raw[i] ^ Buffer.from(key)[i % key.length];
+    var script = 'var k = "' + key + '"; player({file: f("' + encryptedFile.toString('base64') + '")});';
+    var header = Buffer.alloc(33);
+    for (var h = 0; h < header.length; h++) header[h] = (h * 7 + 3) & 255;
+    var body = Buffer.from(script, 'utf8');
+    var encoded = Buffer.concat([header, Buffer.alloc(body.length)]);
+    var state = header[0];
+    for (var b = 0; b < body.length; b++) {
+        var cipher = body[b] ^ state ^ header[1 + b % 32];
+        encoded[33 + b] = cipher;
+        state = (cipher + header[1 + b % 32]) & 255;
+    }
+    return '<script>eval(atob("' + encoded.toString('base64') + '"))</script>';
+}
+
+var moon = LampaYaniStreamResolver.parseMoonManifest(moonPage('[1080p]https://cdn.test/1080.mp4,[480p]https://cdn.test/480.mp4,[2160p]https://cdn.test/2160.mp4'));
+assert.strictEqual(moon.url, 'https://cdn.test/1080.mp4');
+assert.strictEqual(moon.quality, '1080p');
+assert.strictEqual(moon.qualities['480p'], 'https://cdn.test/480.mp4');
+assert.strictEqual(LampaYaniStreamResolver.canResolve('https://moonanime.art/iframe/abcd1234/'), false, 'Moon must stay embedded when native headers are unavailable');
+global.AndroidJS = {};
+global.Lampa = {Reguest: function () {}};
+assert.strictEqual(LampaYaniStreamResolver.canResolve('https://moonanime.net/iframe/abcd1234/?player=animeon.club'), true);
+delete global.AndroidJS;
+delete global.Lampa;
+
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://player.aksor.tv/video/test-hash'), true);
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://video.sibnet.ru/shell.php?videoid=1502426'), true);
 assert.strictEqual(LampaYaniStreamResolver.canResolve('https://rutube.ru/play/embed/70e53a86c25f5dab63d1b1151bb8c619'), true);

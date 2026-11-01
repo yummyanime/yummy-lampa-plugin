@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.28',
+        version: '0.47.29',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -2192,6 +2192,15 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return /iframeVK\.html/i.test(url) || /(?:^|\.)(?:vk\.com|vkvideo\.ru)(?:[/:]|$)/i.test(url.replace(/^https?:\/\//i, ''));
     }
 
+    function moonPage(url) {
+        var match = String(url || '').match(/^(https:\/\/moonanime\.(?:art|net|vip))\/iframe\/([A-Za-z0-9]{4,64})\/?(?:[?#].*)?$/i);
+        return match ? {origin: match[1], url: match[1] + '/iframe/' + match[2] + '/'} : null;
+    }
+
+    function canResolveMoon(url) {
+        return Boolean(moonPage(url) && isAndroidRuntime() && window.Lampa && Lampa.Reguest);
+    }
+
     function originOf(url) {
         var match = String(url || '').match(/^(https?:\/\/[^/]+)/i);
         return match ? match[1] : '';
@@ -2291,6 +2300,76 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         } catch (ignore) {
             return '';
         }
+    }
+
+    function decodeMoonPayload(value) {
+        var binary = atobSafe(value);
+        if (binary.length <= 33) return '';
+        var state = binary.charCodeAt(0) & 255;
+        var output = '';
+        for (var index = 33; index < binary.length; index += 1) {
+            var cipher = binary.charCodeAt(index) & 255;
+            var key = binary.charCodeAt(1 + (index - 33) % 32) & 255;
+            output += String.fromCharCode(state ^ cipher ^ key);
+            state = (cipher + key) & 255;
+        }
+        return output;
+    }
+
+    function parseMoonManifest(page) {
+        var payload = extractFirst(/atob\("([A-Za-z0-9+/=]+)"\)/, page);
+        var script = decodeMoonPayload(payload);
+        var key = extractFirst(/var k\s*=\s*"([^"]+)"/, script);
+        var encoded = extractFirst(/file:\s*\w+\("([A-Za-z0-9+/=]+)"\)/, script);
+        var file = atobSafe(encoded);
+        if (!key || !file) return null;
+        var decoded = '';
+        for (var index = 0; index < file.length; index += 1) {
+            decoded += String.fromCharCode(file.charCodeAt(index) ^ key.charCodeAt(index % key.length));
+        }
+        var hls = decoded.match(/https?:\/\/[^"'\s,\\\]]+?\.m3u8[^"'\s,\\\]]*/i);
+        if (hls) return {url: hls[0], qualities: null};
+        var qualities = {};
+        var labeled = /\[([^\]]*)](https?:\/\/[^,\s]+)/g;
+        var match;
+        while ((match = labeled.exec(decoded))) qualities[match[1]] = match[2];
+        var labels = Object.keys(qualities).sort(function (left, right) {
+            return Number((left.match(/\d+/) || [0])[0]) - Number((right.match(/\d+/) || [0])[0]);
+        });
+        if (labels.length) {
+            var preferred = labels.filter(function (label) { return Number((label.match(/\d+/) || [0])[0]) <= 1080; }).pop() || labels[0];
+            var ordered = {};
+            labels.forEach(function (label) { ordered[label] = qualities[label]; });
+            return {url: qualities[preferred], qualities: ordered, quality: preferred};
+        }
+        decoded = decoded.trim();
+        return /^https?:\/\/\S+$/i.test(decoded) && decoded.indexOf(',') < 0 ? {url: decoded, qualities: null} : null;
+    }
+
+    function resolveMoon(url) {
+        var page = moonPage(url);
+        if (!page) return Promise.reject(new Error('Unsupported Moon URL'));
+        var headers = {
+            Referer: page.url,
+            Origin: page.origin,
+            'User-Agent': CHROME_UA,
+            Accept: '*/*',
+            'Accept-Language': 'uk-UA,uk;q=0.9,en;q=0.8'
+        };
+        return requestText(page.url, {
+            headers: Object.assign({}, headers, {Referer: 'https://mikai.me/'})
+        }).then(function (html) {
+            var manifest = parseMoonManifest(html);
+            if (!manifest || !manifest.url) throw new Error('Moon stream was not found');
+            return {
+                url: manifest.url,
+                source: 'moon',
+                quality: manifest.quality || '',
+                qualities: manifest.qualities,
+                headers: headers,
+                headersRequired: true
+            };
+        });
     }
 
     function decodeKodikSrc(src) {
@@ -3015,15 +3094,17 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         if (isSibnetUrl(url)) return resolveSibnet(url);
         if (isRutubeUrl(url)) return resolveRutube(url);
         if (isVkUrl(url)) return resolveVk(url);
+        if (canResolveMoon(url)) return resolveMoon(url);
         return Promise.reject(new Error('Unsupported player URL'));
     }
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.StreamResolver = window.LampaYaniStreamResolver = {
-        canResolve: function (url) { return isDirectVideoUrl(url) || isKodikUrl(url) || isCvhUrl(url) || isAksorUrl(url) || isSibnetUrl(url) || isRutubeUrl(url) || isVkUrl(url); },
+        canResolve: function (url) { return isDirectVideoUrl(url) || isKodikUrl(url) || isCvhUrl(url) || isAksorUrl(url) || isSibnetUrl(url) || isRutubeUrl(url) || isVkUrl(url) || canResolveMoon(url); },
         resolve: resolve,
         invalidate: invalidate,
-        isDirectVideoUrl: isDirectVideoUrl
+        isDirectVideoUrl: isDirectVideoUrl,
+        parseMoonManifest: parseMoonManifest
     };
 }(window));
 

@@ -9,6 +9,13 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.29] - 2026-11-01
+
+### Added
+
+- Android Moon iframe resolution to direct HLS or MP4 with required request headers
+- Platform-safe Moon fallback and document why signed Mikai discovery is not bundled
+
 ## [0.47.28] - 2026-11-01
 
 ### Added

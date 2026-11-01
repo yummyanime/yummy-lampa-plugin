@@ -128,6 +128,8 @@ The external option opens Android’s installed-app chooser. Lampa does not expo
 
 When watching, the voice menu is titled **Choose dubbing and source**. Each row shows the dubbing team and the source name.
 
+Moon pages are resolved directly only on Android, where Lampa's native request layer can supply the required Referer and Origin headers. WebOS and browser builds retain the embedded Moon player. Mikai discovery is not included because the YummyTV availability service requires a private application signature; embedding it in plugin JavaScript would expose that credential.
+
 ## Playback and Alloha
 
 Direct HLS/DASH/MP4/WebM URLs can be played in Lampa or handed to an external Android player. Choose the behavior under `Settings → YummyAnime → Preferred player`.
