@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.25',
+        version: '0.47.26',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -6186,6 +6186,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 : 'ru';
         };
         var entries = {};
+        var retainedVideos = {};
         var order = [];
         var storageIndexKey = 'lampa_yummyanime_videos_cache_index_v1';
 
@@ -6303,6 +6304,10 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         }
 
         function settleWaiters(entry, error, payload) {
+            if (entry.abortTimer) {
+                clearTimeout(entry.abortTimer);
+                entry.abortTimer = null;
+            }
             var waiters = entry.waiters || [];
             entry.waiters = [];
             waiters.forEach(function (waiter) {
@@ -6318,8 +6323,14 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             clearWaiter(waiter);
             entry.waiters = (entry.waiters || []).filter(function (item) { return item !== waiter; });
             waiter.reject(abortError());
-            if (entry.inflight && !entry.waiters.length && entry.controller && entry.controller.abort) {
-                entry.controller.abort();
+            if (entry.inflight && !entry.waiters.length && entry.controller && entry.controller.abort && !entry.abortTimer) {
+                // Detail teardown and Watch-menu creation happen back-to-back.
+                // Give the new consumer one event-loop turn to attach instead
+                // of aborting /videos and immediately issuing it again.
+                entry.abortTimer = setTimeout(function () {
+                    entry.abortTimer = null;
+                    if (entry.inflight && !entry.waiters.length && entry.controller && entry.controller.abort) entry.controller.abort();
+                }, 0);
             }
         }
 
@@ -6333,6 +6344,10 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     return;
                 }
                 var waiter = {resolve: resolve, reject: reject, signal: signal, cleared: false};
+                if (entry.abortTimer) {
+                    clearTimeout(entry.abortTimer);
+                    entry.abortTimer = null;
+                }
                 waiter.abortListener = function () { cancelWaiter(key, entry, waiter); };
                 if (signal && signal.addEventListener) signal.addEventListener('abort', waiter.abortListener);
                 entry.waiters.push(waiter);
@@ -6346,12 +6361,14 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 controller: controller,
                 waiters: [],
                 at: 0,
-                payload: null
+                payload: null,
+                abortTimer: null
             };
             entries[key] = entry;
             remember(key);
             Promise.resolve(fetchVideos(id, {signal: controller && controller.signal})).then(function (payload) {
                 if (controller && controller.signal && controller.signal.aborted) throw abortError();
+                payload = retainSelectedVideo(key, payload);
                 entry.inflight = false;
                 entry.controller = null;
                 entry.payload = payload;
@@ -6366,6 +6383,32 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 settleWaiters(entry, isAbort(error) ? abortError() : error);
             });
             return entry;
+        }
+
+        function videoId(video) {
+            return String(video && (video.video_id || video.id) || '');
+        }
+
+        function retainSelectedVideo(key, payload) {
+            var selected = retainedVideos[key];
+            var selectedId = videoId(selected);
+            if (!selected || !selectedId) return payload;
+            var videos = videosFromPayload(payload);
+            if (videos.some(function (video) { return videoId(video) === selectedId; })) return payload;
+            var merged = videos.slice();
+            merged.push(selected);
+            if (payload && payload.response && Array.isArray(payload.response)) {
+                return Object.assign({}, payload, {response: merged});
+            }
+            if (payload && Array.isArray(payload.videos)) return Object.assign({}, payload, {videos: merged});
+            if (payload && Array.isArray(payload.items)) return Object.assign({}, payload, {items: merged});
+            return merged;
+        }
+
+        function retain(id, video) {
+            var key = String(id || '');
+            if (!key || !videoId(video)) return;
+            retainedVideos[key] = video;
         }
 
         function payload(id, options) {
@@ -6432,6 +6475,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 });
                 readStorageIndex().forEach(storageRemove);
                 writeStorageIndex([]);
+                retainedVideos = {};
                 return;
             }
             var entry = entries[key];
@@ -6444,6 +6488,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             list: list,
             stagedList: stagedList,
             invalidate: invalidate,
+            retain: retain,
             videosFromPayload: videosFromPayload
         };
     }
@@ -18360,6 +18405,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     }
 
     function launchVideo(card, group, videos, selected, options) {
+        if (card && card.yani_id && selected) videoData.retain(card.yani_id, selected);
         options = options || {};
         var url = videoSourceUrl(selected);
         if (!url) {

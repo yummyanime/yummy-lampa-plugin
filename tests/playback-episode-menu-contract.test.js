@@ -13,6 +13,7 @@ assert.match(videoData, /window\.LampaYaniVideoData = \{create: create/);
 assert.match(ui, /LampaYaniVideoData\.create/);
 assert.match(ui, /videoData\.payload\(id, options\)/);
 assert.match(ui, /videoData\.list\(id, options\)/);
+assert.match(ui, /videoData\.retain\(card\.yani_id, selected\)/);
 assert.match(menu, /deps\.loadVideos \|\| function \(id, options\)/);
 assert.match(menu, /function lastWatchedVoice\(voices, card\)/);
 assert.match(menu, /markLastWatchedVoice\(voices, card\)/);

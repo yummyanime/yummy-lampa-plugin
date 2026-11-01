@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.26] - 2026-11-01
+
+### Changed
+
+- Reused one in-flight `/videos` request while moving from a title card to its playback menu
+
+### Fixed
+
+- The selected episode disappearing when a refreshed `/videos` response is temporarily incomplete
+
 ## [0.47.25] - 2026-11-01
 
 ### Fixed

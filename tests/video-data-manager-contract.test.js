@@ -56,7 +56,9 @@ function createManager(options) {
         }},
         AbortController: AbortController,
         Promise: Promise,
-        Error: Error
+        Error: Error,
+        setTimeout: setTimeout,
+        clearTimeout: clearTimeout
     };
     vm.runInNewContext(source, context);
     return context.window.LampaYaniVideoData.create(options);
@@ -140,8 +142,29 @@ function deferredFetch() {
     const only = lastManager.list(11, {signal: lastController.signal});
     lastController.abort();
     await assert.rejects(only, function (error) { return error.name === 'AbortError'; });
-    await Promise.resolve();
-    assert.strictEqual(last.calls[0].options.signal.aborted, true, 'closing the last waiter must abort the network request');
+    const replacement = lastManager.list(11);
+    assert.strictEqual(last.calls.length, 1, 'a replacement consumer must reuse the request during a view transition');
+    last.calls[0].resolve({response: [{number: 11}]});
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(await replacement)), [{number: 11}]);
+    await new Promise(function (resolve) { setTimeout(resolve, 0); });
+    assert.strictEqual(last.calls[0].options.signal.aborted, false, 'the shared request must stay alive for the replacement consumer');
+
+    const abandoned = deferredFetch();
+    const abandonedManager = createManager({fetch: abandoned.fetch, ttl: 5000, maxEntries: 8, now: function () { return 1; }});
+    const abandonedController = new AbortController();
+    const abandonedRequest = abandonedManager.list(12, {signal: abandonedController.signal});
+    abandonedController.abort();
+    await assert.rejects(abandonedRequest, function (error) { return error.name === 'AbortError'; });
+    await new Promise(function (resolve) { setTimeout(resolve, 0); });
+    assert.strictEqual(abandoned.calls[0].options.signal.aborted, true, 'an abandoned request must still be aborted');
+
+    const retainedNetwork = deferredFetch();
+    const retainedManager = createManager({fetch: retainedNetwork.fetch, ttl: 1, maxEntries: 8, now: function () { return clock.now; }});
+    retainedManager.retain(13, {id: 1302, number: 2, iframe_url: 'https://source/2'});
+    const retainedRequest = retainedManager.list(13);
+    retainedNetwork.calls[0].resolve({response: [{id: 1301, number: 1, iframe_url: 'https://source/1'}]});
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(await retainedRequest)).map(function (video) { return video.id; }), [1301, 1302],
+        'the selected episode must survive an incomplete refreshed /videos response');
 
     const persistent = fakeStorage();
     const firstNetwork = deferredFetch();

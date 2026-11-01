@@ -3221,6 +3221,7 @@
     }
 
     function launchVideo(card, group, videos, selected, options) {
+        if (card && card.yani_id && selected) videoData.retain(card.yani_id, selected);
         options = options || {};
         var url = videoSourceUrl(selected);
         if (!url) {

@@ -42,6 +42,7 @@
                 : 'ru';
         };
         var entries = {};
+        var retainedVideos = {};
         var order = [];
         var storageIndexKey = 'lampa_yummyanime_videos_cache_index_v1';
 
@@ -159,6 +160,10 @@
         }
 
         function settleWaiters(entry, error, payload) {
+            if (entry.abortTimer) {
+                clearTimeout(entry.abortTimer);
+                entry.abortTimer = null;
+            }
             var waiters = entry.waiters || [];
             entry.waiters = [];
             waiters.forEach(function (waiter) {
@@ -174,8 +179,14 @@
             clearWaiter(waiter);
             entry.waiters = (entry.waiters || []).filter(function (item) { return item !== waiter; });
             waiter.reject(abortError());
-            if (entry.inflight && !entry.waiters.length && entry.controller && entry.controller.abort) {
-                entry.controller.abort();
+            if (entry.inflight && !entry.waiters.length && entry.controller && entry.controller.abort && !entry.abortTimer) {
+                // Detail teardown and Watch-menu creation happen back-to-back.
+                // Give the new consumer one event-loop turn to attach instead
+                // of aborting /videos and immediately issuing it again.
+                entry.abortTimer = setTimeout(function () {
+                    entry.abortTimer = null;
+                    if (entry.inflight && !entry.waiters.length && entry.controller && entry.controller.abort) entry.controller.abort();
+                }, 0);
             }
         }
 
@@ -189,6 +200,10 @@
                     return;
                 }
                 var waiter = {resolve: resolve, reject: reject, signal: signal, cleared: false};
+                if (entry.abortTimer) {
+                    clearTimeout(entry.abortTimer);
+                    entry.abortTimer = null;
+                }
                 waiter.abortListener = function () { cancelWaiter(key, entry, waiter); };
                 if (signal && signal.addEventListener) signal.addEventListener('abort', waiter.abortListener);
                 entry.waiters.push(waiter);
@@ -202,12 +217,14 @@
                 controller: controller,
                 waiters: [],
                 at: 0,
-                payload: null
+                payload: null,
+                abortTimer: null
             };
             entries[key] = entry;
             remember(key);
             Promise.resolve(fetchVideos(id, {signal: controller && controller.signal})).then(function (payload) {
                 if (controller && controller.signal && controller.signal.aborted) throw abortError();
+                payload = retainSelectedVideo(key, payload);
                 entry.inflight = false;
                 entry.controller = null;
                 entry.payload = payload;
@@ -222,6 +239,32 @@
                 settleWaiters(entry, isAbort(error) ? abortError() : error);
             });
             return entry;
+        }
+
+        function videoId(video) {
+            return String(video && (video.video_id || video.id) || '');
+        }
+
+        function retainSelectedVideo(key, payload) {
+            var selected = retainedVideos[key];
+            var selectedId = videoId(selected);
+            if (!selected || !selectedId) return payload;
+            var videos = videosFromPayload(payload);
+            if (videos.some(function (video) { return videoId(video) === selectedId; })) return payload;
+            var merged = videos.slice();
+            merged.push(selected);
+            if (payload && payload.response && Array.isArray(payload.response)) {
+                return Object.assign({}, payload, {response: merged});
+            }
+            if (payload && Array.isArray(payload.videos)) return Object.assign({}, payload, {videos: merged});
+            if (payload && Array.isArray(payload.items)) return Object.assign({}, payload, {items: merged});
+            return merged;
+        }
+
+        function retain(id, video) {
+            var key = String(id || '');
+            if (!key || !videoId(video)) return;
+            retainedVideos[key] = video;
         }
 
         function payload(id, options) {
@@ -288,6 +331,7 @@
                 });
                 readStorageIndex().forEach(storageRemove);
                 writeStorageIndex([]);
+                retainedVideos = {};
                 return;
             }
             var entry = entries[key];
@@ -300,6 +344,7 @@
             list: list,
             stagedList: stagedList,
             invalidate: invalidate,
+            retain: retain,
             videosFromPayload: videosFromPayload
         };
     }
