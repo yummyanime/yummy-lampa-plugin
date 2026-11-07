@@ -79,6 +79,25 @@ assert.match(source, /state\.recoveryAttempts >= INTERNAL_PLAYBACK_RECOVERY_LIMI
     'fatal-error recovery must stop after the shared attempt budget is exhausted');
 assert.match(source, /state\.recoveryAttempts < INTERNAL_PLAYBACK_RECOVERY_LIMIT/,
     'the CVH stall watchdog must use the same bounded recovery budget');
+// Lampa's internal player resumes only from `timeline.time` and ignores the
+// playlist item's `time`, so a refreshed stream restarted the episode from zero
+// on every recovery. The relaunched watcher must seek back itself.
+assert.match(source, /context\.selected\.yani_resume_seek = Math\.floor\(position\);/,
+    'recovery must remember where the interrupted stream stopped');
+assert.match(source, /resumeSeek: Number\(context\.selected && context\.selected\.yani_resume_seek \|\| 0\)/,
+    'the relaunched watcher must pick the resume position up');
+assert.match(source, /if \(state\.resumeSeek > 0 && duration > 0\) \{[\s\S]{0,700}video\.currentTime = resumeTo;/,
+    'the relaunched watcher must seek the recovered stream back');
+const seekAt = source.indexOf('if (state.resumeSeek > 0 && duration > 0)');
+const storeAt = source.indexOf('storeObservedPlayback(generation, context, state, {current: position, duration: duration}, finalState);');
+assert.ok(seekAt > 0 && storeAt > seekAt, 'the seek must happen before the restart is recorded as progress');
+// The per-outage budget refills after healthy playback, so a stream that keeps
+// failing needs an overall cap or it is refreshed forever.
+assert.match(source, /INTERNAL_PLAYBACK_RECOVERY_TOTAL_LIMIT = 8/, 'recoveries per episode must be capped');
+assert.match(source, /yani_internal_recovery_total \|\| 0\) >= INTERNAL_PLAYBACK_RECOVERY_TOTAL_LIMIT\) return;/,
+    'the overall cap must stop further recoveries');
+assert.match(source, /if \(!options\.recovery\) \{[\s\S]{0,200}yani_internal_recovery_total = 0;[\s\S]{0,80}yani_resume_seek = 0;/,
+    'a deliberate launch must start with a clean recovery state');
 assert.match(source, /INTERNAL_PLAYBACK_RECOVERY_READY_SECONDS = 3/,
     'successful advancing playback should be confirmed before the retry budget is reset');
 assert.match(source, /context\.selected\.yani_internal_recovery = 0/,

@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.47.30] - 2026-11-07
+
+### Fixed
+
+- A recovered internal-player stream restarting the episode from the beginning, and capped stream refreshes per episode so a failing stream cannot loop forever
+
 ## [0.47.29] - 2026-11-01
 
 ### Added

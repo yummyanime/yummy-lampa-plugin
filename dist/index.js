@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.29',
+        version: '0.47.30',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -18706,7 +18706,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     function launchResolvedVideo(card, group, videos, selected, url, options) {
         options = options || {};
         var title = (card.title || 'YummyAnime') + ' · ' + t('episode') + ' ' + (selected.number || selected.index || '?') + ' · ' + group.title;
-        if (!options.recovery) selected.yani_internal_recovery = 0;
+        if (!options.recovery) {
+            selected.yani_internal_recovery = 0;
+            selected.yani_internal_recovery_total = 0;
+            selected.yani_resume_seek = 0;
+        }
         playbackContext = {card: card, group: group, videos: videos, selected: selected};
         rememberPlayback(card, group, selected);
         addToLampaHistory(card);
@@ -19235,6 +19239,10 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var PLAYER_STARTUP_GRACE_MS = 120000;
     var INTERNAL_PLAYBACK_RECOVERY_LIMIT = 3;
     var INTERNAL_PLAYBACK_RECOVERY_READY_SECONDS = 3;
+    // The per-outage budget above is refilled after healthy playback, so a
+    // stream that keeps dying would otherwise be refreshed forever. This caps
+    // the refreshes for one launched episode.
+    var INTERNAL_PLAYBACK_RECOVERY_TOTAL_LIMIT = 8;
     var CVH_STARTUP_STALL_MS = 18000;
     var CVH_PLAYBACK_STALL_MS = 15000;
     var NEXT_PREFETCH_LEAD = 90;
@@ -19341,6 +19349,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             returnRestoreScheduled: false,
             recoveryAttempts: Number(context.selected && context.selected.yani_internal_recovery || 0),
             recoveryBaselinePosition: Number(context.selected && context.selected.watched && context.selected.watched.end_time || 0),
+            resumeSeek: Number(context.selected && context.selected.yani_resume_seek || 0),
             recovering: false,
             startedAt: Date.now(),
             lastProgressAt: Date.now(),
@@ -19669,6 +19678,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     function recoverInternalPlayback(generation, context, state, event) {
         if (!event || !event.fatal || generation !== playbackWatcherGeneration || playbackWatcher !== state) return;
         if (state.recovering || state.recoveryAttempts >= INTERNAL_PLAYBACK_RECOVERY_LIMIT || !context || !context.selected) return;
+        if (Number(context.selected.yani_internal_recovery_total || 0) >= INTERNAL_PLAYBACK_RECOVERY_TOTAL_LIMIT) return;
         var origin = videoResolverUrl(context.selected);
         if (!origin || isDirectVideoUrl(origin) || !window.LampaYaniStreamResolver ||
             !LampaYaniStreamResolver.canResolve(origin)) return;
@@ -19676,11 +19686,17 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         state.recovering = true;
         state.recoveryAttempts += 1;
         context.selected.yani_internal_recovery = state.recoveryAttempts;
+        context.selected.yani_internal_recovery_total = Number(context.selected.yani_internal_recovery_total || 0) + 1;
         storeObservedPlayback(generation, context, state, event, true);
         var position = Math.max(0, Number(state.lastObservedPosition || 0));
         var duration = Math.max(0, Number(state.lastObservedDuration || context.selected.duration || 0));
         context.selected.watched = context.selected.watched || {};
         context.selected.watched.end_time = Math.floor(position);
+        // Lampa's internal player resumes only from `timeline.time`; the
+        // `time` field of the playlist item is ignored, so a relaunched stream
+        // started again from zero. The watcher of the relaunched player seeks
+        // to this position itself once the new stream reports its duration.
+        context.selected.yani_resume_seek = Math.floor(position);
         if (duration > 0) context.selected.duration = Math.floor(duration);
         if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t('internal_player_recovering'));
 
@@ -19723,6 +19739,21 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         bindPlaybackVideo(generation, context, state, video);
         var position = Number(video.currentTime) || 0;
         var duration = Number(video.duration) || 0;
+        if (state.resumeSeek > 0 && duration > 0) {
+            // Return a recovered stream to where the interrupted one stopped,
+            // before the near-zero start is recorded as the viewer's progress.
+            var resumeTo = Math.min(state.resumeSeek, Math.max(0, duration - 15));
+            state.resumeSeek = 0;
+            context.selected.yani_resume_seek = 0;
+            if (resumeTo > 10 && position < resumeTo - 5) {
+                try {
+                    video.currentTime = resumeTo;
+                    position = resumeTo;
+                } catch (error) {
+                    console.warn('[YummyAnime] Could not resume a recovered stream', error);
+                }
+            }
+        }
         var finalState = video.paused || video.ended || duration > 0 && position >= duration - 2;
         storeObservedPlayback(generation, context, state, {current: position, duration: duration}, finalState);
         if (state.recoveryAttempts > 0 && !video.paused && !video.ended &&
