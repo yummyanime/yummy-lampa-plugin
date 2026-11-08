@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.48.1] - 2026-11-08
+
+### Fixed
+
+- Episodes opened in the internal Lampa player starting from the beginning instead of the saved position
+
 ## [0.48.0] - 2026-11-08
 
 ### Added

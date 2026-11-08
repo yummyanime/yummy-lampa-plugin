@@ -98,17 +98,25 @@ assert.match(source, /context\.selected\.yani_resume_seek = Math\.floor\(positio
     'recovery must remember where the interrupted stream stopped');
 assert.match(source, /resumeSeek: Number\(context\.selected && context\.selected\.yani_resume_seek \|\| 0\)/,
     'the relaunched watcher must pick the resume position up');
-assert.match(source, /if \(state\.resumeSeek > 0 && duration > 0\) \{[\s\S]{0,700}video\.currentTime = resumeTo;/,
+assert.match(source, /if \(state\.resumeSeek > 0 && duration > 0\) \{[\s\S]{0,1000}video\.currentTime = resumeTo;/,
     'the relaunched watcher must seek the recovered stream back');
 const seekAt = source.indexOf('if (state.resumeSeek > 0 && duration > 0)');
 const storeAt = source.indexOf('storeObservedPlayback(generation, context, state, {current: position, duration: duration}, finalState);');
 assert.ok(seekAt > 0 && storeAt > seekAt, 'the seek must happen before the restart is recorded as progress');
+// The same seek resumes an episode opened from the title card: Lampa would
+// otherwise start it from zero. A finished episode is watched again from the
+// start; a recovered stream always returns to where it broke.
+assert.match(source, /selected\.yani_resume_seek = Math\.max\(0, Math\.floor\(Number\(selected\.watched && selected\.watched\.end_time \|\| 0\)\)\);/,
+    'a deliberate launch must resume from the saved position');
+assert.match(source, /var nearEnd = state\.resumeKind !== 'recovery' && state\.resumeSeek >= duration \* 0\.9;/,
+    'a finished episode must not resume at its end');
+assert.match(source, /if \(!nearEnd && resumeTo > 10 && position < resumeTo - 5\)/);
 // The per-outage budget refills after healthy playback, so a stream that keeps
 // failing needs an overall cap or it is refreshed forever.
 assert.match(source, /INTERNAL_PLAYBACK_RECOVERY_TOTAL_LIMIT = 8/, 'recoveries per episode must be capped');
 assert.match(source, /yani_internal_recovery_total \|\| 0\) >= INTERNAL_PLAYBACK_RECOVERY_TOTAL_LIMIT\) return;/,
     'the overall cap must stop further recoveries');
-assert.match(source, /if \(!options\.recovery\) \{[\s\S]{0,200}yani_internal_recovery_total = 0;[\s\S]{0,80}yani_resume_seek = 0;/,
+assert.match(source, /if \(!options\.recovery\) \{[\s\S]{0,200}yani_internal_recovery_total = 0;/,
     'a deliberate launch must start with a clean recovery state');
 assert.match(source, /INTERNAL_PLAYBACK_RECOVERY_READY_SECONDS = 3/,
     'successful advancing playback should be confirmed before the retry budget is reset');
