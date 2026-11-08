@@ -22,13 +22,14 @@ assert.match(source, /function chooseEpisode\(card, group, allVideos\)/);
 assert.match(source, /androidExternalPlayerAvailable/);
 assert.doesNotMatch(source, /internalPlayerAvailable|canInternal/,
     'the playback picker must keep the internal option available for CVH');
-assert.match(source, /Tizen \/ WebOS/);
-assert.match(ui, /androidExternalPlayerAvailable: function \(\) \{ return isAndroidPlatform\(\); \}/);
+assert.match(source, /Tizen \/ browsers/);
+assert.match(ui, /androidExternalPlayerAvailable: function \(\) \{ return externalPlayerAvailable\(\); \}/);
+assert.match(source, /t\(webOsPlayer \? 'watch_webos_player' : 'watch_external_player'\)/, 'webOS must name its own player');
 assert.match(ui, /registerAndroidDirectVideoTube\(\);/);
 assert.match(ui, /function isAndroidPlatform\(\)/);
-assert.match(ui, /if \(!isAndroidPlatform\(\)\) return 'internal'/);
+assert.match(ui, /if \(!externalPlayerAvailable\(\)\) return 'internal'/);
 assert.match(ui, /yani_playback_target_locked/);
-assert.match(ui, /external: t\('playback_target_external'\)/);
+assert.match(ui, /external: t\(webOsTarget \? 'playback_target_webos' : 'playback_target_external'\)/);
 assert.match(fs.readFileSync('src/ui-utils.js', 'utf8'), /function isAndroidPlatform\(\)/);
 
 const context = {

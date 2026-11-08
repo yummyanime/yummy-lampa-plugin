@@ -115,7 +115,8 @@
         enrichVoiceOptionQuality: function (item, target) { return enrichVoiceOptionQuality(item, target); },
         episodeOptionTitle: function (card, video) { return episodeOptionTitle(card, video); },
         playbackTargetPreference: function () { return playbackTargetPreference(); },
-        androidExternalPlayerAvailable: function () { return isAndroidPlatform(); },
+        androidExternalPlayerAvailable: function () { return externalPlayerAvailable(); },
+        externalPlayerKind: function () { return isWebOsPlatform() ? 'webos' : 'android'; },
         isPlaybackSourceEnabled: function (sourceId) { return isPlaybackSourceEnabled(sourceId); },
         playbackSourceId: function (group) { return playbackSourceId(group); },
         openExternalPlayer: function (current, playlist, card) { return openExternalPlayer(current, playlist, card); },
@@ -3824,16 +3825,66 @@
         return value !== false && value !== 'false' && value !== 0 && value !== '0';
     }
 
+    // Android hands the stream to an installed player app; webOS hands it to
+    // the system media player of the TV. Elsewhere there is nothing to hand to.
+    function externalPlayerAvailable() {
+        return isAndroidPlatform() || isWebOsPlatform();
+    }
+
     function playbackTargetPreference() {
         migrateLegacyPlayerPreference();
-        // External Android players are unavailable outside Android, so playback
-        // is always forced through the internal Lampa player on other platforms.
-        if (!isAndroidPlatform()) return 'internal';
+        // External players exist only on Android and webOS, so playback is
+        // always forced through the internal Lampa player on other platforms.
+        if (!externalPlayerAvailable()) return 'internal';
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_playback_target', 'ask') : 'ask';
         return value === 'internal' || value === 'external' ? value : 'ask';
     }
 
+    /**
+     * Plays a stream in the LG system player (com.webos.app.photovideo).
+     *
+     * Lampa launches it itself when asked to `runas('webos')`, and the only
+     * thing it passes along besides the address is `timeline.time` as the start
+     * position - so the timeline is filled here, or every episode would start
+     * from zero. The player is a separate app: nothing in it can be observed,
+     * so auto-next, intro skipping and progress recording do not happen there.
+     *
+     * CVH and VK sign their links for the User-Agent that requested them, and
+     * the system player fetches with its own, so those two keep the built-in
+     * player instead of opening into an error.
+     */
+    function openWebOsPlayer(current, playlist, card) {
+        if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas || !current || !current.url) return false;
+        var group = playbackContext && playbackContext.group;
+        var origin = current.source ? videoResolverUrl(current.source) : '';
+        if (isCvhPlaybackSource(origin || current.url, group) || isVkPlaybackSource(origin || current.url, group)) {
+            if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t('webos_player_internal_only'));
+            return playInternalPlayer(current, playlist);
+        }
+        var item = internalPlayerPlaylistItem(current);
+        if (!item) return false;
+        var time = Math.max(0, Number(current.time || 0));
+        var duration = Math.max(0, Number(current.source && current.source.duration || 0));
+        item.timeline = {
+            hash: 'yani_' + String(card && card.yani_id || '') + '_' + String(current.source && (current.source.number || current.source.index) || ''),
+            time: time,
+            duration: duration,
+            percent: duration > 0 ? Math.round(time / duration * 100) : 0
+        };
+        try {
+            prepareExternalRestore();
+            Lampa.Player.runas('webos');
+            Lampa.Player.play(item);
+            return true;
+        } catch (error) {
+            cancelExternalRestore();
+            console.warn('[YummyAnime] The webOS player could not be opened', error);
+            return false;
+        }
+    }
+
     function openExternalPlayer(current, playlist, card) {
+        if (isWebOsPlatform()) return openWebOsPlayer(current, playlist, card);
         if (!isAndroidPlatform()) return false;
         return openExternalVideo(current.url, current.title, {
             playlist: externalPlayablePlaylist(playlist),
@@ -5347,7 +5398,8 @@
             field: {name: t('settings_playback_section')}
         });
 
-        if (isAndroidPlatform()) {
+        if (externalPlayerAvailable()) {
+            var webOsTarget = isWebOsPlatform();
             Lampa.SettingsApi.addParam({
                 component: 'yani',
                 param: {
@@ -5356,11 +5408,14 @@
                     values: {
                         ask: t('playback_target_ask'),
                         internal: t('playback_target_internal'),
-                        external: t('playback_target_external')
+                        external: t(webOsTarget ? 'playback_target_webos' : 'playback_target_external')
                     },
                     default: 'ask'
                 },
-                field: {name: t('player_preference'), description: t('player_preference_description')}
+                field: {
+                    name: t('player_preference'),
+                    description: t(webOsTarget ? 'player_preference_webos_description' : 'player_preference_description')
+                }
             });
         } else {
             if (Lampa.Storage) Lampa.Storage.set('yani_playback_target', 'internal');

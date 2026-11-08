@@ -51,8 +51,20 @@ assert.match(source, /yani_source_/);
 assert.match(source, /display_sources/);
 assert.match(source, /yani_playback_target_locked/);
 assert.match(source, /player_preference_non_android/);
-assert.match(source, /if \(!isAndroidPlatform\(\)\) return 'internal'/);
-assert.match(source, /isAndroidPlatform\(\)\) \{\s*Lampa\.SettingsApi\.addParam\(\{[\s\S]{0,400}yani_playback_target/);
+// Android and webOS both have a player to hand a stream to; every other
+// platform keeps the internal one.
+assert.match(source, /function externalPlayerAvailable\(\) \{\s*return isAndroidPlatform\(\) \|\| isWebOsPlatform\(\);/);
+assert.match(source, /if \(!externalPlayerAvailable\(\)\) return 'internal'/);
+assert.match(source, /if \(externalPlayerAvailable\(\)\) \{[\s\S]{0,120}Lampa\.SettingsApi\.addParam\(\{[\s\S]{0,400}yani_playback_target/);
+// The LG system player is launched by Lampa itself and reads only
+// `timeline.time` as the start position.
+assert.match(source, /function openWebOsPlayer\(current, playlist, card\)/);
+assert.match(source, /Lampa\.Player\.runas\('webos'\);\s*Lampa\.Player\.play\(item\);/);
+assert.match(source, /item\.timeline = \{[\s\S]{0,240}time: time,/, 'the webOS player must start where the viewer stopped');
+assert.match(source, /if \(isWebOsPlatform\(\)\) return openWebOsPlayer\(current, playlist, card\);/);
+// CVH and VK links are signed for the requesting User-Agent.
+assert.match(source, /isCvhPlaybackSource\(origin \|\| current\.url, group\) \|\| isVkPlaybackSource\(origin \|\| current\.url, group\)[\s\S]{0,160}playInternalPlayer\(current, playlist\)/,
+    'CVH and VK must stay in the internal player on webOS');
 assert.match(menu, /isPlaybackSourceEnabled\(playbackSourceId\(voice\.group\)\)/);
 assert.match(menu, /t\('source'\)/);
 assert.match(menu, /t\('no_enabled_sources'\)/);

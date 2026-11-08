@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.48.0] - 2026-11-08
+
+### Added
+
+- A preferred-player setting on LG webOS with the same three options as Android: ask, internal Lampa player, or the TV's system webOS player started at the saved position
+
 ## [0.47.30] - 2026-11-07
 
 ### Fixed

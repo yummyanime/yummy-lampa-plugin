@@ -33,6 +33,7 @@
         };
         var playbackTargetPreference = deps.playbackTargetPreference || function () { return 'ask'; };
         var androidExternalPlayerAvailable = deps.androidExternalPlayerAvailable || function () { return false; };
+        var externalPlayerKind = deps.externalPlayerKind || function () { return 'android'; };
         var isPlaybackSourceEnabled = deps.isPlaybackSourceEnabled || function () { return true; };
         var playbackSourceId = deps.playbackSourceId || function () { return ''; };
         var openExternalPlayer = deps.openExternalPlayer || function () { return false; };
@@ -596,11 +597,17 @@
                 return true;
             }
             if (!Lampa.Select || !Lampa.Select.show) return false;
-            // Android-only: external players are APK intents. Tizen / WebOS / browsers
-            // should not be offered an option that cannot work on those platforms.
+            // Android offers its installed player apps and webOS the TV's own
+            // system player. Tizen / browsers should not be offered an option
+            // that cannot work on those platforms.
             var items = [];
             if (canExternal) {
-                items.push({title: t('watch_external_player'), subtitle: t('watch_external_player_description'), action: 'external'});
+                var webOsPlayer = externalPlayerKind() === 'webos';
+                items.push({
+                    title: t(webOsPlayer ? 'watch_webos_player' : 'watch_external_player'),
+                    subtitle: t(webOsPlayer ? 'watch_webos_player_description' : 'watch_external_player_description'),
+                    action: 'external'
+                });
             }
             items.push({title: t('watch_internal_lampa'), subtitle: t('watch_internal_lampa_description'), action: 'internal'});
             if (items.length === 1) {

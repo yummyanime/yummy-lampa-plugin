@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.47.30',
+        version: '0.48.0',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -323,6 +323,11 @@ function pluginYummyAnime() {
     messages.ru.watch_in_yummytv = 'Смотреть в YummyTV';
     messages.ru.watch_in_yummytv_description = 'Открыть тайтл в установленном приложении YummyTV';
     messages.ru.choose_playback = 'Выберите плеер';
+    messages.ru.playback_target_webos = 'Плеер webOS';
+    messages.ru.player_preference_webos_description = 'Где воспроизводить прямые видеопотоки: спрашивать каждый раз, внутренний плеер Lampa или системный плеер телевизора LG. В плеере webOS не работают автопереход, пропуск опенинга и запись прогресса; CVH и VK всегда открываются во внутреннем плеере';
+    messages.ru.watch_webos_player = 'Плеер webOS';
+    messages.ru.watch_webos_player_description = 'Системный плеер телевизора LG. Без автоперехода, пропуска опенинга и записи прогресса';
+    messages.ru.webos_player_internal_only = 'CVH и VK не открываются в плеере webOS — запускаю во внутреннем плеере';
     messages.ru.watch_external_player = 'Внешний Android-плеер';
     messages.ru.watch_external_player_description = 'Открыть поток через системный выбор установленных Android-плееров';
     messages.ru.watch_internal_lampa = 'Внутренний плеер Lampa';
@@ -428,6 +433,11 @@ messages.ru.cvh_region_blocked = 'Видео CVH недоступно в ваш�
     messages.en.watch_in_yummytv = 'Watch in YummyTV';
     messages.en.watch_in_yummytv_description = 'Open the title in the installed YummyTV app';
     messages.en.choose_playback = 'Choose a player';
+    messages.en.playback_target_webos = 'webOS player';
+    messages.en.player_preference_webos_description = 'Where to play direct video streams: ask every time, internal Lampa player, or the LG TV system player. Auto-next, intro skipping and progress recording do not work in the webOS player; CVH and VK always open in the internal player';
+    messages.en.watch_webos_player = 'webOS player';
+    messages.en.watch_webos_player_description = 'The LG TV system player. No auto-next, intro skipping or progress recording';
+    messages.en.webos_player_internal_only = 'CVH and VK cannot open in the webOS player — starting the internal player';
     messages.en.watch_external_player = 'External Android player';
     messages.en.watch_external_player_description = 'Open the stream through Android’s installed-player chooser';
     messages.en.watch_internal_lampa = 'Internal Lampa player';
@@ -706,6 +716,11 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.source_external_support_warning = '{source} увімкнено. Стабільне відтворення без додаткового зовнішнього функціоналу не гарантується.';
     messages.uk.no_enabled_sources = 'Усі джерела приховано в налаштуваннях. Увімкніть хоча б одне в «Показувати джерела»';
     messages.uk.choose_playback = 'Виберіть плеєр';
+    messages.uk.playback_target_webos = 'Плеєр webOS';
+    messages.uk.player_preference_webos_description = 'Де відтворювати прямі відеопотоки: запитувати щоразу, внутрішній плеєр Lampa або системний плеєр телевізора LG. У плеєрі webOS не працюють автоперехід, пропуск опенінгу та запис прогресу; CVH і VK завжди відкриваються у внутрішньому плеєрі';
+    messages.uk.watch_webos_player = 'Плеєр webOS';
+    messages.uk.watch_webos_player_description = 'Системний плеєр телевізора LG. Без автопереходу, пропуску опенінгу та запису прогресу';
+    messages.uk.webos_player_internal_only = 'CVH і VK не відкриваються у плеєрі webOS — запускаю у внутрішньому плеєрі';
     messages.uk.watch_external_player = 'Зовнішній Android-плеєр';
     messages.uk.watch_external_player_description = 'Відкрити потік через системний вибір встановлених Android-плеєрів';
     messages.uk.playback_target = 'Бажаний плеєр';
@@ -8324,6 +8339,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         };
         var playbackTargetPreference = deps.playbackTargetPreference || function () { return 'ask'; };
         var androidExternalPlayerAvailable = deps.androidExternalPlayerAvailable || function () { return false; };
+        var externalPlayerKind = deps.externalPlayerKind || function () { return 'android'; };
         var isPlaybackSourceEnabled = deps.isPlaybackSourceEnabled || function () { return true; };
         var playbackSourceId = deps.playbackSourceId || function () { return ''; };
         var openExternalPlayer = deps.openExternalPlayer || function () { return false; };
@@ -8887,11 +8903,17 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return true;
             }
             if (!Lampa.Select || !Lampa.Select.show) return false;
-            // Android-only: external players are APK intents. Tizen / WebOS / browsers
-            // should not be offered an option that cannot work on those platforms.
+            // Android offers its installed player apps and webOS the TV's own
+            // system player. Tizen / browsers should not be offered an option
+            // that cannot work on those platforms.
             var items = [];
             if (canExternal) {
-                items.push({title: t('watch_external_player'), subtitle: t('watch_external_player_description'), action: 'external'});
+                var webOsPlayer = externalPlayerKind() === 'webos';
+                items.push({
+                    title: t(webOsPlayer ? 'watch_webos_player' : 'watch_external_player'),
+                    subtitle: t(webOsPlayer ? 'watch_webos_player_description' : 'watch_external_player_description'),
+                    action: 'external'
+                });
             }
             items.push({title: t('watch_internal_lampa'), subtitle: t('watch_internal_lampa_description'), action: 'internal'});
             if (items.length === 1) {
@@ -15487,7 +15509,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         enrichVoiceOptionQuality: function (item, target) { return enrichVoiceOptionQuality(item, target); },
         episodeOptionTitle: function (card, video) { return episodeOptionTitle(card, video); },
         playbackTargetPreference: function () { return playbackTargetPreference(); },
-        androidExternalPlayerAvailable: function () { return isAndroidPlatform(); },
+        androidExternalPlayerAvailable: function () { return externalPlayerAvailable(); },
+        externalPlayerKind: function () { return isWebOsPlatform() ? 'webos' : 'android'; },
         isPlaybackSourceEnabled: function (sourceId) { return isPlaybackSourceEnabled(sourceId); },
         playbackSourceId: function (group) { return playbackSourceId(group); },
         openExternalPlayer: function (current, playlist, card) { return openExternalPlayer(current, playlist, card); },
@@ -19196,16 +19219,66 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return value !== false && value !== 'false' && value !== 0 && value !== '0';
     }
 
+    // Android hands the stream to an installed player app; webOS hands it to
+    // the system media player of the TV. Elsewhere there is nothing to hand to.
+    function externalPlayerAvailable() {
+        return isAndroidPlatform() || isWebOsPlatform();
+    }
+
     function playbackTargetPreference() {
         migrateLegacyPlayerPreference();
-        // External Android players are unavailable outside Android, so playback
-        // is always forced through the internal Lampa player on other platforms.
-        if (!isAndroidPlatform()) return 'internal';
+        // External players exist only on Android and webOS, so playback is
+        // always forced through the internal Lampa player on other platforms.
+        if (!externalPlayerAvailable()) return 'internal';
         var value = Lampa.Storage && Lampa.Storage.get ? Lampa.Storage.get('yani_playback_target', 'ask') : 'ask';
         return value === 'internal' || value === 'external' ? value : 'ask';
     }
 
+    /**
+     * Plays a stream in the LG system player (com.webos.app.photovideo).
+     *
+     * Lampa launches it itself when asked to `runas('webos')`, and the only
+     * thing it passes along besides the address is `timeline.time` as the start
+     * position - so the timeline is filled here, or every episode would start
+     * from zero. The player is a separate app: nothing in it can be observed,
+     * so auto-next, intro skipping and progress recording do not happen there.
+     *
+     * CVH and VK sign their links for the User-Agent that requested them, and
+     * the system player fetches with its own, so those two keep the built-in
+     * player instead of opening into an error.
+     */
+    function openWebOsPlayer(current, playlist, card) {
+        if (!Lampa.Player || !Lampa.Player.play || !Lampa.Player.runas || !current || !current.url) return false;
+        var group = playbackContext && playbackContext.group;
+        var origin = current.source ? videoResolverUrl(current.source) : '';
+        if (isCvhPlaybackSource(origin || current.url, group) || isVkPlaybackSource(origin || current.url, group)) {
+            if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t('webos_player_internal_only'));
+            return playInternalPlayer(current, playlist);
+        }
+        var item = internalPlayerPlaylistItem(current);
+        if (!item) return false;
+        var time = Math.max(0, Number(current.time || 0));
+        var duration = Math.max(0, Number(current.source && current.source.duration || 0));
+        item.timeline = {
+            hash: 'yani_' + String(card && card.yani_id || '') + '_' + String(current.source && (current.source.number || current.source.index) || ''),
+            time: time,
+            duration: duration,
+            percent: duration > 0 ? Math.round(time / duration * 100) : 0
+        };
+        try {
+            prepareExternalRestore();
+            Lampa.Player.runas('webos');
+            Lampa.Player.play(item);
+            return true;
+        } catch (error) {
+            cancelExternalRestore();
+            console.warn('[YummyAnime] The webOS player could not be opened', error);
+            return false;
+        }
+    }
+
     function openExternalPlayer(current, playlist, card) {
+        if (isWebOsPlatform()) return openWebOsPlayer(current, playlist, card);
         if (!isAndroidPlatform()) return false;
         return openExternalVideo(current.url, current.title, {
             playlist: externalPlayablePlaylist(playlist),
@@ -20719,7 +20792,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             field: {name: t('settings_playback_section')}
         });
 
-        if (isAndroidPlatform()) {
+        if (externalPlayerAvailable()) {
+            var webOsTarget = isWebOsPlatform();
             Lampa.SettingsApi.addParam({
                 component: 'yani',
                 param: {
@@ -20728,11 +20802,14 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     values: {
                         ask: t('playback_target_ask'),
                         internal: t('playback_target_internal'),
-                        external: t('playback_target_external')
+                        external: t(webOsTarget ? 'playback_target_webos' : 'playback_target_external')
                     },
                     default: 'ask'
                 },
-                field: {name: t('player_preference'), description: t('player_preference_description')}
+                field: {
+                    name: t('player_preference'),
+                    description: t(webOsTarget ? 'player_preference_webos_description' : 'player_preference_description')
+                }
             });
         } else {
             if (Lampa.Storage) Lampa.Storage.set('yani_playback_target', 'internal');
