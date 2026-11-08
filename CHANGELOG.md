@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.49.1] - 2026-11-08
+
+### Added
+
+- A choice between equally matching titles instead of guessing
+
+### Fixed
+
+- The YA button on native Lampa cards missing titles found through an alternative name and linking to remakes, namesakes, or a film instead of a series
+
 ## [0.49.0] - 2026-11-08
 
 ### Added

@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.49.0',
+        version: '0.49.1',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -9484,6 +9484,133 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             while (nativeMatchOrder.length > 50) delete nativeMatchCache[nativeMatchOrder.shift()];
         }
 
+        function normalizedTitles(values) {
+            var normalize = window.LampaYaniUiUtils && window.LampaYaniUiUtils.normalizeMatchTitle
+                ? window.LampaYaniUiUtils.normalizeMatchTitle
+                : function (value) { return String(value || '').toLowerCase().trim(); };
+            var result = [];
+            (values || []).forEach(function (value) {
+                var normalized = normalize(value);
+                // Titles in scripts the normalizer drops (Japanese, Korean)
+                // come back empty, and an empty string is "contained" in every
+                // other title - which used to award a partial match to any
+                // candidate that merely had a Japanese alias.
+                if (normalized && result.indexOf(normalized) < 0) result.push(normalized);
+            });
+            return result;
+        }
+
+        function nativeTitleValues(movie) {
+            var values = window.LampaYaniUiUtils && window.LampaYaniUiUtils.titleValues
+                ? window.LampaYaniUiUtils.titleValues(movie).slice()
+                : [];
+            [movie.title, movie.name, movie.original_title, movie.original_name].forEach(function (value) {
+                if (value && values.indexOf(value) < 0) values.push(value);
+            });
+            return values;
+        }
+
+        // Lampa (TMDB) knows whether a card is a film or a series. YummyAnime
+        // names films `movie` and TV series `tv`; OVA, ONA and specials are
+        // filed inconsistently by TMDB, so they neither win nor lose points.
+        function nativeKind(movie) {
+            if (movie.method === 'tv' || movie.media_type === 'tv' || movie.name || movie.first_air_date || movie.number_of_seasons) return 'tv';
+            if (movie.method === 'movie' || movie.media_type === 'movie' || movie.title || movie.release_date) return 'movie';
+            return '';
+        }
+
+        function yummyKind(card) {
+            var type = card && card.yani_type;
+            var alias = String(type && typeof type === 'object' ? type.alias || '' : type || '').toLowerCase();
+            if (alias === 'tv') return 'tv';
+            if (alias === 'movie') return 'movie';
+            return '';
+        }
+
+        function yearOf(value) {
+            var year = Number(String(value || '').slice(0, 4));
+            return year > 1900 ? year : 0;
+        }
+
+        /**
+         * Scores YummyAnime candidates against a native Lampa card and keeps the
+         * ones good enough to link to.
+         *
+         * - Every title on both sides counts: the localized and the original
+         *   name of the card, and all YummyAnime aliases.
+         * - An exact title links unless the years are more than one apart (a
+         *   remake or a namesake) or the kind contradicts (a film for a series).
+         * - A partial title links only with the same year and a kind that does
+         *   not contradict, and only for titles long enough to mean something.
+         *
+         * More than one candidate at the best score means the card is
+         * ambiguous; the caller lets the viewer choose instead of guessing.
+         */
+        function scoreNativeMatches(movie, cards) {
+            movie = movie || {};
+            var expected = normalizedTitles(nativeTitleValues(movie));
+            var year = yearOf(movie.release_date || movie.first_air_date || movie.year);
+            var kind = nativeKind(movie);
+            var scored = [];
+            (cards || []).forEach(function (card) {
+                var titles = normalizedTitles(card && card.yani_titles || [card && card.title]);
+                var exact = titles.some(function (value) { return expected.indexOf(value) >= 0; });
+                var partial = !exact && titles.some(function (value) {
+                    return expected.some(function (wanted) {
+                        var shorter = value.length < wanted.length ? value : wanted;
+                        return shorter.length >= 4 && (value.indexOf(wanted) >= 0 || wanted.indexOf(value) >= 0);
+                    });
+                });
+                if (!exact && !partial) return;
+                var candidateYear = yearOf(card.release_date || card.yani_year);
+                var yearDiff = year && candidateYear ? Math.abs(year - candidateYear) : -1;
+                var candidateKind = yummyKind(card);
+                var kindMatch = kind && candidateKind ? kind === candidateKind : null;
+                if (kindMatch === false) return;
+                if (exact && yearDiff > 1) return;
+                if (partial && yearDiff !== 0) return;
+                var score = (exact ? 100 : 40) +
+                    (yearDiff === 0 ? 30 : yearDiff === 1 ? 10 : 0) +
+                    (kindMatch === true ? 15 : 0);
+                card._match_score = score;
+                scored.push(card);
+            });
+            scored.sort(function (a, b) { return b._match_score - a._match_score; });
+            if (!scored.length) return [];
+            var best = scored[0]._match_score;
+            return scored.filter(function (card) { return card._match_score === best; }).slice(0, 5);
+        }
+
+        var NATIVE_ALIAS_LOOKUPS = 4;
+
+        // Search results carry only the main YummyAnime title, while the
+        // search itself also matches the other names. A title found through an
+        // alias therefore failed the comparison and the button never appeared.
+        // Plausible candidates (year and kind not contradicting) get their full
+        // list of names from the title details before being scored again.
+        function withAllTitles(movie, cards) {
+            var year = yearOf(movie.release_date || movie.first_air_date || movie.year);
+            var kind = nativeKind(movie);
+            var plausible = cards.filter(function (card) {
+                var candidateYear = yearOf(card.release_date || card.yani_year);
+                if (year && candidateYear && Math.abs(year - candidateYear) > 1) return false;
+                var candidateKind = yummyKind(card);
+                return !(kind && candidateKind && kind !== candidateKind);
+            }).slice(0, NATIVE_ALIAS_LOOKUPS);
+            return Promise.all(plausible.map(function (card) {
+                if (!card.yani_id || !LampaYaniApi.detail) return null;
+                return LampaYaniApi.detail(card.yani_id).then(function (payload) {
+                    var value = payload && payload.response ? payload.response : payload;
+                    var names = window.LampaYaniUiUtils && window.LampaYaniUiUtils.titleValues
+                        ? window.LampaYaniUiUtils.titleValues(value || {})
+                        : [];
+                    card.yani_titles = (card.yani_titles || []).concat(names).filter(function (title, index, list) {
+                        return title && list.indexOf(title) === index;
+                    });
+                }).catch(function () {});
+            })).then(function () { return cards; });
+        }
+
         function findYummyMatches(movie) {
             movie = movie || {};
             var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
@@ -9509,18 +9636,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     if (!cardsById[key]) cardsById[key] = card;
                 }); });
                 var cards = Object.keys(cardsById).map(function (key) { return cardsById[key]; });
-                var expected = LampaYaniUiUtils.normalizeMatchTitle(title);
-                cards.forEach(function (card) {
-                    var titles = card.yani_titles.map(LampaYaniUiUtils.normalizeMatchTitle);
-                    card._match_score = (titles.indexOf(expected) >= 0 ? 100 : titles.some(function (value) { return value.indexOf(expected) >= 0 || expected.indexOf(value) >= 0; }) ? 40 : 0) + (year && card.release_date === year ? 30 : 0);
+                var matches = scoreNativeMatches(movie, cards);
+                if (matches.length || !cards.length) return matches;
+                return withAllTitles(movie, cards).then(function (enriched) {
+                    return scoreNativeMatches(movie, enriched);
                 });
-                cards.sort(function (a, b) { return b._match_score - a._match_score; });
-                // A partial title without a matching year is not sufficient for
-                // the native-card integration: it produces false YummyAnime
-                // buttons on unrelated live-action titles.
-                if (!cards.length || cards[0]._match_score < 70) return [];
-                var best = cards[0]._match_score;
-                return cards.filter(function (card, index) { return index < 5 && (card._match_score === best || card._match_score >= 70); });
             }).then(function (cards) {
                 delete nativeMatchPending[cacheKey];
                 rememberNativeMatch(cacheKey, cards);
@@ -9574,6 +9694,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     var anime = matches[0];
                     if (!anime) return;
                     var render = event.object.activity.render();
+                    if (matches.length > 1) {
+                        // Equal candidates: a rating would belong to a guess,
+                        // so only the button is shown, and it asks.
+                        addYummyFullButton(render, movie, anime, matches);
+                        return;
+                    }
                     var line = $('.full-start-new__rate-line, .full-start__rate-line', render).first();
                     // Lampa already owns the usual TMDB/IMDb/Kinopoisk rating
                     // line, and rating plugins may add MAL/Shikimori too.  The
@@ -9607,7 +9733,27 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             return '<svg viewBox="0 0 20 20" aria-hidden="true"><path fill="currentColor" d="M18.45 0H1.55A1.55 1.55 0 000 1.55v16.9A1.54 1.54 0 001.55 20h16.9A1.55 1.55 0 0020 18.45V1.55A1.54 1.54 0 0018.45 0Zm-2.83 5.93-2.1 2.66-2.3-5.43a6.95 6.95 0 014.4 2.77Zm-2.9 6.57h-4l2.03-4.8 1.98 4.8Zm-2.37-9.34L7.8 9.06 4.87 5.33c.64-.7 1.4-1.26 2.27-1.65a8.18 8.18 0 013.2-.52ZM3.57 7.39l3.2 4.06-1.56 3.58A6.96 6.96 0 013.57 7.39Zm6.57 9.56c-1.05.01-2.1-.2-3.05-.65l.76-1.8h5.7l.49 1.15a6.93 6.93 0 01-3.9 1.3Zm6.8-7.07a7.8 7.8 0 01-1.17 4L14.55 11l2.17-2.77c.14.54.21 1.1.23 1.65Z"/></svg>';
         }
 
-        function addYummyFullButton(render, movie, anime) {
+        function chooseYummyMatch(matches) {
+            if (!Lampa.Select || !Lampa.Select.show) {
+                openYummyDetail(matches[0], false);
+                return;
+            }
+            Lampa.Select.show({
+                title: 'YummyAnime',
+                items: matches.map(function (card) {
+                    var type = card.yani_type && typeof card.yani_type === 'object' ? card.yani_type.name : '';
+                    return {
+                        title: card.title,
+                        subtitle: [card.release_date, type].filter(Boolean).join(' · '),
+                        card: card
+                    };
+                }),
+                onSelect: function (item) { openYummyDetail(item.card, false); },
+                onBack: function () { if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle('full_start'); }
+            });
+        }
+
+        function addYummyFullButton(render, movie, anime, matches) {
             if (!lampaCardIntegrationEnabled('button')) return;
             var container = $('.full-start-new__buttons', render);
             if (!container.length) container = $('.full-start__buttons', render);
@@ -9615,7 +9761,10 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
             if (!$('.view--yummyanime', render).length) {
                 var button = $('<div class="full-start__button selector view--yummyanime" title="YummyAnime" aria-label="YummyAnime"><span class="view--yummyanime__icon" aria-hidden="true">' + yummyRatingLogo() + '</span></div>');
-                button.on('hover:enter click.yaniFullDetail', function () { openYummyDetail(anime, false); });
+                button.on('hover:enter click.yaniFullDetail', function () {
+                    if (matches && matches.length > 1) chooseYummyMatch(matches);
+                    else openYummyDetail(anime, false);
+                });
                 container.prepend(button);
             }
         }
@@ -9628,6 +9777,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             findStandardLampaCard: findStandardLampaCard,
             isValidNativeId: isValidNativeId,
             findYummyMatches: findYummyMatches,
+            scoreNativeMatches: scoreNativeMatches,
             isNativeAnimeCard: isNativeAnimeCard,
             installFullRating: installFullRating,
             lampaCardIntegrationEnabled: lampaCardIntegrationEnabled

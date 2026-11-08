@@ -92,4 +92,85 @@ assert.strictEqual(api.isValidNativeId(null), false);
 assert.strictEqual(api.isNativeAnimeCard({genre_ids: [16]}), true);
 assert.strictEqual(api.isNativeAnimeCard({genre_ids: [18]}), false);
 
-console.log('standard card module contract checks passed');
+// --- Matching a native Lampa card to YummyAnime -------------------------
+// The real normalizer drops scripts it does not know, so a Japanese alias
+// comes back empty - and must not count as a partial match.
+context.window.LampaYaniUiUtils.normalizeMatchTitle = function (value) {
+    return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').trim();
+};
+context.window.LampaYaniUiUtils.titleValues = function (item) {
+    return [item.title, item.name, item.original_title, item.original_name].filter(Boolean);
+};
+const tv = {alias: 'tv', name: 'Сериал'};
+const film = {alias: 'movie', name: 'Полнометражный фильм'};
+const ids = (list) => list.map((card) => card.yani_id).join(',');
+
+// Original names count: the localized titles differ, the romaji one does not.
+assert.strictEqual(ids(api.scoreNativeMatches(
+    {name: 'Магическая битва', original_name: 'Jujutsu Kaisen', first_air_date: '2020-10-03'},
+    [{yani_id: 1, title: 'Магичка', yani_titles: ['Магичка', 'Jujutsu Kaisen'], release_date: '2020', yani_type: tv}]
+)), '1', 'an original title must match');
+
+// A Japanese alias alone is not a partial match.
+assert.strictEqual(api.scoreNativeMatches(
+    {name: 'Гачиакута', first_air_date: '2025-07-06'},
+    [{yani_id: 2, title: 'Другой тайтл', yani_titles: ['Другой тайтл', 'ガチアクタ'], release_date: '2025', yani_type: tv}]
+).length, 0, 'an empty normalized alias must not match everything');
+
+// Remakes: the same exact title years apart does not link.
+assert.strictEqual(ids(api.scoreNativeMatches(
+    {name: 'Hunter x Hunter', first_air_date: '2011-10-02'},
+    [
+        {yani_id: 3, title: 'Hunter x Hunter', yani_titles: ['Hunter x Hunter'], release_date: '1999', yani_type: tv},
+        {yani_id: 4, title: 'Hunter x Hunter', yani_titles: ['Hunter x Hunter'], release_date: '2011', yani_type: tv}
+    ]
+)), '4', 'only the remake from the same year may link');
+
+// A film never links to a series of the same name.
+assert.strictEqual(ids(api.scoreNativeMatches(
+    {name: 'Тетрадь смерти', first_air_date: '2006-10-04'},
+    [
+        {yani_id: 5, title: 'Тетрадь смерти', yani_titles: ['Тетрадь смерти'], release_date: '2006', yani_type: film},
+        {yani_id: 6, title: 'Тетрадь Смерти', yani_titles: ['Тетрадь Смерти'], release_date: '2006', yani_type: tv}
+    ]
+)), '6', 'the kind must not contradict');
+
+// A partial title needs the same year: a sequel from another year does not link.
+assert.strictEqual(api.scoreNativeMatches(
+    {name: 'Наруто', first_air_date: '2002-10-03'},
+    [{yani_id: 7, title: 'Наруто: Ураганные хроники', yani_titles: ['Наруто: Ураганные хроники'], release_date: '2007', yani_type: tv}]
+).length, 0, 'a partial title from another year must not link');
+
+// Equal candidates are all returned so the viewer can choose.
+assert.strictEqual(ids(api.scoreNativeMatches(
+    {name: 'Тест', first_air_date: '2020-01-01'},
+    [
+        {yani_id: 8, title: 'Тест', yani_titles: ['Тест'], release_date: '2020', yani_type: tv},
+        {yani_id: 9, title: 'Тест', yani_titles: ['Тест'], release_date: '2020', yani_type: tv}
+    ]
+)), '8,9', 'a tie must be offered as a choice');
+// Search results carry only the main title; a card found through another
+// name must be re-scored with all names from the title details.
+assert.match(source, /var matches = scoreNativeMatches\(movie, cards\);\s*if \(matches\.length \|\| !cards\.length\) return matches;\s*return withAllTitles\(movie, cards\)/);
+assert.match(source, /NATIVE_ALIAS_LOOKUPS = 4/, 'alias lookups must be bounded');
+assert.match(source, /if \(matches\.length > 1\) \{[\s\S]{0,240}addYummyFullButton\(render, movie, anime, matches\);/);
+assert.match(source, /if \(matches && matches\.length > 1\) chooseYummyMatch\(matches\);/);
+
+// End to end: the search returns only the Russian title, the details hold
+// the English one the Lampa card uses.
+context.LampaYaniUiUtils = context.window.LampaYaniUiUtils;
+context.LampaYaniApi = context.window.LampaYaniApi;
+context.window.LampaYaniApi.search = function () {
+    return Promise.resolve([{yani_id: 771, title: 'Магическая битва', yani_titles: ['Магическая битва'], release_date: '2020', yani_type: tv}]);
+};
+context.window.LampaYaniApi.normalize = function (payload) { return payload; };
+context.window.LampaYaniApi.detail = function () {
+    return Promise.resolve({response: {title: 'Магическая битва', other_titles: ['Jujutsu Kaisen', '呪術廻戦']}});
+};
+context.window.LampaYaniUiUtils.titleValues = function (item) {
+    return [item.title, item.name, item.original_title, item.original_name].concat(item.other_titles || []).filter(Boolean);
+};
+api.findYummyMatches({name: 'Jujutsu Kaisen', first_air_date: '2020-10-03', id: 95479}).then(function (matches) {
+    assert.strictEqual(ids(matches), '771', 'a title found through another name must link');
+    console.log('standard card module contract checks passed');
+}).catch(function (error) { console.error(error); process.exit(1); });
