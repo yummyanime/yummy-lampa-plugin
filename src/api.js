@@ -45,6 +45,35 @@
         return Boolean(error && error.name !== 'AbortError' && !Number(error.status));
     }
 
+    // All episodes of a title from Tenrai's Jikan-compatible API, every page
+    // merged into one list. Thumbnails and filler/recap marks both come from
+    // it, so one cached request serves both.
+    function malEpisodes(malId) {
+        if (!malId) return Promise.resolve([]);
+        var key = String(malId);
+        if (episodeThumbnailCache[key]) return episodeThumbnailCache[key];
+        function page(number) {
+            return externalRequest('https://api.tenrai.org/v1', '/anime/' + encodeURIComponent(malId) + '/episodes?page=' + number, {
+                timeout: 6000,
+                retry: false
+            });
+        }
+        episodeThumbnailCache[key] = page(1).then(function (first) {
+            var pages = Math.max(1, Math.min(30, Number(first && first.pagination && first.pagination.last_visible_page || 1)));
+            var requests = [];
+            for (var number = 2; number <= pages; number += 1) requests.push(page(number).catch(function () { return {data: []}; }));
+            return Promise.all(requests).then(function (rest) {
+                var items = (first && first.data || []).slice();
+                rest.forEach(function (payload) { items = items.concat(payload && payload.data || []); });
+                return items;
+            });
+        }).catch(function () {
+            delete episodeThumbnailCache[key];
+            return [];
+        });
+        return episodeThumbnailCache[key];
+    }
+
     function sleep(milliseconds) {
         return new Promise(function (resolve) { setTimeout(resolve, milliseconds); });
     }
@@ -479,34 +508,27 @@
             return episodeInfoCache[key];
         },
         episodeThumbnails: function (malId) {
-            if (!malId) return Promise.resolve({});
-            var key = String(malId);
-            if (episodeThumbnailCache[key]) return episodeThumbnailCache[key];
-            function page(number) {
-                return externalRequest('https://api.tenrai.org/v1', '/anime/' + encodeURIComponent(malId) + '/episodes?page=' + number, {
-                    timeout: 6000,
-                    retry: false
+            return malEpisodes(malId).then(function (items) {
+                var result = {};
+                items.forEach(function (item) {
+                    var image = item && item.images && item.images.jpg && item.images.jpg.image_url;
+                    if (image && item.mal_id) result[String(item.mal_id)] = image;
                 });
-            }
-            episodeThumbnailCache[key] = page(1).then(function (first) {
-                var pages = Math.max(1, Math.min(30, Number(first && first.pagination && first.pagination.last_visible_page || 1)));
-                var requests = [];
-                for (var number = 2; number <= pages; number += 1) requests.push(page(number).catch(function () { return {data: []}; }));
-                return Promise.all(requests).then(function (rest) {
-                    var items = (first && first.data || []).slice();
-                    rest.forEach(function (payload) { items = items.concat(payload && payload.data || []); });
-                    var result = {};
-                    items.forEach(function (item) {
-                        var image = item && item.images && item.images.jpg && item.images.jpg.image_url;
-                        if (image && item.mal_id) result[String(item.mal_id)] = image;
-                    });
-                    return result;
-                });
-            }).catch(function () {
-                delete episodeThumbnailCache[key];
-                return {};
+                return result;
             });
-            return episodeThumbnailCache[key];
+        },
+        // Filler and recap marks from MyAnimeList, keyed by episode number.
+        // They arrive in the same Tenrai pages as the episode thumbnails, so
+        // both share one cached request.
+        episodeFlags: function (malId) {
+            return malEpisodes(malId).then(function (items) {
+                var result = {};
+                items.forEach(function (item) {
+                    if (!item || !(Number(item.mal_id) > 0) || !(item.filler || item.recap)) return;
+                    result[String(item.mal_id)] = {filler: Boolean(item.filler), recap: Boolean(item.recap)};
+                });
+                return result;
+            });
         },
         malTitles: malTitles,
         detail: function (id) {

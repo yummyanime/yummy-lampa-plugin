@@ -28,6 +28,8 @@
         var launchVideo = deps.launchVideo || function () {};
         var enrichEpisodeTitles = deps.enrichEpisodeTitles || function () { return Promise.resolve(); };
         var enrichVoiceOptionQuality = deps.enrichVoiceOptionQuality || function () {};
+        var episodeFlags = deps.episodeFlags || function () { return Promise.resolve({}); };
+        var EPISODE_FLAGS_WAIT_MS = 1500;
         var episodeOptionTitle = deps.episodeOptionTitle || function (card, video) {
             return String(video && (video.number || video.index) || '?');
         };
@@ -395,6 +397,9 @@
             }
             if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
             enrichEpisodeTitles(card);
+            // Warm the filler/recap marks while the viewer picks a dubbing, so
+            // the episode list rarely has to wait for them.
+            episodeFlags(card);
 
             loadVideosForPlayback(card.yani_id).then(function (payload) {
                 if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
@@ -554,12 +559,39 @@
                 return Number(a.index || 0) - Number(b.index || 0);
             });
             videos = uniqueEpisodes(videos);
-            var episodes = videos.map(function (video) {
-                return {title: episodeOptionTitle(card, video), video: video};
-            });
             allVideos = Array.isArray(allVideos) ? allVideos : group.videos;
             var resetItems = resettableEpisodes(card, allVideos);
-            if (episodes.length === 1 && !resetItems.length) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            if (videos.length === 1 && !resetItems.length) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            // The marks are a hint, not worth holding the list for: a slow or
+            // failed request shows the episodes without them.
+            var flagsReady = Promise.race([
+                Promise.resolve(episodeFlags(card)).catch(function () { return {}; }),
+                new Promise(function (resolve) { setTimeout(function () { resolve({}); }, EPISODE_FLAGS_WAIT_MS); })
+            ]);
+            if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
+            flagsReady.then(function (flags) {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                showEpisodeList(card, group, videos, allVideos, resetItems, flags || {});
+            });
+        }
+
+        function episodeFlagLabel(flags, video) {
+            var number = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(video));
+            var mark = isFinite(number) ? flags[String(number)] : null;
+            if (!mark) return '';
+            var labels = [];
+            if (mark.filler) labels.push(t('episode_filler'));
+            if (mark.recap) labels.push(t('episode_recap'));
+            return labels.join(' · ');
+        }
+
+        function showEpisodeList(card, group, videos, allVideos, resetItems, flags) {
+            var episodes = videos.map(function (video) {
+                var item = {title: episodeOptionTitle(card, video), video: video};
+                var flagLabel = episodeFlagLabel(flags, video);
+                if (flagLabel) item.subtitle = flagLabel;
+                return item;
+            });
             if (resetItems.length) {
                 episodes.push({
                     title: t('reset_episode_progress'),

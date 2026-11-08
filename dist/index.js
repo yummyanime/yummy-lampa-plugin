@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.48.1',
+        version: '0.49.0',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -128,6 +128,10 @@ function pluginYummyAnime() {
     messages.ru.sync_history_error = 'Не удалось синхронизировать историю';
     messages.ru.auto_sync_progress = 'Автосинхронизация прогресса';
     messages.ru.auto_sync_progress_description = 'Автоматически сохранять в аккаунте YummyAnime прогресс внутреннего плеера Lampa и подтягивать серверный прогресс на главный экран, в историю и карточку тайтла. При отключении доступна ручная синхронизация на странице аккаунта';
+    messages.ru.episode_flags = 'Метки «Филлер» и «Рекап»';
+    messages.ru.episode_flags_description = 'Показывать в списке серий пометки из MyAnimeList: филлер (серия вне основного сюжета) и рекап (пересказ прошлых серий)';
+    messages.ru.episode_filler = 'Филлер';
+    messages.ru.episode_recap = 'Рекап';
     messages.ru.auto_manage_lists = 'Автоматически обновлять списки';
     messages.ru.auto_manage_lists_description = 'После двух серий, просмотренных минимум наполовину, добавить тайтл в «Смотрю». После завершения всех вышедших серий — в «Просмотрено». Список «Брошено» не изменяется';
     messages.ru.add_to_lampa_history = 'Добавлять в историю Lampa';
@@ -235,6 +239,10 @@ function pluginYummyAnime() {
     messages.en.sync_history_error = 'Failed to synchronize history';
     messages.en.auto_sync_progress = 'Automatic progress sync';
     messages.en.auto_sync_progress_description = 'Automatically save internal Lampa player progress to the YummyAnime account and pull server progress onto the home screen, history and title card. When disabled, manual sync is available on the account page';
+    messages.en.episode_flags = 'Filler and recap marks';
+    messages.en.episode_flags_description = 'Show MyAnimeList marks in the episode list: filler (outside the main story) and recap (a summary of earlier episodes)';
+    messages.en.episode_filler = 'Filler';
+    messages.en.episode_recap = 'Recap';
     messages.en.auto_manage_lists = 'Update lists automatically';
     messages.en.auto_manage_lists_description = 'Add a title to Watching after two episodes are at least half watched. Move it to Completed after every released episode is finished. Dropped titles are never changed';
     messages.en.add_to_lampa_history = 'Add to Lampa history';
@@ -796,6 +804,10 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.sync_history_error = 'Не вдалося синхронізувати історію';
     messages.uk.auto_sync_progress = 'Автосинхронізація прогресу';
     messages.uk.auto_sync_progress_description = 'Автоматично зберігати в обліковому записі YummyAnime прогрес внутрішнього плеєра Lampa і підтягувати серверний прогрес на головний екран, в історію та картку тайтла. Після вимкнення доступна ручна синхронізація на сторінці облікового запису';
+    messages.uk.episode_flags = 'Позначки «Філер» і «Рекап»';
+    messages.uk.episode_flags_description = 'Показувати у списку серій позначки з MyAnimeList: філер (серія поза основним сюжетом) і рекап (переказ попередніх серій)';
+    messages.uk.episode_filler = 'Філер';
+    messages.uk.episode_recap = 'Рекап';
     messages.uk.auto_manage_lists = 'Автоматично оновлювати списки';
     messages.uk.auto_manage_lists_description = 'Після двох серій, переглянутих щонайменше наполовину, додати тайтл до «Дивлюся». Після завершення всіх серій, що вийшли, — до «Переглянуто». Список «Покинуто» не змінюється';
     messages.uk.add_to_lampa_history = 'Додавати до історії Lampa';
@@ -1395,6 +1407,35 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return Boolean(error && error.name !== 'AbortError' && !Number(error.status));
     }
 
+    // All episodes of a title from Tenrai's Jikan-compatible API, every page
+    // merged into one list. Thumbnails and filler/recap marks both come from
+    // it, so one cached request serves both.
+    function malEpisodes(malId) {
+        if (!malId) return Promise.resolve([]);
+        var key = String(malId);
+        if (episodeThumbnailCache[key]) return episodeThumbnailCache[key];
+        function page(number) {
+            return externalRequest('https://api.tenrai.org/v1', '/anime/' + encodeURIComponent(malId) + '/episodes?page=' + number, {
+                timeout: 6000,
+                retry: false
+            });
+        }
+        episodeThumbnailCache[key] = page(1).then(function (first) {
+            var pages = Math.max(1, Math.min(30, Number(first && first.pagination && first.pagination.last_visible_page || 1)));
+            var requests = [];
+            for (var number = 2; number <= pages; number += 1) requests.push(page(number).catch(function () { return {data: []}; }));
+            return Promise.all(requests).then(function (rest) {
+                var items = (first && first.data || []).slice();
+                rest.forEach(function (payload) { items = items.concat(payload && payload.data || []); });
+                return items;
+            });
+        }).catch(function () {
+            delete episodeThumbnailCache[key];
+            return [];
+        });
+        return episodeThumbnailCache[key];
+    }
+
     function sleep(milliseconds) {
         return new Promise(function (resolve) { setTimeout(resolve, milliseconds); });
     }
@@ -1829,34 +1870,27 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             return episodeInfoCache[key];
         },
         episodeThumbnails: function (malId) {
-            if (!malId) return Promise.resolve({});
-            var key = String(malId);
-            if (episodeThumbnailCache[key]) return episodeThumbnailCache[key];
-            function page(number) {
-                return externalRequest('https://api.tenrai.org/v1', '/anime/' + encodeURIComponent(malId) + '/episodes?page=' + number, {
-                    timeout: 6000,
-                    retry: false
+            return malEpisodes(malId).then(function (items) {
+                var result = {};
+                items.forEach(function (item) {
+                    var image = item && item.images && item.images.jpg && item.images.jpg.image_url;
+                    if (image && item.mal_id) result[String(item.mal_id)] = image;
                 });
-            }
-            episodeThumbnailCache[key] = page(1).then(function (first) {
-                var pages = Math.max(1, Math.min(30, Number(first && first.pagination && first.pagination.last_visible_page || 1)));
-                var requests = [];
-                for (var number = 2; number <= pages; number += 1) requests.push(page(number).catch(function () { return {data: []}; }));
-                return Promise.all(requests).then(function (rest) {
-                    var items = (first && first.data || []).slice();
-                    rest.forEach(function (payload) { items = items.concat(payload && payload.data || []); });
-                    var result = {};
-                    items.forEach(function (item) {
-                        var image = item && item.images && item.images.jpg && item.images.jpg.image_url;
-                        if (image && item.mal_id) result[String(item.mal_id)] = image;
-                    });
-                    return result;
-                });
-            }).catch(function () {
-                delete episodeThumbnailCache[key];
-                return {};
+                return result;
             });
-            return episodeThumbnailCache[key];
+        },
+        // Filler and recap marks from MyAnimeList, keyed by episode number.
+        // They arrive in the same Tenrai pages as the episode thumbnails, so
+        // both share one cached request.
+        episodeFlags: function (malId) {
+            return malEpisodes(malId).then(function (items) {
+                var result = {};
+                items.forEach(function (item) {
+                    if (!item || !(Number(item.mal_id) > 0) || !(item.filler || item.recap)) return;
+                    result[String(item.mal_id)] = {filler: Boolean(item.filler), recap: Boolean(item.recap)};
+                });
+                return result;
+            });
         },
         malTitles: malTitles,
         detail: function (id) {
@@ -8334,6 +8368,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var launchVideo = deps.launchVideo || function () {};
         var enrichEpisodeTitles = deps.enrichEpisodeTitles || function () { return Promise.resolve(); };
         var enrichVoiceOptionQuality = deps.enrichVoiceOptionQuality || function () {};
+        var episodeFlags = deps.episodeFlags || function () { return Promise.resolve({}); };
+        var EPISODE_FLAGS_WAIT_MS = 1500;
         var episodeOptionTitle = deps.episodeOptionTitle || function (card, video) {
             return String(video && (video.number || video.index) || '?');
         };
@@ -8701,6 +8737,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             }
             if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
             enrichEpisodeTitles(card);
+            // Warm the filler/recap marks while the viewer picks a dubbing, so
+            // the episode list rarely has to wait for them.
+            episodeFlags(card);
 
             loadVideosForPlayback(card.yani_id).then(function (payload) {
                 if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
@@ -8860,12 +8899,39 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return Number(a.index || 0) - Number(b.index || 0);
             });
             videos = uniqueEpisodes(videos);
-            var episodes = videos.map(function (video) {
-                return {title: episodeOptionTitle(card, video), video: video};
-            });
             allVideos = Array.isArray(allVideos) ? allVideos : group.videos;
             var resetItems = resettableEpisodes(card, allVideos);
-            if (episodes.length === 1 && !resetItems.length) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            if (videos.length === 1 && !resetItems.length) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            // The marks are a hint, not worth holding the list for: a slow or
+            // failed request shows the episodes without them.
+            var flagsReady = Promise.race([
+                Promise.resolve(episodeFlags(card)).catch(function () { return {}; }),
+                new Promise(function (resolve) { setTimeout(function () { resolve({}); }, EPISODE_FLAGS_WAIT_MS); })
+            ]);
+            if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
+            flagsReady.then(function (flags) {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                showEpisodeList(card, group, videos, allVideos, resetItems, flags || {});
+            });
+        }
+
+        function episodeFlagLabel(flags, video) {
+            var number = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(video));
+            var mark = isFinite(number) ? flags[String(number)] : null;
+            if (!mark) return '';
+            var labels = [];
+            if (mark.filler) labels.push(t('episode_filler'));
+            if (mark.recap) labels.push(t('episode_recap'));
+            return labels.join(' · ');
+        }
+
+        function showEpisodeList(card, group, videos, allVideos, resetItems, flags) {
+            var episodes = videos.map(function (video) {
+                var item = {title: episodeOptionTitle(card, video), video: video};
+                var flagLabel = episodeFlagLabel(flags, video);
+                if (flagLabel) item.subtitle = flagLabel;
+                return item;
+            });
             if (resetItems.length) {
                 episodes.push({
                     title: t('reset_episode_progress'),
@@ -15508,6 +15574,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         enrichEpisodeTitles: function (card, group) { return enrichEpisodeTitles(card, group); },
         enrichVoiceOptionQuality: function (item, target) { return enrichVoiceOptionQuality(item, target); },
         episodeOptionTitle: function (card, video) { return episodeOptionTitle(card, video); },
+        episodeFlags: function (card) { return episodeFlagsFor(card); },
         playbackTargetPreference: function () { return playbackTargetPreference(); },
         androidExternalPlayerAvailable: function () { return externalPlayerAvailable(); },
         externalPlayerKind: function () { return isWebOsPlatform() ? 'webos' : 'android'; },
@@ -20121,6 +20188,22 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return Lampa.Storage.get('yani_last_player', '') || '';
     }
 
+    function episodeFlagsEnabled() {
+        if (!Lampa.Storage || !Lampa.Storage.get) return true;
+        var value = Lampa.Storage.get('yani_episode_flags', true);
+        return value !== false && value !== 'false';
+    }
+
+    // Filler and recap marks need the MyAnimeList id; a card without it simply
+    // shows none rather than costing an extra request for the title details.
+    function episodeFlagsFor(card) {
+        if (!episodeFlagsEnabled() || !LampaYaniApi.episodeFlags) return Promise.resolve({});
+        var remote = card && card.yani_remote_ids || {};
+        var malId = remote.mal || remote.mal_id || remote.myanimelist;
+        if (!malId) return Promise.resolve({});
+        return LampaYaniApi.episodeFlags(malId).catch(function () { return {}; });
+    }
+
     function getPreferredVoice() {
         if (!Lampa.Storage) return '';
         return Lampa.Storage.get('yani_last_voice', '') || '';
@@ -20795,6 +20878,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 LampaYaniI18n.setLanguage(value);
                 Lampa.Noty.show(t('language_changed'));
             }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_episode_flags', type: 'trigger', default: true},
+            field: {name: t('episode_flags'), description: t('episode_flags_description')}
         });
 
         Lampa.SettingsApi.addParam({

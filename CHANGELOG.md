@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.49.0] - 2026-11-08
+
+### Added
+
+- Filler and recap marks from MyAnimeList in the episode list, with a setting to turn them off
+
 ## [0.48.1] - 2026-11-08
 
 ### Fixed

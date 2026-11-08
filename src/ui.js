@@ -114,6 +114,7 @@
         enrichEpisodeTitles: function (card, group) { return enrichEpisodeTitles(card, group); },
         enrichVoiceOptionQuality: function (item, target) { return enrichVoiceOptionQuality(item, target); },
         episodeOptionTitle: function (card, video) { return episodeOptionTitle(card, video); },
+        episodeFlags: function (card) { return episodeFlagsFor(card); },
         playbackTargetPreference: function () { return playbackTargetPreference(); },
         androidExternalPlayerAvailable: function () { return externalPlayerAvailable(); },
         externalPlayerKind: function () { return isWebOsPlatform() ? 'webos' : 'android'; },
@@ -4727,6 +4728,22 @@
         return Lampa.Storage.get('yani_last_player', '') || '';
     }
 
+    function episodeFlagsEnabled() {
+        if (!Lampa.Storage || !Lampa.Storage.get) return true;
+        var value = Lampa.Storage.get('yani_episode_flags', true);
+        return value !== false && value !== 'false';
+    }
+
+    // Filler and recap marks need the MyAnimeList id; a card without it simply
+    // shows none rather than costing an extra request for the title details.
+    function episodeFlagsFor(card) {
+        if (!episodeFlagsEnabled() || !LampaYaniApi.episodeFlags) return Promise.resolve({});
+        var remote = card && card.yani_remote_ids || {};
+        var malId = remote.mal || remote.mal_id || remote.myanimelist;
+        if (!malId) return Promise.resolve({});
+        return LampaYaniApi.episodeFlags(malId).catch(function () { return {}; });
+    }
+
     function getPreferredVoice() {
         if (!Lampa.Storage) return '';
         return Lampa.Storage.get('yani_last_voice', '') || '';
@@ -5401,6 +5418,12 @@
                 LampaYaniI18n.setLanguage(value);
                 Lampa.Noty.show(t('language_changed'));
             }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'yani',
+            param: {name: 'yani_episode_flags', type: 'trigger', default: true},
+            field: {name: t('episode_flags'), description: t('episode_flags_description')}
         });
 
         Lampa.SettingsApi.addParam({
