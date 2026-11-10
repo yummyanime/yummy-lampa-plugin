@@ -17,7 +17,11 @@ assert.match(api, /var pendingRequests = \{\};/, 'identical in-flight API reques
 assert.match(card, /queries\.slice\(0, 2\)/, 'native Lampa matching must use a bounded title set');
 assert.doesNotMatch(card, /return !source && !Array\.isArray\(ids\);/, 'missing metadata must not classify every title as anime');
 assert.doesNotMatch(build, /src\/ui-detail-sections\.js/, 'unused duplicate detail sections must stay out of the bundle');
-assert.doesNotMatch(fs.readFileSync('index.js', 'utf8'), /src\/ui-detail-sections\.js/, 'legacy loader must not fetch unused duplicate detail sections');
+const rootLoader = fs.readFileSync('index.js', 'utf8');
+assert.doesNotMatch(rootLoader, /src\//, 'the root loader must not fetch sources, which are not published');
+assert.match(rootLoader, /tag\.src = base \+ 'stable\/index\.js';/, 'the root loader must load the production build');
+assert.match(rootLoader, /window\.plugin_yummy_anime_loader/, 'the root loader must not use the flag that stops the build from starting');
+assert.doesNotMatch(rootLoader, /plugin_yummy_anime_ready = true/);
 assert.doesNotMatch(ui, /function Legacy[A-Z]/, 'dead legacy screen implementations must stay out of the main UI bundle');
 ['formatStatusDate', 'formatScheduleDay', 'formatScheduleTime', 'formatScheduleDateTime', 'formatEpisode'].forEach((name) => {
     assert.doesNotMatch(ui, new RegExp(`function ${name}\\(`), `${name} belongs to the extracted screen module`);

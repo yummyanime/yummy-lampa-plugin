@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.51.1] - 2026-11-11
+
+### Removed
+
+- The per-genre row loader that no screen used
+
+### Fixed
+
+- The root index.js loading source files that are not published, which left installations made with that address without a working plugin; it now loads the production build
+
 ## [0.51.0] - 2026-11-11
 
 ### Added

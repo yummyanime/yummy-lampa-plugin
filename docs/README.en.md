@@ -54,7 +54,7 @@ Screenshots for catalogs and the public README:
 
 ## Installation
 
-1. Add the URL of `index.js` to the Lampa extensions section.
+1. Add the production URL below to the Lampa extensions section. The `index.js` in the repository root only loads the production build, for installations made with its address.
 2. The extension uses the built-in public application key for YummyAnime for Lampa.
 
 Install the bundled file from GitHub Pages. There are two URLs:
@@ -106,7 +106,7 @@ Sources are grouped by area and concatenated by `build.js` into `dist/index.js` 
 
 Key files:
 
-- `index.js` — entry point;
+- `index.js` — loads the production build for installations that use the repository root address;
 - `src/core/api.js` — Yani API client;
 - `src/core/catalog.js` — catalog module;
 - `src/core/config.js` — configuration;

@@ -11,8 +11,8 @@ const css = fs.readFileSync('style.css', 'utf8');
 
 assert.match(build, /src\/cards\/ui-card-rails\.js/);
 assert.match(ui, /Lampa\.Component\.add\('yani_genres', Genres\)/);
-assert.match(genresScreen, /function createGenreRowLoader\(\)/);
-assert.match(genresScreen, /function loadGenreRows\(page\)/);
+// The per-genre rows were never wired to any screen; they must not linger.
+assert.doesNotMatch(genresScreen, /createGenreRowLoader|genreHubRows|GENRE_HUB_CONCURRENCY/);
 assert.match(genresScreen, /function Genres\(object\)[\s\S]{0,260}new Lampa\.InteractionCategory\(object\)/);
 assert.match(genresScreen, /self\.render\(\)\.addClass\('yani-tile-catalog yani-genres-tile-catalog'\)/);
 assert.match(genresScreen, /function bindGenreTiles\(self, cards\)/);
@@ -34,11 +34,7 @@ assert.match(genresScreen, /function genreTilePoster\(title, index\)/);
 assert.match(genresScreen, /yani_genre_tile: true/);
 assert.match(genresScreen, /title: t\('genre_tiles'\) \+ ' · ' \+ cards\.length/);
 assert.match(genresScreen, /function loadGenreList\(\)/);
-assert.match(genresScreen, /GENRE_HUB_CONCURRENCY = 8/);
-assert.match(genresScreen, /genreHubRows && Date\.now\(\) - genreHubRowsAt < GENRE_HUB_TTL/);
-assert.match(genresScreen, /LampaYaniCardRails\.mapLimit\(genres, GENRE_HUB_CONCURRENCY/);
 assert.doesNotMatch(genresScreen, /genres\.slice\(offset, offset \+ pageSize\)/);
-assert.match(genresScreen, /openGenreCatalog\(genre\)/);
 assert.match(source, /function withMore\(row, deps\)/);
 assert.match(source, /\(row\.results \|\| \[\]\)\.slice\(0, 10\)/);
 assert.match(source, /yani_more: true/);

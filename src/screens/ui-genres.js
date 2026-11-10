@@ -138,14 +138,10 @@
             return comp;
         }
 
-        var genreHubRows = null;
-        var genreHubRowsAt = 0;
-        var genreHubRequest = null;
         var genreList = null;
         var genreListAt = 0;
         var genreListRequest = null;
         var GENRE_HUB_TTL = 15 * 60 * 1000;
-        var GENRE_HUB_CONCURRENCY = 8;
 
         function loadGenreList() {
             if (genreList && Date.now() - genreListAt < GENRE_HUB_TTL) {
@@ -209,51 +205,6 @@
                 results: cards,
                 nomore: true
             };
-        }
-
-        function createGenreRowLoader() {
-            function loadGenreRows(page) {
-                if (Number(page || 0) > 0) return Promise.resolve([]);
-                return loadGenreList().then(function (genres) {
-                    var tiles = genreTilesRow(genres);
-                    if (genreHubRows && Date.now() - genreHubRowsAt < GENRE_HUB_TTL) return [tiles].concat(genreHubRows);
-                    if (genreHubRequest) return genreHubRequest.then(function (rows) { return [tiles].concat(rows); });
-                    genreHubRequest = Promise.resolve().then(function () {
-                        return LampaYaniCardRails.mapLimit(genres, GENRE_HUB_CONCURRENCY, function (genre) {
-                            var id = genreValue(genre);
-                            return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}, {
-                                cacheTtl: GENRE_HUB_TTL,
-                                cacheFirst: true,
-                                staleFallback: true
-                            }).then(function (payload) {
-                                var items = LampaYaniApi.normalize(payload).slice(0, 10);
-                                if (!items.length) return null;
-                                return {
-                                    title: genreTitle(genre),
-                                    results: items.map(toCard),
-                                    onMore: function () { openGenreCatalog(genre); },
-                                    visual: {
-                                        from: '#ff6878',
-                                        to: '#825ed8',
-                                        icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
-                                    }
-                                };
-                            }).catch(function () { return null; });
-                        });
-                    }).then(function (rows) {
-                        genreHubRows = (rows || []).filter(Boolean);
-                        genreHubRowsAt = Date.now();
-                        genreHubRequest = null;
-                        return genreHubRows;
-                    }).catch(function (error) {
-                        genreHubRequest = null;
-                        throw error;
-                    });
-                    return genreHubRequest.then(function (rows) { return [tiles].concat(rows); });
-                });
-            }
-
-            return loadGenreRows;
         }
 
         return {Component: Genres};
