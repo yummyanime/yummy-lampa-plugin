@@ -16,6 +16,7 @@
             return render;
         };
         var openVideos = deps.openVideos || function () {};
+        var openYummyDetail = deps.openYummyDetail || null;
         var addCardPlaybackProgress = deps.addCardPlaybackProgress || function () {};
         var syncCardEpisodesMeta = deps.syncCardEpisodesMeta || function () {};
         var syncCardOverlayLayout = deps.syncCardOverlayLayout || function () {};
@@ -475,8 +476,13 @@
             var card = target.card;
             var element = target.element;
             if (card && card.yani_id) {
-                // Continue Watching is a playback queue, not an information catalog.
-                var openHistoryEntry = function () { openVideos(card, true); };
+                // A tile opens the title page, where the episode, its progress
+                // and the watch button are; playback starts from there rather
+                // than straight from the queue.
+                var openHistoryEntry = function () {
+                    if (openYummyDetail) openYummyDetail(card, false);
+                    else openVideos(card, true);
+                };
                 var rendered = cardRenderElement(element, card);
                 rendered.addClass('yani-history-card').attr('data-yani-history-id', String(card.yani_id));
                 rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');

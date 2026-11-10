@@ -615,6 +615,37 @@
             var loading = false;
             var loaded = false;
 
+            // Where the viewer stopped, from this device's watch history: the
+            // episode and how far into it, or for an ongoing title watched up
+            // to its newest episode, the next one and when it airs.
+            function resumeItem() {
+                var playback = getPlayback(cardData.yani_id) || {};
+                var number = Number(playback.number || 0);
+                if (!(number > 0)) return null;
+                var time = Number(playback.time || 0);
+                var duration = Number(playback.duration || 0);
+                if (time > 0 && duration > 0 && !LampaYaniUiUtils.isEpisodeFinished(time, duration, playback)) {
+                    return {
+                        icon: 'duration',
+                        kind: 'resume',
+                        text: t('episode') + ' ' + number + ' · ' + Math.round(time / duration * 100) + '%'
+                    };
+                }
+                var status = cardData.yani_status;
+                var alias = String(status && typeof status === 'object' ? status.alias || '' : status || '').toLowerCase();
+                var episodes = cardData.yani_episodes || {};
+                var aired = Number(episodes.aired || 0);
+                var nextDate = Number(episodes.next_date || 0) * 1000;
+                if (alias !== 'ongoing' || !aired || number < aired || !(nextDate > Date.now())) return null;
+                var language = window.LampaYaniI18n && LampaYaniI18n.locale ? LampaYaniI18n.locale() : 'ru-RU';
+                return {
+                    icon: 'aired',
+                    kind: 'resume',
+                    text: t('episode') + ' ' + (aired + 1) + ' · ' +
+                        new Date(nextDate).toLocaleDateString(language, {day: 'numeric', month: 'short'})
+                };
+            }
+
             function render(values) {
                 var items = [];
                 if (values.seasons) items.push({icon: 'seasons', text: values.seasons + ' ' + t('seasons_short')});
@@ -629,6 +660,8 @@
                         title: values.watchedTitle ? t('episodes_watched') + ' ' + values.watchedTitle : watchedText
                     });
                 }
+                var resume = resumeItem();
+                if (resume) items.push(resume);
                 if (values.minutes) items.push({icon: 'duration', text: '≈ ' + values.minutes + ' ' + t('minutes_short')});
                 block.empty();
                 items.forEach(function (item) {

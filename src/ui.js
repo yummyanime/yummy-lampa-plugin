@@ -151,6 +151,7 @@
         cardRenderTarget: function (first, second, third) { return cardBind.cardRenderTarget(first, second, third); },
         cardRenderElement: cardRenderElement,
         openVideos: function (card, resume) { return openVideos(card, resume); },
+        openYummyDetail: function (card, notifyFallback) { return openYummyDetail(card, notifyFallback); },
         addCardPlaybackProgress: addCardPlaybackProgress,
         syncCardEpisodesMeta: cardRenderers.syncCardEpisodesMeta,
         syncCardOverlayLayout: cardRenderers.syncCardOverlayLayout,

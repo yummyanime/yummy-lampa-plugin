@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.50.3',
+        version: '0.50.4',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -8407,6 +8407,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             return render;
         };
         var openVideos = deps.openVideos || function () {};
+        var openYummyDetail = deps.openYummyDetail || null;
         var addCardPlaybackProgress = deps.addCardPlaybackProgress || function () {};
         var syncCardEpisodesMeta = deps.syncCardEpisodesMeta || function () {};
         var syncCardOverlayLayout = deps.syncCardOverlayLayout || function () {};
@@ -8866,8 +8867,13 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var card = target.card;
             var element = target.element;
             if (card && card.yani_id) {
-                // Continue Watching is a playback queue, not an information catalog.
-                var openHistoryEntry = function () { openVideos(card, true); };
+                // A tile opens the title page, where the episode, its progress
+                // and the watch button are; playback starts from there rather
+                // than straight from the queue.
+                var openHistoryEntry = function () {
+                    if (openYummyDetail) openYummyDetail(card, false);
+                    else openVideos(card, true);
+                };
                 var rendered = cardRenderElement(element, card);
                 rendered.addClass('yani-history-card').attr('data-yani-history-id', String(card.yani_id));
                 rendered.closest('.category-full, .items-cards').addClass('yani-card-grid');
@@ -17605,6 +17611,37 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var loading = false;
             var loaded = false;
 
+            // Where the viewer stopped, from this device's watch history: the
+            // episode and how far into it, or for an ongoing title watched up
+            // to its newest episode, the next one and when it airs.
+            function resumeItem() {
+                var playback = getPlayback(cardData.yani_id) || {};
+                var number = Number(playback.number || 0);
+                if (!(number > 0)) return null;
+                var time = Number(playback.time || 0);
+                var duration = Number(playback.duration || 0);
+                if (time > 0 && duration > 0 && !LampaYaniUiUtils.isEpisodeFinished(time, duration, playback)) {
+                    return {
+                        icon: 'duration',
+                        kind: 'resume',
+                        text: t('episode') + ' ' + number + ' · ' + Math.round(time / duration * 100) + '%'
+                    };
+                }
+                var status = cardData.yani_status;
+                var alias = String(status && typeof status === 'object' ? status.alias || '' : status || '').toLowerCase();
+                var episodes = cardData.yani_episodes || {};
+                var aired = Number(episodes.aired || 0);
+                var nextDate = Number(episodes.next_date || 0) * 1000;
+                if (alias !== 'ongoing' || !aired || number < aired || !(nextDate > Date.now())) return null;
+                var language = window.LampaYaniI18n && LampaYaniI18n.locale ? LampaYaniI18n.locale() : 'ru-RU';
+                return {
+                    icon: 'aired',
+                    kind: 'resume',
+                    text: t('episode') + ' ' + (aired + 1) + ' · ' +
+                        new Date(nextDate).toLocaleDateString(language, {day: 'numeric', month: 'short'})
+                };
+            }
+
             function render(values) {
                 var items = [];
                 if (values.seasons) items.push({icon: 'seasons', text: values.seasons + ' ' + t('seasons_short')});
@@ -17619,6 +17656,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                         title: values.watchedTitle ? t('episodes_watched') + ' ' + values.watchedTitle : watchedText
                     });
                 }
+                var resume = resumeItem();
+                if (resume) items.push(resume);
                 if (values.minutes) items.push({icon: 'duration', text: '≈ ' + values.minutes + ' ' + t('minutes_short')});
                 block.empty();
                 items.forEach(function (item) {
@@ -18365,6 +18404,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         cardRenderTarget: function (first, second, third) { return cardBind.cardRenderTarget(first, second, third); },
         cardRenderElement: cardRenderElement,
         openVideos: function (card, resume) { return openVideos(card, resume); },
+        openYummyDetail: function (card, notifyFallback) { return openYummyDetail(card, notifyFallback); },
         addCardPlaybackProgress: addCardPlaybackProgress,
         syncCardEpisodesMeta: cardRenderers.syncCardEpisodesMeta,
         syncCardOverlayLayout: cardRenderers.syncCardOverlayLayout,

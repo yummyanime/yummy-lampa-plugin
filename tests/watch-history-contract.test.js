@@ -311,3 +311,20 @@ assert.ok(
 console.log('Watch history contract checks passed');
 });
 
+
+// A tile in Continue Watching or the watch history opens the title page;
+// playback starts from there, not straight from the queue.
+const historyModule = fs.readFileSync('src/playback/ui-playback-history.js', 'utf8');
+assert.match(historyModule, /var openHistoryEntry = function \(\) \{\s*if \(openYummyDetail\) openYummyDetail\(card, false\);/,
+    'a history tile must open the title page');
+assert.match(fs.readFileSync('src/ui.js', 'utf8'),
+    /openVideos: function \(card, resume\) \{ return openVideos\(card, resume\); \},\s*openYummyDetail: function \(card, notifyFallback\)/,
+    'the history module must be given the title page opener');
+
+// The title page states where the viewer stopped, in figures.
+const detailModule = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
+assert.match(detailModule, /function resumeItem\(\)/);
+assert.match(detailModule, /text: t\('episode'\) \+ ' ' \+ number \+ ' · ' \+ Math\.round\(time \/ duration \* 100\) \+ '%'/,
+    'an unfinished episode shows its number and percentage');
+assert.match(detailModule, /var resume = resumeItem\(\);\s*if \(resume\) items\.push\(resume\);/);
+console.log('Watch history navigation checks passed');

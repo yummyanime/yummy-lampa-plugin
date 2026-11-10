@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.50.4] - 2026-11-10
+
+### Changed
+
+- Continue Watching and watch history tiles to open the title page instead of starting playback, and the title page now shows where the viewer stopped as the episode and percentage, or the next episode and its date for a caught-up ongoing title
+
 ## [0.50.3] - 2026-11-10
 
 ### Fixed
