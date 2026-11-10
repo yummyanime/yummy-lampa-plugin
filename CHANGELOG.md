@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.50.6] - 2026-11-11
+
+### Fixed
+
+- The YA button missing on Lampa cards whose title writes a number differently, such as Кайдзю № 8 for Кайдзю номер восемь; number signs, words and full-width digits now compare as the same number
+
 ## [0.50.5] - 2026-11-10
 
 ### Changed

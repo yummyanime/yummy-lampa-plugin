@@ -11,6 +11,18 @@ assert.deepStrictEqual(Array.from(utils.titleValues({title: 'Покемон', al
 assert.deepStrictEqual(Array.from(utils.titleValues({title: 'Наруто', other_titles: ['NARUTO', 'ナルト']})), ['Наруто', 'NARUTO', 'ナルト']);
 assert.deepStrictEqual(Array.from(utils.titleValues({title: 'Наруто', other_titles: {en: 'NARUTO', ja: 'ナルト'}})), ['Наруто', 'NARUTO', 'ナルト']);
 assert.strictEqual(utils.normalizeMatchTitle('Ёжик: 2026'), 'ежик 2026');
+// Numbers are written differently on each side; all of these are one title.
+['Кайдзю № 8', 'Кайдзю №8', 'Кайдзю номер восемь'].forEach((title) => {
+    assert.strictEqual(utils.normalizeMatchTitle(title), 'кайдзю 8', title);
+});
+['Kaiju No. 8', 'Kaiju #8', 'Kaiju No. Eight'].forEach((title) => {
+    assert.strictEqual(utils.normalizeMatchTitle(title), 'kaiju 8', title);
+});
+assert.strictEqual(utils.normalizeMatchTitle('No Game No Life'), 'no game no life', '"no" is only dropped in front of a number');
+// Digits left over from a script the normalizer drops must not make two
+// unrelated titles equal.
+assert.strictEqual(utils.normalizeMatchTitle('怪獣８号'), '');
+assert.strictEqual(utils.normalizeMatchTitle('進撃の巨人 2期'), '');
 assert.strictEqual(utils.isAndroidPlatform(), false);
 assert.strictEqual(utils.isAndroidTvPlatform(), false);
 assert.strictEqual(utils.isWebOsPlatform(), false);

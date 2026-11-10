@@ -99,7 +99,39 @@
         return values;
     }
 
-    function normalizeMatchTitle(value) { return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').trim(); }
+    // Numbers in titles are written differently on each side: TMDB gives
+    // "Кайдзю № 8", YummyAnime "Кайдзю номер восемь" and "Kaiju No. 8". Number
+    // words become digits and a "number" marker in front of digits is dropped,
+    // so all of them compare as "кайдзю 8" / "kaiju 8".
+    var MATCH_NUMBER_WORDS = {
+        'ноль': 0, 'один': 1, 'одна': 1, 'два': 2, 'две': 2, 'три': 3, 'четыре': 4, 'пять': 5, 'шесть': 6,
+        'семь': 7, 'восемь': 8, 'девять': 9, 'десять': 10, 'одиннадцать': 11, 'двенадцать': 12,
+        'тринадцать': 13, 'четырнадцать': 14, 'пятнадцать': 15, 'шестнадцать': 16, 'семнадцать': 17,
+        'восемнадцать': 18, 'девятнадцать': 19, 'двадцать': 20,
+        'zero': 0, 'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8,
+        'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
+        'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20
+    };
+    var MATCH_NUMBER_MARKERS = {'номер': true, 'no': true, 'nr': true, 'number': true};
+
+    function normalizeMatchTitle(value) {
+        // "№" goes first: compatibility normalization would turn it into the
+        // letters "No" glued to the number. Full-width digits such as "８" in
+        // Japanese titles then become plain ones.
+        var text = String(value || '').replace(/№/g, ' ');
+        if (typeof text.normalize === 'function') text = text.normalize('NFKC');
+        var words = text.toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').trim().split(' ');
+        words = words.map(function (word) {
+            return Object.prototype.hasOwnProperty.call(MATCH_NUMBER_WORDS, word) ? String(MATCH_NUMBER_WORDS[word]) : word;
+        });
+        var normalized = words.filter(function (word, index) {
+            return !(MATCH_NUMBER_MARKERS[word] && /^\d+$/.test(words[index + 1] || ''));
+        }).join(' ');
+        // A title in a script the normalizer drops leaves only its digits
+        // ("怪獣8号" -> "8", "…2期" -> "2"), which would make unrelated titles
+        // equal. Without a single letter there is nothing to compare.
+        return /[a-zа-я]/.test(normalized) ? normalized : '';
+    }
 
     function isAndroidPlatform() {
         // Lampa stores the detected runtime in Platform. Android APK / Android TV

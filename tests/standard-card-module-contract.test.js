@@ -93,11 +93,11 @@ assert.strictEqual(api.isNativeAnimeCard({genre_ids: [16]}), true);
 assert.strictEqual(api.isNativeAnimeCard({genre_ids: [18]}), false);
 
 // --- Matching a native Lampa card to YummyAnime -------------------------
-// The real normalizer drops scripts it does not know, so a Japanese alias
+// The real normalizer: it drops scripts it does not know, so a Japanese alias
 // comes back empty - and must not count as a partial match.
-context.window.LampaYaniUiUtils.normalizeMatchTitle = function (value) {
-    return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/gi, ' ').trim();
-};
+const utilsContext = {window: {}};
+vm.runInNewContext(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), utilsContext);
+context.window.LampaYaniUiUtils.normalizeMatchTitle = utilsContext.window.LampaYaniUiUtils.normalizeMatchTitle;
 context.window.LampaYaniUiUtils.titleValues = function (item) {
     return [item.title, item.name, item.original_title, item.original_name].filter(Boolean);
 };
@@ -140,6 +140,17 @@ assert.strictEqual(api.scoreNativeMatches(
     {name: 'Наруто', first_air_date: '2002-10-03'},
     [{yani_id: 7, title: 'Наруто: Ураганные хроники', yani_titles: ['Наруто: Ураганные хроники'], release_date: '2007', yani_type: tv}]
 ).length, 0, 'a partial title from another year must not link');
+
+// TMDB writes "Кайдзю № 8", YummyAnime "Кайдзю номер восемь": the same title.
+// The sequel and the film found by the same search must not be taken for it.
+assert.strictEqual(ids(api.scoreNativeMatches(
+    {name: 'Кайдзю № 8', original_name: '怪獣８号', first_air_date: '2024-04-13'},
+    [
+        {yani_id: 10596, title: 'Кайдзю номер восемь', yani_titles: ['Кайдзю номер восемь', 'Kaiju No. 8', '怪獣8号'], release_date: '2024', yani_type: tv},
+        {yani_id: 13247, title: 'Кайдзю номер восемь 2', yani_titles: ['Кайдзю номер восемь 2'], release_date: '2025', yani_type: tv},
+        {yani_id: 13831, title: 'Кайдзю номер восемь: Миссия «Разведка»', yani_titles: ['Кайдзю номер восемь: Миссия «Разведка»'], release_date: '2025', yani_type: film}
+    ]
+)), '10596', 'a number written as a sign, a word or digits must still match');
 
 // Equal candidates are all returned so the viewer can choose.
 assert.strictEqual(ids(api.scoreNativeMatches(
