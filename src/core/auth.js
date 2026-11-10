@@ -4,6 +4,7 @@
     var key = 'lampa_yani_auth';
     var memory = {};
     var refreshPromise = null;
+    var verifyPromise = null;
     var refreshInterval = 2 * 24 * 60 * 60 * 1000;
     var refreshRetryDelay = 3 * 60 * 60 * 1000;
 
@@ -67,12 +68,42 @@
         });
         return Promise.race([request, timeoutPromise]).then(function (response) {
             clearTimeout(timer);
-            if (!response.ok) throw new Error('Token refresh failed: ' + response.status);
+            if (!response.ok) {
+                var error = new Error('Token refresh failed: ' + response.status);
+                error.status = response.status;
+                throw error;
+            }
             return response.json();
         }, function (error) {
             clearTimeout(timer);
             throw error;
         });
+    }
+
+    // For list and title requests the server does not reject a token it no
+    // longer accepts: it answers as if nobody were signed in, without watch
+    // progress, subscriptions or the viewer's ratings. Only the account
+    // endpoints say so, with 401 or 403, and that is the one signal a dead
+    // session gives. Network failures and server errors say nothing about the
+    // token and must never sign the viewer out.
+    function sessionRejected(error) {
+        var status = Number(error && error.status);
+        return status === 401 || status === 403;
+    }
+
+    function expireSession(error) {
+        console.warn('[YummyAnime] The server no longer accepts this session; signing out', error);
+        var previous = LampaYaniAuth.get();
+        refreshPromise = null;
+        verifyPromise = null;
+        // The mark stays until the next sign-in, so every place that shows the
+        // account state can tell "the session ended, sign in again" apart from
+        // "never signed in". The login is kept to prefill the sign-in form.
+        persist({expired_at: Date.now(), login: previous.login || ''});
+        if (window.Lampa && Lampa.Noty && Lampa.Noty.show && window.LampaYaniI18n) {
+            Lampa.Noty.show(LampaYaniI18n.t('session_expired'));
+        }
+        if (error) error.sessionExpired = true;
     }
 
     window.LampaYani = window.LampaYani || {};
@@ -86,6 +117,7 @@
             var token = tokenFrom(data);
             var previous = readStored();
             if (!token) throw new Error('Login response did not contain a token');
+            if (token !== tokenFrom(previous)) verifyPromise = null;
             memory = {
                 token: token,
                 refreshed_at: data.refreshed_at || Date.now(),
@@ -96,7 +128,11 @@
             };
             return persist(memory);
         },
-        clear: function () { refreshPromise = null; persist({}); },
+        clear: function () { refreshPromise = null; verifyPromise = null; persist({}); },
+        sessionExpired: function () {
+            var stored = readStored();
+            return !tokenFrom(stored) && Number(stored.expired_at || 0) > 0;
+        },
         needsRefresh: function () {
             var current = this.get();
             if (!tokenFrom(current)) return false;
@@ -109,7 +145,7 @@
             if (!self.needsRefresh()) return Promise.resolve(self.get());
             return self.refresh().catch(function (error) {
                 var current = self.get();
-                if (!tokenFrom(current)) return current;
+                if (!tokenFrom(current) || error && error.sessionExpired) return current;
                 current.refresh_retry_at = Date.now() + refreshRetryDelay;
                 persist(current);
                 console.warn('[YummyAnime] Automatic token refresh failed; keeping current token', error);
@@ -132,9 +168,37 @@
                 return result;
             }, function (error) {
                 refreshPromise = null;
+                if (sessionRejected(error) && LampaYaniAuth.token() === token) expireSession(error);
                 throw error;
             });
             return refreshPromise;
+        },
+        // Asks the account endpoint whether the stored token still works.
+        // Refreshing happens only every two days, so without this a session
+        // the server has dropped keeps the plugin "signed in" and anonymous
+        // until then. Once per run is enough.
+        verify: function () {
+            var token = this.token();
+            if (!token) return Promise.resolve(false);
+            if (verifyPromise) return verifyPromise;
+            verifyPromise = fetch(LampaYaniConfig.apiBase + '/profile', {
+                headers: {
+                    'X-Application': applicationToken(),
+                    Authorization: 'Bearer ' + token,
+                    Accept: 'application/json'
+                }
+            }).then(function (response) {
+                if (response.ok) return true;
+                var error = new Error('Session check failed: ' + response.status);
+                error.status = response.status;
+                if (sessionRejected(error) && LampaYaniAuth.token() === token) expireSession(error);
+                return !sessionRejected(error);
+            }, function () {
+                // Offline or unreachable: nothing is known about the token.
+                verifyPromise = null;
+                return true;
+            });
+            return verifyPromise;
         },
         login: function (login, password) {
             return fetch(LampaYaniConfig.apiBase + '/profile/login', {

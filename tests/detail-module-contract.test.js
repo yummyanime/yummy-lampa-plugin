@@ -40,7 +40,7 @@ assert.doesNotMatch(detail, /Promise\.all\(\[LampaYaniApi\.ratingBuckets/);
 assert.match(detail, /document\.addEventListener\('keydown', remoteListShortcutHandler, true\)/);
 assert.match(detail, /document\.removeEventListener\('keydown', remoteListShortcutHandler, true\)/);
 assert.match(detail, /function createDetailRatingAction\(cardData\)/);
-assert.match(detail, /window\.LampaYaniDetail\s*=\s*\{create: create, subscriptionGroups: subscriptionGroups\}/);
+assert.match(detail, /window\.LampaYaniDetail\s*=\s*\{\s*create: create,\s*subscriptionGroups: subscriptionGroups,\s*toggleEpisodeSubscription: toggleEpisodeSubscription\s*\}/);
 assert.match(detail, /deps\.importVideosProgress\(data, videos\)/);
 assert.match(ui, /importVideosProgress: importVideosProgress/);
 assert.match(detail, /yani-detail__title selector/);

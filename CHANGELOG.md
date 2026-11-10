@@ -9,6 +9,24 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-11-10
+
+### Added
+
+- Subscribing to and unsubscribing from every dubbing at once, and the subscription list now reopens after each change so several dubbings can be switched in one visit
+
+## [0.49.9] - 2026-11-10
+
+### Fixed
+
+- An expired session being reported only by a brief notice; the notice now names the settings section to sign in from, and the settings, sign-in and account screens show that the session has expired until the next sign-in
+
+## [0.49.8] - 2026-11-10
+
+### Fixed
+
+- A session the server no longer accepts staying signed in while every request was answered anonymously, which hid watch progress, subscriptions and ratings; a 401 or 403 now signs out with a notice, and the token is checked once at startup
+
 ## [0.49.7] - 2026-11-10
 
 ### Fixed

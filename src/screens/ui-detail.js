@@ -66,14 +66,68 @@
             Lampa.Noty.show(t('subscription_error'));
         }
 
-        function apply(group, groups) {
+        function toggle(group) {
             var action = group.subscribed
                 ? LampaYaniApi.unsubscribeVideo(group.videoId)
                 : LampaYaniApi.subscribeVideo(group.videoId);
             return action.then(function () {
                 group.subscribed = !group.subscribed;
-                syncSubscriptionButton(button, groups, t);
-                Lampa.Noty.show(group.subscribed ? t('subscription_added') : t('subscription_removed'));
+            });
+        }
+
+        // One request at a time: subscribing to every dubbing of a long title
+        // must not fire a burst of requests at the server.
+        function toggleAll(targets) {
+            return targets.reduce(function (chain, group) {
+                return chain.then(function () { return toggle(group); });
+            }, Promise.resolve());
+        }
+
+        function loading(on) {
+            if (!Lampa.Loading) return;
+            if (on && Lampa.Loading.start) Lampa.Loading.start();
+            if (!on && Lampa.Loading.stop) Lampa.Loading.stop();
+        }
+
+        // The list stays the place where subscriptions are managed: after a
+        // change it opens again with the marks updated and the focus on the
+        // same row, so several dubbings can be switched in one visit. Back
+        // closes it.
+        function showList(groups, focus) {
+            var items = [];
+            if (groups.some(function (group) { return !group.subscribed; })) {
+                items.push({title: t('subscribe_all_dubbings'), action: 'subscribe-all', selected: focus === 'subscribe-all'});
+            }
+            if (groups.some(function (group) { return group.subscribed; })) {
+                items.push({title: t('unsubscribe_all_dubbings'), action: 'unsubscribe-all', selected: focus === 'unsubscribe-all'});
+            }
+            groups.forEach(function (group, index) {
+                items.push({
+                    title: (group.subscribed ? '✓ ' : '') + group.dubbing,
+                    subtitle: [group.player, group.episodes + ' ' + t('episodes_short')].filter(Boolean).join(' · '),
+                    group: group,
+                    selected: focus === index
+                });
+            });
+            deps.showSelect({
+                title: t('subscriptions'),
+                items: items,
+                onSelect: function (item) {
+                    var subscribing = item.action === 'subscribe-all' || item.group && !item.group.subscribed;
+                    var targets = item.action === 'subscribe-all'
+                        ? groups.filter(function (group) { return !group.subscribed; })
+                        : item.action === 'unsubscribe-all'
+                            ? groups.filter(function (group) { return group.subscribed; })
+                            : [item.group];
+                    loading(true);
+                    toggleAll(targets).then(function () {
+                        Lampa.Noty.show(subscribing ? t('subscription_added') : t('subscription_removed'));
+                    }, fail).then(function () {
+                        loading(false);
+                        syncSubscriptionButton(button, groups, t);
+                        showList(groups, item.action || groups.indexOf(item.group));
+                    });
+                }
             });
         }
 
@@ -83,19 +137,11 @@
             var groups = subscriptionGroups(videos);
             if (!groups.length) throw new Error('No subscribable videos');
             syncSubscriptionButton(button, groups, t);
-            if (groups.length === 1 || !deps.showSelect) return apply(groups[0], groups);
-            deps.showSelect({
-                title: t('subscriptions'),
-                items: groups.map(function (group) {
-                    return {
-                        title: (group.subscribed ? '✓ ' : '') + group.dubbing,
-                        subtitle: [group.player, group.episodes + ' ' + t('episodes_short')].filter(Boolean).join(' · '),
-                        group: group
-                    };
-                }),
-                onSelect: function (item) {
-                    apply(item.group, groups).catch(fail);
-                }
+            if (groups.length > 1 && deps.showSelect) return showList(groups);
+            var single = groups[0];
+            return toggle(single).then(function () {
+                syncSubscriptionButton(button, groups, t);
+                Lampa.Noty.show(single.subscribed ? t('subscription_added') : t('subscription_removed'));
             });
         }).catch(fail);
     }
@@ -1166,5 +1212,9 @@
     }
 
     window.LampaYani = window.LampaYani || {};
-    window.LampaYani.Detail = window.LampaYaniDetail = {create: create, subscriptionGroups: subscriptionGroups};
+    window.LampaYani.Detail = window.LampaYaniDetail = {
+        create: create,
+        subscriptionGroups: subscriptionGroups,
+        toggleEpisodeSubscription: toggleEpisodeSubscription
+    };
 }(window));

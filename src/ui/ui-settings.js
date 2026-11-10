@@ -333,7 +333,9 @@
         }
 
         function settingsAuthDescription() {
-            var status = LampaYaniAuth.token() ? t('auth_authorized') : t('auth_not_authorized');
+            var status = LampaYaniAuth.token() ? t('auth_authorized')
+                : LampaYaniAuth.sessionExpired && LampaYaniAuth.sessionExpired() ? t('auth_session_expired')
+                : t('auth_not_authorized');
             return t('settings_auth_status') + ': ' + status + ' · ' + localizedAuthText('auth_manage_description');
         }
 

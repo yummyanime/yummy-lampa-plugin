@@ -5,8 +5,10 @@ const ui = fs.readFileSync('src/ui.js', 'utf8');
 const accountScreen = fs.readFileSync('src/screens/ui-account.js', 'utf8');
 const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 
-assert.match(accountScreen, /addAccountNotice\(t\('not_logged_in'\), localizedAuthText\('login_hint'\), \{title: t\('login_name'\), handler: openAccountLogin\}\)/,
+assert.match(accountScreen, /addAccountNotice\(expired \? t\('auth_session_expired'\) : t\('not_logged_in'\), localizedAuthText\('login_hint'\), \{title: t\('login_name'\), handler: openAccountLogin\}\)/,
     'the signed-out Account page must offer a direct sign-in action');
+assert.match(accountScreen, /var expired = LampaYaniAuth\.sessionExpired && LampaYaniAuth\.sessionExpired\(\);/,
+    'an ended session must be told apart from never having signed in');
 assert.match(accountScreen, /yani-account__login-button selector/,
     'the Account sign-in action must participate in TV remote focus navigation');
 assert.match(settingsSource, /function openAccountLogin\(\)[\s\S]{0,260}component: 'yani_auth'[\s\S]{0,100}refresh_account_on_authorized: true/,

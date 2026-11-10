@@ -353,7 +353,9 @@
                 }
                 var account = LampaYaniAuth.get();
                 if (account.token && LampaYaniAuth.refreshIfNeeded) {
-                    LampaYaniAuth.refreshIfNeeded();
+                    LampaYaniAuth.refreshIfNeeded().then(function () {
+                        if (LampaYaniAuth.verify) return LampaYaniAuth.verify();
+                    }).catch(function () {});
                 }
             }
 

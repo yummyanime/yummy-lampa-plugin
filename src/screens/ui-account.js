@@ -33,7 +33,8 @@
                 this.activity.loader(true);
 
                 if (!LampaYaniAuth.token()) {
-                    addAccountNotice(t('not_logged_in'), localizedAuthText('login_hint'), {title: t('login_name'), handler: openAccountLogin});
+                    var expired = LampaYaniAuth.sessionExpired && LampaYaniAuth.sessionExpired();
+                    addAccountNotice(expired ? t('auth_session_expired') : t('not_logged_in'), localizedAuthText('login_hint'), {title: t('login_name'), handler: openAccountLogin});
                     finish(self);
                     return;
                 }

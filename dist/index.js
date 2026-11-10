@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.49.7',
+        version: '0.50.0',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -128,6 +128,10 @@ function pluginYummyAnime() {
     messages.ru.sync_history_error = 'Не удалось синхронизировать историю';
     messages.ru.auto_sync_progress = 'Автосинхронизация прогресса';
     messages.ru.auto_sync_progress_description = 'Автоматически сохранять в аккаунте YummyAnime прогресс внутреннего плеера Lampa и подтягивать серверный прогресс на главный экран, в историю и карточку тайтла. При отключении доступна ручная синхронизация на странице аккаунта';
+    messages.ru.subscribe_all_dubbings = 'Подписаться на все озвучки';
+    messages.ru.unsubscribe_all_dubbings = 'Отписаться от всех озвучек';
+    messages.ru.session_expired = 'Сессия YummyAnime истекла. Войдите заново: Настройки → YummyAnime → Аккаунт и синхронизация';
+    messages.ru.auth_session_expired = 'Сессия истекла — войдите снова';
     messages.ru.episode_flags = 'Метки «Филлер» и «Рекап»';
     messages.ru.episode_flags_description = 'Показывать в списке серий пометки из MyAnimeList: филлер (серия вне основного сюжета) и рекап (пересказ прошлых серий)';
     messages.ru.episode_filler = 'Филлер';
@@ -239,6 +243,10 @@ function pluginYummyAnime() {
     messages.en.sync_history_error = 'Failed to synchronize history';
     messages.en.auto_sync_progress = 'Automatic progress sync';
     messages.en.auto_sync_progress_description = 'Automatically save internal Lampa player progress to the YummyAnime account and pull server progress onto the home screen, history and title card. When disabled, manual sync is available on the account page';
+    messages.en.subscribe_all_dubbings = 'Subscribe to every dubbing';
+    messages.en.unsubscribe_all_dubbings = 'Unsubscribe from every dubbing';
+    messages.en.session_expired = 'Your YummyAnime session has expired. Sign in again: Settings → YummyAnime → Account and sync';
+    messages.en.auth_session_expired = 'Session expired — sign in again';
     messages.en.episode_flags = 'Filler and recap marks';
     messages.en.episode_flags_description = 'Show MyAnimeList marks in the episode list: filler (outside the main story) and recap (a summary of earlier episodes)';
     messages.en.episode_filler = 'Filler';
@@ -804,6 +812,10 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.sync_history_error = 'Не вдалося синхронізувати історію';
     messages.uk.auto_sync_progress = 'Автосинхронізація прогресу';
     messages.uk.auto_sync_progress_description = 'Автоматично зберігати в обліковому записі YummyAnime прогрес внутрішнього плеєра Lampa і підтягувати серверний прогрес на головний екран, в історію та картку тайтла. Після вимкнення доступна ручна синхронізація на сторінці облікового запису';
+    messages.uk.subscribe_all_dubbings = 'Підписатися на всі озвучки';
+    messages.uk.unsubscribe_all_dubbings = 'Відписатися від усіх озвучок';
+    messages.uk.session_expired = 'Сесія YummyAnime завершилася. Увійдіть знову: Налаштування → YummyAnime → Обліковий запис і синхронізація';
+    messages.uk.auth_session_expired = 'Сесія завершилася — увійдіть знову';
     messages.uk.episode_flags = 'Позначки «Філер» і «Рекап»';
     messages.uk.episode_flags_description = 'Показувати у списку серій позначки з MyAnimeList: філер (серія поза основним сюжетом) і рекап (переказ попередніх серій)';
     messages.uk.episode_filler = 'Філер';
@@ -1187,6 +1199,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var key = 'lampa_yani_auth';
     var memory = {};
     var refreshPromise = null;
+    var verifyPromise = null;
     var refreshInterval = 2 * 24 * 60 * 60 * 1000;
     var refreshRetryDelay = 3 * 60 * 60 * 1000;
 
@@ -1250,12 +1263,42 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         });
         return Promise.race([request, timeoutPromise]).then(function (response) {
             clearTimeout(timer);
-            if (!response.ok) throw new Error('Token refresh failed: ' + response.status);
+            if (!response.ok) {
+                var error = new Error('Token refresh failed: ' + response.status);
+                error.status = response.status;
+                throw error;
+            }
             return response.json();
         }, function (error) {
             clearTimeout(timer);
             throw error;
         });
+    }
+
+    // For list and title requests the server does not reject a token it no
+    // longer accepts: it answers as if nobody were signed in, without watch
+    // progress, subscriptions or the viewer's ratings. Only the account
+    // endpoints say so, with 401 or 403, and that is the one signal a dead
+    // session gives. Network failures and server errors say nothing about the
+    // token and must never sign the viewer out.
+    function sessionRejected(error) {
+        var status = Number(error && error.status);
+        return status === 401 || status === 403;
+    }
+
+    function expireSession(error) {
+        console.warn('[YummyAnime] The server no longer accepts this session; signing out', error);
+        var previous = LampaYaniAuth.get();
+        refreshPromise = null;
+        verifyPromise = null;
+        // The mark stays until the next sign-in, so every place that shows the
+        // account state can tell "the session ended, sign in again" apart from
+        // "never signed in". The login is kept to prefill the sign-in form.
+        persist({expired_at: Date.now(), login: previous.login || ''});
+        if (window.Lampa && Lampa.Noty && Lampa.Noty.show && window.LampaYaniI18n) {
+            Lampa.Noty.show(LampaYaniI18n.t('session_expired'));
+        }
+        if (error) error.sessionExpired = true;
     }
 
     window.LampaYani = window.LampaYani || {};
@@ -1269,6 +1312,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var token = tokenFrom(data);
             var previous = readStored();
             if (!token) throw new Error('Login response did not contain a token');
+            if (token !== tokenFrom(previous)) verifyPromise = null;
             memory = {
                 token: token,
                 refreshed_at: data.refreshed_at || Date.now(),
@@ -1279,7 +1323,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             };
             return persist(memory);
         },
-        clear: function () { refreshPromise = null; persist({}); },
+        clear: function () { refreshPromise = null; verifyPromise = null; persist({}); },
+        sessionExpired: function () {
+            var stored = readStored();
+            return !tokenFrom(stored) && Number(stored.expired_at || 0) > 0;
+        },
         needsRefresh: function () {
             var current = this.get();
             if (!tokenFrom(current)) return false;
@@ -1292,7 +1340,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             if (!self.needsRefresh()) return Promise.resolve(self.get());
             return self.refresh().catch(function (error) {
                 var current = self.get();
-                if (!tokenFrom(current)) return current;
+                if (!tokenFrom(current) || error && error.sessionExpired) return current;
                 current.refresh_retry_at = Date.now() + refreshRetryDelay;
                 persist(current);
                 console.warn('[YummyAnime] Automatic token refresh failed; keeping current token', error);
@@ -1315,9 +1363,37 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return result;
             }, function (error) {
                 refreshPromise = null;
+                if (sessionRejected(error) && LampaYaniAuth.token() === token) expireSession(error);
                 throw error;
             });
             return refreshPromise;
+        },
+        // Asks the account endpoint whether the stored token still works.
+        // Refreshing happens only every two days, so without this a session
+        // the server has dropped keeps the plugin "signed in" and anonymous
+        // until then. Once per run is enough.
+        verify: function () {
+            var token = this.token();
+            if (!token) return Promise.resolve(false);
+            if (verifyPromise) return verifyPromise;
+            verifyPromise = fetch(LampaYaniConfig.apiBase + '/profile', {
+                headers: {
+                    'X-Application': applicationToken(),
+                    Authorization: 'Bearer ' + token,
+                    Accept: 'application/json'
+                }
+            }).then(function (response) {
+                if (response.ok) return true;
+                var error = new Error('Session check failed: ' + response.status);
+                error.status = response.status;
+                if (sessionRejected(error) && LampaYaniAuth.token() === token) expireSession(error);
+                return !sessionRejected(error);
+            }, function () {
+                // Offline or unreachable: nothing is known about the token.
+                verifyPromise = null;
+                return true;
+            });
+            return verifyPromise;
         },
         login: function (login, password) {
             return fetch(LampaYaniConfig.apiBase + '/profile/login', {
@@ -5857,7 +5933,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         }
 
         function settingsAuthDescription() {
-            var status = LampaYaniAuth.token() ? t('auth_authorized') : t('auth_not_authorized');
+            var status = LampaYaniAuth.token() ? t('auth_authorized')
+                : LampaYaniAuth.sessionExpired && LampaYaniAuth.sessionExpired() ? t('auth_session_expired')
+                : t('auth_not_authorized');
             return t('settings_auth_status') + ': ' + status + ' · ' + localizedAuthText('auth_manage_description');
         }
 
@@ -12570,7 +12648,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         function refreshFocus() { if (!ready) return; var target = focusTarget(); Lampa.Controller.collectionSet(scroll.render()); Lampa.Controller.collectionFocus(target.length ? target[0] : false, scroll.render()); if (target.length) scroll.update(target, true); }
         function render() {
             content.empty(); var account = LampaYaniAuth.get(), authorized = Boolean(LampaYaniAuth.token());
-            content.append($('<div class="yani-auth__title"></div>').text(deps.t('auth_title'))).append($('<div class="yani-auth__status ' + (authorized ? 'is-authorized' : '') + '"></div>').text(authorized ? deps.t('auth_authorized') : deps.t('auth_not_authorized')));
+            content.append($('<div class="yani-auth__title"></div>').text(deps.t('auth_title'))).append($('<div class="yani-auth__status ' + (authorized ? 'is-authorized' : '') + '"></div>').text(authorized ? deps.t('auth_authorized') : LampaYaniAuth.sessionExpired && LampaYaniAuth.sessionExpired() ? deps.t('auth_session_expired') : deps.t('auth_not_authorized')));
             var form = $('<div class="yani-auth__form"></div>');
             field(form, 'login', deps.t('auth_login'), login || deps.t('auth_login_empty'), function () { deps.input({title: deps.t('email_prompt'), value: login, nosave: true, align: 'center'}, function (value) { login = String(value || '').trim(); render(); setTimeout(refreshFocus, 30); }); });
             field(form, 'password', deps.t('auth_password'), password ? '••••••••' : deps.t('auth_password_empty'), function () { deps.input({title: deps.t('password_prompt'), value: '', password: true, nosave: true, align: 'center'}, function (value) { password = String(value || ''); render(); setTimeout(refreshFocus, 30); }); });
@@ -12586,7 +12664,16 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             Lampa.Loading && Lampa.Loading.start && Lampa.Loading.start();
             LampaYaniAuth.login(login, password).then(function () { return LampaYaniApi.profile().then(function (payload) { var profile = payload && payload.response ? payload.response : payload, current = LampaYaniAuth.get(); LampaYaniAuth.save({token: current.token, login: current.login, display_name: profile && (profile.nickname || profile.name) || current.login}); }).catch(function () {}); }).then(function () { password = ''; Lampa.Noty.show(deps.t('login_ok')); if (deps.onAuthChanged) deps.onAuthChanged(); if (deps.onAuthorized) deps.onAuthorized(); deps.goBack(); }).catch(function (error) { console.error('[YummyAnime Auth]', error); Lampa.Noty.show(deps.t('login_error')); }).then(function () { Lampa.Loading && Lampa.Loading.stop && Lampa.Loading.stop(); });
         }
-        function refresh() { LampaYaniAuth.refresh().then(function () { Lampa.Noty.show(deps.t('token_refreshed')); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_refresh_error')); }); }
+        function refresh() {
+            LampaYaniAuth.refresh().then(function () {
+                Lampa.Noty.show(deps.t('token_refreshed'));
+                render();
+            }).catch(function (error) {
+                // An expired session has already been reported and signed out.
+                if (!error || !error.sessionExpired) Lampa.Noty.show(deps.t('token_refresh_error'));
+                render();
+            });
+        }
         function logout() { LampaYaniAuth.logout().then(function () { Lampa.Noty.show(deps.t('logged_out')); if (deps.onAuthChanged) deps.onAuthChanged(); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_removed')); if (deps.onAuthChanged) deps.onAuthChanged(); render(); }); }
         return {create: function () { render(); scroll.append(content); html.append(scroll.render(true)); ready = true; this.activity.loader(false); this.activity.toggle(); }, start: function () { Lampa.Controller.add('content', {toggle: refreshFocus, left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function () { Navigator.move('right'); }, up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, down: function () { LampaYaniNavigation.moveDown(scroll); }, back: deps.goBack}); Lampa.Controller.toggle('content'); }, render: function (js) { return js ? html[0] : html; }, destroy: function () { ready = false; scroll.destroy(); html.remove(); }};
     }
@@ -16574,7 +16661,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 this.activity.loader(true);
 
                 if (!LampaYaniAuth.token()) {
-                    addAccountNotice(t('not_logged_in'), localizedAuthText('login_hint'), {title: t('login_name'), handler: openAccountLogin});
+                    var expired = LampaYaniAuth.sessionExpired && LampaYaniAuth.sessionExpired();
+                    addAccountNotice(expired ? t('auth_session_expired') : t('not_logged_in'), localizedAuthText('login_hint'), {title: t('login_name'), handler: openAccountLogin});
                     finish(self);
                     return;
                 }
@@ -16849,14 +16937,68 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             Lampa.Noty.show(t('subscription_error'));
         }
 
-        function apply(group, groups) {
+        function toggle(group) {
             var action = group.subscribed
                 ? LampaYaniApi.unsubscribeVideo(group.videoId)
                 : LampaYaniApi.subscribeVideo(group.videoId);
             return action.then(function () {
                 group.subscribed = !group.subscribed;
-                syncSubscriptionButton(button, groups, t);
-                Lampa.Noty.show(group.subscribed ? t('subscription_added') : t('subscription_removed'));
+            });
+        }
+
+        // One request at a time: subscribing to every dubbing of a long title
+        // must not fire a burst of requests at the server.
+        function toggleAll(targets) {
+            return targets.reduce(function (chain, group) {
+                return chain.then(function () { return toggle(group); });
+            }, Promise.resolve());
+        }
+
+        function loading(on) {
+            if (!Lampa.Loading) return;
+            if (on && Lampa.Loading.start) Lampa.Loading.start();
+            if (!on && Lampa.Loading.stop) Lampa.Loading.stop();
+        }
+
+        // The list stays the place where subscriptions are managed: after a
+        // change it opens again with the marks updated and the focus on the
+        // same row, so several dubbings can be switched in one visit. Back
+        // closes it.
+        function showList(groups, focus) {
+            var items = [];
+            if (groups.some(function (group) { return !group.subscribed; })) {
+                items.push({title: t('subscribe_all_dubbings'), action: 'subscribe-all', selected: focus === 'subscribe-all'});
+            }
+            if (groups.some(function (group) { return group.subscribed; })) {
+                items.push({title: t('unsubscribe_all_dubbings'), action: 'unsubscribe-all', selected: focus === 'unsubscribe-all'});
+            }
+            groups.forEach(function (group, index) {
+                items.push({
+                    title: (group.subscribed ? '✓ ' : '') + group.dubbing,
+                    subtitle: [group.player, group.episodes + ' ' + t('episodes_short')].filter(Boolean).join(' · '),
+                    group: group,
+                    selected: focus === index
+                });
+            });
+            deps.showSelect({
+                title: t('subscriptions'),
+                items: items,
+                onSelect: function (item) {
+                    var subscribing = item.action === 'subscribe-all' || item.group && !item.group.subscribed;
+                    var targets = item.action === 'subscribe-all'
+                        ? groups.filter(function (group) { return !group.subscribed; })
+                        : item.action === 'unsubscribe-all'
+                            ? groups.filter(function (group) { return group.subscribed; })
+                            : [item.group];
+                    loading(true);
+                    toggleAll(targets).then(function () {
+                        Lampa.Noty.show(subscribing ? t('subscription_added') : t('subscription_removed'));
+                    }, fail).then(function () {
+                        loading(false);
+                        syncSubscriptionButton(button, groups, t);
+                        showList(groups, item.action || groups.indexOf(item.group));
+                    });
+                }
             });
         }
 
@@ -16866,19 +17008,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var groups = subscriptionGroups(videos);
             if (!groups.length) throw new Error('No subscribable videos');
             syncSubscriptionButton(button, groups, t);
-            if (groups.length === 1 || !deps.showSelect) return apply(groups[0], groups);
-            deps.showSelect({
-                title: t('subscriptions'),
-                items: groups.map(function (group) {
-                    return {
-                        title: (group.subscribed ? '✓ ' : '') + group.dubbing,
-                        subtitle: [group.player, group.episodes + ' ' + t('episodes_short')].filter(Boolean).join(' · '),
-                        group: group
-                    };
-                }),
-                onSelect: function (item) {
-                    apply(item.group, groups).catch(fail);
-                }
+            if (groups.length > 1 && deps.showSelect) return showList(groups);
+            var single = groups[0];
+            return toggle(single).then(function () {
+                syncSubscriptionButton(button, groups, t);
+                Lampa.Noty.show(single.subscribed ? t('subscription_added') : t('subscription_removed'));
             });
         }).catch(fail);
     }
@@ -17949,7 +18083,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     }
 
     window.LampaYani = window.LampaYani || {};
-    window.LampaYani.Detail = window.LampaYaniDetail = {create: create, subscriptionGroups: subscriptionGroups};
+    window.LampaYani.Detail = window.LampaYaniDetail = {
+        create: create,
+        subscriptionGroups: subscriptionGroups,
+        toggleEpisodeSubscription: toggleEpisodeSubscription
+    };
 }(window));
 
 (function (window) {
@@ -18307,7 +18445,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 }
                 var account = LampaYaniAuth.get();
                 if (account.token && LampaYaniAuth.refreshIfNeeded) {
-                    LampaYaniAuth.refreshIfNeeded();
+                    LampaYaniAuth.refreshIfNeeded().then(function () {
+                        if (LampaYaniAuth.verify) return LampaYaniAuth.verify();
+                    }).catch(function () {});
                 }
             }
 

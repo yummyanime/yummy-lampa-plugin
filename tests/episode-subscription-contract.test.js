@@ -49,3 +49,68 @@ assert.strictEqual(cvhLibria.videoId, '5');
 assert.strictEqual(list[0], kodikLibria, 'the most watched dubbing comes first');
 
 console.log('episode subscription contract checks passed');
+
+// --- Managing several dubbings in one visit --------------------------------
+const calls = [];
+const shown = [];
+const notices = [];
+let pending = Promise.resolve();
+const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+context.LampaYaniAuth = {token: () => 'token'};
+context.LampaYaniApi = {
+    subscribeVideo: (id) => { calls.push('+' + id); return Promise.resolve(); },
+    unsubscribeVideo: (id) => { calls.push('-' + id); return Promise.resolve(); }
+};
+context.Lampa = {Noty: {show: (text) => notices.push(text)}, Loading: {start() {}, stop() {}}};
+const button = {label: '', text(value) { this.label = value; return this; }};
+const toggle = context.window.LampaYaniDetail.toggleEpisodeSubscription;
+
+(async () => {
+    toggle({yani_id: 1}, button, {
+        t: (key) => key,
+        loadVideos: () => Promise.resolve([
+            video(1, 1, 'Плеер Kodik', 4, 'AniLibria'),
+            video(2, 1, 'Плеер Kodik', 4, 'Studio Band', {subscribed: true}),
+            video(3, 1, 'Плеер CVH', 3, 'AniLibria')
+        ]),
+        showSelect: (params) => shown.push(params)
+    });
+    await flush();
+    let menu = shown[shown.length - 1];
+    assert.strictEqual(menu.items.slice(0, 2).map((item) => item.action).join(','), 'subscribe-all,unsubscribe-all',
+        'both bulk actions are offered while some dubbings are on and some off');
+    assert.strictEqual(button.label, 'unsubscribe_episodes', 'the button reflects the server state');
+
+    // Subscribe to everything still off, one request at a time.
+    menu.onSelect(menu.items[0]);
+    await flush(); await flush(); await flush();
+    assert.strictEqual(calls.slice().sort().join(','), '+1,+3', 'only the dubbings not yet subscribed are requested');
+    menu = shown[shown.length - 1];
+    assert.strictEqual(shown.length, 2, 'the list opens again after a change');
+    assert.strictEqual(menu.items[0].action, 'unsubscribe-all');
+    assert.strictEqual(menu.items.slice(1).map((item) => item.title).sort().join(','),
+        '✓ AniLibria,✓ AniLibria,✓ Studio Band',
+        'every dubbing is marked and only the opposite bulk action remains');
+    assert.strictEqual(menu.items.filter((item) => item.selected).length, 0,
+        'the subscribe-all row is gone, so no stale row keeps the focus');
+
+    // Switch one dubbing off: the list reopens focused on that row.
+    calls.length = 0;
+    const row = menu.items.find((item) => item.group && item.group.dubbing === 'Studio Band');
+    menu.onSelect(row);
+    await flush(); await flush();
+    assert.deepStrictEqual(calls, ['-2'], 'unsubscribing goes through the record the server marked');
+    menu = shown[shown.length - 1];
+    const focused = menu.items.filter((item) => item.selected);
+    assert.strictEqual(focused.length, 1);
+    assert.strictEqual(focused[0].title, 'Studio Band', 'the focus returns to the row that was switched');
+
+    // Unsubscribe from everything.
+    calls.length = 0;
+    menu.onSelect(menu.items.find((item) => item.action === 'unsubscribe-all'));
+    await flush(); await flush(); await flush();
+    assert.strictEqual(calls.slice().sort().join(','), '-1,-3', 'only the dubbings still subscribed are requested');
+    assert.strictEqual(button.label, 'subscribe_episodes');
+
+    console.log('episode subscription list checks passed');
+})().catch((error) => { console.error(error); process.exitCode = 1; });

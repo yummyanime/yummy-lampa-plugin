@@ -8,7 +8,7 @@
         function refreshFocus() { if (!ready) return; var target = focusTarget(); Lampa.Controller.collectionSet(scroll.render()); Lampa.Controller.collectionFocus(target.length ? target[0] : false, scroll.render()); if (target.length) scroll.update(target, true); }
         function render() {
             content.empty(); var account = LampaYaniAuth.get(), authorized = Boolean(LampaYaniAuth.token());
-            content.append($('<div class="yani-auth__title"></div>').text(deps.t('auth_title'))).append($('<div class="yani-auth__status ' + (authorized ? 'is-authorized' : '') + '"></div>').text(authorized ? deps.t('auth_authorized') : deps.t('auth_not_authorized')));
+            content.append($('<div class="yani-auth__title"></div>').text(deps.t('auth_title'))).append($('<div class="yani-auth__status ' + (authorized ? 'is-authorized' : '') + '"></div>').text(authorized ? deps.t('auth_authorized') : LampaYaniAuth.sessionExpired && LampaYaniAuth.sessionExpired() ? deps.t('auth_session_expired') : deps.t('auth_not_authorized')));
             var form = $('<div class="yani-auth__form"></div>');
             field(form, 'login', deps.t('auth_login'), login || deps.t('auth_login_empty'), function () { deps.input({title: deps.t('email_prompt'), value: login, nosave: true, align: 'center'}, function (value) { login = String(value || '').trim(); render(); setTimeout(refreshFocus, 30); }); });
             field(form, 'password', deps.t('auth_password'), password ? '••••••••' : deps.t('auth_password_empty'), function () { deps.input({title: deps.t('password_prompt'), value: '', password: true, nosave: true, align: 'center'}, function (value) { password = String(value || ''); render(); setTimeout(refreshFocus, 30); }); });
@@ -24,7 +24,16 @@
             Lampa.Loading && Lampa.Loading.start && Lampa.Loading.start();
             LampaYaniAuth.login(login, password).then(function () { return LampaYaniApi.profile().then(function (payload) { var profile = payload && payload.response ? payload.response : payload, current = LampaYaniAuth.get(); LampaYaniAuth.save({token: current.token, login: current.login, display_name: profile && (profile.nickname || profile.name) || current.login}); }).catch(function () {}); }).then(function () { password = ''; Lampa.Noty.show(deps.t('login_ok')); if (deps.onAuthChanged) deps.onAuthChanged(); if (deps.onAuthorized) deps.onAuthorized(); deps.goBack(); }).catch(function (error) { console.error('[YummyAnime Auth]', error); Lampa.Noty.show(deps.t('login_error')); }).then(function () { Lampa.Loading && Lampa.Loading.stop && Lampa.Loading.stop(); });
         }
-        function refresh() { LampaYaniAuth.refresh().then(function () { Lampa.Noty.show(deps.t('token_refreshed')); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_refresh_error')); }); }
+        function refresh() {
+            LampaYaniAuth.refresh().then(function () {
+                Lampa.Noty.show(deps.t('token_refreshed'));
+                render();
+            }).catch(function (error) {
+                // An expired session has already been reported and signed out.
+                if (!error || !error.sessionExpired) Lampa.Noty.show(deps.t('token_refresh_error'));
+                render();
+            });
+        }
         function logout() { LampaYaniAuth.logout().then(function () { Lampa.Noty.show(deps.t('logged_out')); if (deps.onAuthChanged) deps.onAuthChanged(); render(); }).catch(function () { Lampa.Noty.show(deps.t('token_removed')); if (deps.onAuthChanged) deps.onAuthChanged(); render(); }); }
         return {create: function () { render(); scroll.append(content); html.append(scroll.render(true)); ready = true; this.activity.loader(false); this.activity.toggle(); }, start: function () { Lampa.Controller.add('content', {toggle: refreshFocus, left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); }, right: function () { Navigator.move('right'); }, up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); }, down: function () { LampaYaniNavigation.moveDown(scroll); }, back: deps.goBack}); Lampa.Controller.toggle('content'); }, render: function (js) { return js ? html[0] : html; }, destroy: function () { ready = false; scroll.destroy(); html.remove(); }};
     }
