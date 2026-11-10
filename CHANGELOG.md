@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.52.1] - 2026-11-11
+
+### Removed
+
+- Remove duplicate title tiles from the dashboard | Keep direct routes to Continue Watching, New Releases and Collections
+
 ## [0.52.0] - 2026-11-11
 
 ### Added

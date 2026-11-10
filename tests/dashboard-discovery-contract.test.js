@@ -14,13 +14,10 @@ assert.match(homeScreen, /item\.group === 'discover'/);
 assert.match(homeScreen, /yani-home__discover-title/);
 assert.match(homeScreen, /\.text\(t\('discover'\)\)/);
 assert.match(homeScreen, /discoverItems\.append\(button\)/);
-assert.match(homeScreen, /yani-home__discover-preview/);
-assert.match(homeScreen, /renderDiscoveryPreviews\(discovery\)/);
-assert.match(homeScreen, /openYummyDetail\(toCard\(\{anime_id: release\.anime_id/);
-assert.match(homeScreen, /openCollection\(\{id: collection\.id/);
+assert.doesNotMatch(homeScreen, /yani-home__discover-preview|renderDiscoveryPreviews/);
+assert.doesNotMatch(css, /yani-home__discover-preview/);
 assert.match(css, /\.yani-home__discover\s*\{[\s\S]{0,200}grid-column: span 12/);
 assert.match(css, /\.yani-home__discover-items\s*\{[\s\S]{0,220}grid-template-columns: repeat\(4/);
-assert.match(css, /\.yani-home__discover-preview-card\.focus/);
 assert.match(css, /@media \(max-width: 700px\)[\s\S]{0,1800}\.yani-home__discover-items \{ grid-template-columns: repeat\(2/);
 
 console.log('dashboard discovery contract checks passed');

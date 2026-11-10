@@ -272,32 +272,6 @@
         };
     }
 
-    function libraryPreview(continuing, limit) {
-        continuing = Array.isArray(continuing) ? continuing.slice() : [];
-        limit = Math.max(1, Number(limit || 3));
-        return continuing.sort(function (a, b) {
-            return Number(b && b.updated_at || 0) - Number(a && a.updated_at || 0);
-        }).slice(0, limit).map(function (item) {
-            item = item || {};
-            var duration = Math.max(0, Number(item.duration || 0));
-            var time = Math.max(0, Number(item.time || 0));
-            return {
-                anime_id: item.anime_id || item.animeId || item.id || '',
-                video_id: item.video_id || item.videoId || '',
-                title: titleOf(item),
-                poster: posterOf(item),
-                episode: item.number || item.episode || '',
-                progress: duration > 0 ? Math.max(0, Math.min(99, Math.round(time / duration * 100))) : 0,
-                time: time,
-                duration: duration,
-                player: item.player || '',
-                voice: item.voice || '',
-                updated_at: Number(item.updated_at || 0),
-                card: item.card || null
-            };
-        });
-    }
-
     function unreadNumber(value) {
         if (value == null || value === '') return null;
         if (typeof value === 'number' && isFinite(value)) return Math.max(0, value);
@@ -438,7 +412,6 @@
         translationEntries: translationEntries,
         listCounts: listCounts,
         personalInsight: personalInsight,
-        libraryPreview: libraryPreview,
         notificationCount: notificationCount,
         unreadFromNotifications: unreadFromNotifications,
         resolveNotificationCount: resolveNotificationCount,

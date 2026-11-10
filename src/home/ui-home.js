@@ -257,8 +257,6 @@
                 var episodeFlowTimeline;
                 var discover;
                 var discoverItems;
-                var discoverPreview;
-                var libraryStrip;
                 var libraryPulse;
                 var serviceHub;
                 var introMetrics = {};
@@ -345,8 +343,6 @@
                         libraryPulse.find('small').text(t('dashboard_library'));
                         libraryPulse.find('em').text(t('continue_watching'));
                         root.append(libraryPulse);
-                        libraryStrip = $('<div class="yani-home__library-preview" aria-hidden="true"></div>');
-                        root.append(libraryStrip);
                     }
                     if (group === 'service') {
                         var constellation = $('<div class="yani-home__service-constellation"></div>');
@@ -419,9 +415,8 @@
                         episodeFlowItems.append(button);
                     } else if (item.group === 'discover') {
                         if (!discover) {
-                            discover = $('<div class="yani-home__panel yani-home__panel--discover yani-home__discover"><div class="yani-home__discover-head"><span class="yani-home__panel-chapter" aria-hidden="true">04</span><span class="yani-home__discover-title"></span><span class="yani-home__panel-line" aria-hidden="true"></span><span class="yani-home__chapter-state"><i></i><b></b></span><span class="yani-home__discover-mark" aria-hidden="true"><i></i><i></i><i></i></span></div><div class="yani-home__discover-preview"></div><div class="yani-home__discover-items"></div></div>');
+                            discover = $('<div class="yani-home__panel yani-home__panel--discover yani-home__discover"><div class="yani-home__discover-head"><span class="yani-home__panel-chapter" aria-hidden="true">04</span><span class="yani-home__discover-title"></span><span class="yani-home__panel-line" aria-hidden="true"></span><span class="yani-home__chapter-state"><i></i><b></b></span><span class="yani-home__discover-mark" aria-hidden="true"><i></i><i></i><i></i></span></div><div class="yani-home__discover-items"></div></div>');
                             discover.find('.yani-home__discover-title').text(t('discover'));
-                            discoverPreview = discover.find('.yani-home__discover-preview');
                             discoverItems = discover.find('.yani-home__discover-items');
                             grid.append(discover);
                         }
@@ -721,71 +716,6 @@
                     refreshIntroContext(button);
                 }
 
-                function renderDiscoveryPreviews(discovery) {
-                    if (!discoverPreview || !discoverPreview.length) return;
-                    discoverPreview.empty();
-                    discovery = discovery || {};
-
-                    function appendPreview(options) {
-                        if (!options || !options.id) return;
-                        var node = $('<div class="yani-home__discover-preview-card yani-home__discover-preview-card--' + options.kind + ' selector" role="button" tabindex="-1"></div>');
-                        var poster = String(options.poster || '');
-                        if (!lowMemoryDevice && !lowCpuDevice && /^https?:\/\//i.test(poster)) {
-                            node.append($('<span class="yani-home__discover-preview-art" aria-hidden="true"></span>').css('background-image', 'url("' + poster.replace(/["\\]/g, '') + '")'));
-                        }
-                        node.append(
-                            $('<span class="yani-home__discover-preview-kicker"></span>').text(options.kicker),
-                            $('<b></b>').text(options.title || t('untitled')),
-                            $('<small></small>').text(options.meta || ''),
-                            $('<i aria-hidden="true">›</i>')
-                        );
-                        node.data('yani-home-context-key', options.targetKey);
-                        node.data('yani-home-group', 'discover');
-                        node.data('yani-home-title', options.kicker);
-                        node.data('yani-home-insight-title', options.title || '');
-                        node.data('yani-home-insight-meta', options.meta || '');
-                        node.data('yani-home-poster', poster);
-                        node.on('hover:focus', function (event) {
-                            activateHomeFocus(event.currentTarget || event.target, {
-                                storageKey: options.targetKey,
-                                panel: discover
-                            });
-                        });
-                        node.on('hover:enter click.yaniHomeDiscoveryPreview', options.action);
-                        discoverPreview.append(node);
-                    }
-
-                    var release = discovery.new_release;
-                    if (release && release.anime_id) {
-                        appendPreview({
-                            id: release.anime_id,
-                            kind: 'release',
-                            targetKey: 'new_releases',
-                            kicker: t('new_releases'),
-                            title: release.title,
-                            meta: release.meta,
-                            poster: release.poster,
-                            action: function () {
-                                openYummyDetail(toCard({anime_id: release.anime_id, title: release.title, poster: release.poster, year: release.year, type: release.type}), false);
-                            }
-                        });
-                    }
-                    var collection = discovery.collection;
-                    if (collection && collection.id !== '' && collection.id !== null && collection.id !== undefined) {
-                        appendPreview({
-                            id: collection.id,
-                            kind: 'collection',
-                            targetKey: 'collections',
-                            kicker: t('collection'),
-                            title: collection.title,
-                            meta: collection.count ? collection.count + ' ' + t('anime_count') : '',
-                            poster: collection.poster,
-                            action: function () { openCollection({id: collection.id, title: collection.title}); }
-                        });
-                    }
-                    discoverPreview.toggleClass('yani-home__discover-preview--visible', Boolean(discoverPreview.children().length));
-                }
-
                 var prioritySignals = {
                     authorized: Boolean(LampaYaniAuth.token()),
                     continue_count: 0,
@@ -889,62 +819,6 @@
                 var continuing = LampaYaniHomeSections.continueWatchingEntries(localEntries, {});
                 setIntroMetric('continue', continuing.length, continueMetricDetail(continuing[0]));
 
-                function renderLibraryStrip(entries) {
-                    if (!libraryStrip) return;
-                    if (last && $(last).hasClass('yani-home__library-mini')) last = homeButtons.continue_watching && homeButtons.continue_watching[0] || null;
-                    libraryStrip.empty().removeClass('yani-home__library-preview--visible').attr('aria-hidden', 'true');
-                    if (!entries || !entries.length) return;
-                    entries.forEach(function (entry) {
-                        if (!entry.anime_id) return;
-                        var mini = $('<div class="yani-home__library-mini selector" role="button"></div>');
-                        var art = $('<span class="yani-home__library-mini-art"></span>');
-                        var poster = String(entry.poster || '').replace(/["\\]/g, '');
-                        var meta = [];
-                        if (entry.episode) meta.push(t('episode') + ' ' + entry.episode);
-                        if (entry.progress) meta.push(entry.progress + '%');
-                        mini.attr('data-yani-anime-id', String(entry.anime_id));
-                        mini.attr('aria-label', [t('continue_watching'), entry.title, meta.join(' · ')].filter(Boolean).join(': '));
-                        mini.data('yani-home-context-key', 'continue_watching');
-                        mini.data('yani-home-title', t('continue_watching'));
-                        mini.data('yani-home-group', 'library');
-                        mini.data('yani-home-insight-title', entry.title || 'YummyAnime');
-                        mini.data('yani-home-insight-meta', meta.join(' · '));
-                        mini.data('yani-home-poster', poster);
-                        if (!reducedMotion && !lowMemoryDevice && !lowCpuDevice && /^https?:\/\//i.test(poster)) art.css('background-image', 'url("' + poster + '")');
-                        mini.append(art, $('<span class="yani-home__library-mini-shade"></span>'));
-                        if (entry.episode) mini.append($('<span class="yani-home__library-mini-episode"></span>').text(t('episode') + ' ' + entry.episode));
-                        mini.append($('<span class="yani-home__library-mini-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></span>'));
-                        mini.append($('<span class="yani-home__library-mini-title"></span>').text(entry.title || 'YummyAnime'));
-                        mini.append($('<span class="yani-home__library-mini-progress"><i></i></span>'));
-                        mini.find('.yani-home__library-mini-progress i').css('width', String(entry.progress || 0) + '%');
-                        mini.on('hover:focus', function (event) {
-                            activateHomeFocus(event.currentTarget || event.target, {storageKey: 'continue_watching'});
-                        });
-                        mini.on('hover:enter click.yaniHomeResume', function () {
-                            var source = Object.assign({}, entry.card || {}, {
-                                anime_id: entry.anime_id,
-                                title: entry.title || entry.card && entry.card.title || t('untitled'),
-                                poster: entry.poster || entry.card && entry.card.poster || ''
-                            });
-                            var card = toCard(source);
-                            card.yani_resume = {
-                                number: window.LampaYaniEpisode.normalize(entry.episode),
-                                video_id: entry.video_id || '',
-                                time: Number(entry.time || 0),
-                                duration: Number(entry.duration || 0),
-                                player: entry.player || '',
-                                voice: entry.voice || '',
-                                updated_at: Number(entry.updated_at || 0)
-                            };
-                            openVideos(card, true);
-                        });
-                        libraryStrip.append(mini);
-                    });
-                    if (libraryStrip.children().length) libraryStrip.addClass('yani-home__library-preview--visible').attr('aria-hidden', 'false');
-                }
-
-                renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
-
                 function renderPersonal(stats) {
                     if (destroyed) return;
                     var personal = LampaYaniHomeInsights.personalInsight(continuing, account, stats);
@@ -991,7 +865,6 @@
                         var localEntries = LampaYaniHomeSections.normalizeLocalHistory(localHistory);
                         continuing = LampaYaniHomeSections.continueWatchingEntries(localEntries, {});
                         setIntroMetric('continue', continuing.length, continueMetricDetail(continuing[0]));
-                        renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
                         renderPersonal(personalStats);
                     });
                 };
@@ -1004,7 +877,6 @@
                     localHistory = playbackHistory();
                     var merged = LampaYaniHomeSections.mergeHistory(localHistory, remoteEntries || []);
                     continuing = LampaYaniHomeSections.continueWatchingEntries(merged, {});
-                    renderLibraryStrip(LampaYaniHomeInsights.libraryPreview(continuing, 3));
                     renderPersonal(personalStats);
                 }
 
@@ -1157,7 +1029,6 @@
                             setIntroMetric('translations', translationsKnown ? translations.count : null, '');
                         }
                         var discovery = dashboard.discovery || {};
-                        renderDiscoveryPreviews(discovery);
                         var newRelease = discovery.new_release;
                         if (newRelease) {
                             setPreview(homeButtons.new_releases, newRelease.title, newRelease.meta);
