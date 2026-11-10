@@ -180,30 +180,55 @@
         } catch (error) { return {}; }
     }
 
+    // Entries written before the release status was kept have no `ongoing`
+    // field; they are fetched again once rather than read as finished titles.
     function cachedCeilings(ids) {
         var stored = readCeilingCache();
         var fresh = {};
+        var titles = {};
         var missing = [];
         (ids || []).forEach(function (id) {
             var item = stored[String(id)];
-            if (item && Number(item.count) > 0 && Date.now() - Number(item.at || 0) < CEILING_CACHE_TTL) {
+            if (item && Number(item.count) > 0 && typeof item.ongoing === 'boolean' &&
+                Date.now() - Number(item.at || 0) < CEILING_CACHE_TTL) {
                 fresh[String(id)] = Number(item.count);
+                titles[String(id)] = {ongoing: item.ongoing, next_date: Number(item.next_date || 0)};
             } else {
                 missing.push(String(id));
             }
         });
-        return {ceilings: fresh, missing: missing};
+        return {ceilings: fresh, titles: titles, missing: missing};
     }
 
-    function rememberCeilings(counts) {
+    function rememberCeilings(counts, titles) {
         try {
             if (!window.Lampa || !Lampa.Storage || !Lampa.Storage.set) return;
             var stored = readCeilingCache();
             Object.keys(counts || {}).forEach(function (id) {
-                if (Number(counts[id]) > 0) stored[id] = {count: Number(counts[id]), at: Date.now()};
+                if (!(Number(counts[id]) > 0)) return;
+                var title = titles && titles[id] || {};
+                stored[id] = {
+                    count: Number(counts[id]),
+                    ongoing: Boolean(title.ongoing),
+                    next_date: Number(title.next_date || 0),
+                    at: Date.now()
+                };
             });
             Lampa.Storage.set(CEILING_CACHE_KEY, JSON.stringify(stored));
         } catch (error) {}
+    }
+
+    // What the title page says about releases: whether more episodes are
+    // coming and when the next one airs (`next_date` is in seconds).
+    function titleReleaseInfo(value) {
+        var status = value && value.anime_status;
+        var alias = String(status && typeof status === 'object' ? status.alias || '' : status || '').toLowerCase();
+        var episodes = value && value.episodes || {};
+        var nextDate = Number(episodes.next_date || 0);
+        return {
+            ongoing: alias === 'ongoing' || !alias && Number(status && status.value) === 1,
+            next_date: nextDate > 0 ? nextDate * 1000 : 0
+        };
     }
 
     function historyEntryKey(entry) {
@@ -355,7 +380,7 @@
         return lastContinueStats;
     }
 
-    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings) {
+    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings, knownTitles) {
         excludedAnimeIds = excludedAnimeIds || {};
         var reach = maxWatchedEpisodes(entries);
         var ceilings = episodeCeilings(entries);
@@ -390,6 +415,7 @@
             titles: titles.length,
             excluded: 0,
             finished_title: 0,
+            awaiting: 0,
             advanced: 0,
             resumed: 0,
             no_target: 0
@@ -407,9 +433,25 @@
                 return annotated;
             }
             var next = nextEpisodeEntry(annotated, reach, ceilings);
-            if (next) stats.advanced += 1;
-            else stats.finished_title += 1;
-            return next;
+            if (next) {
+                stats.advanced += 1;
+                return next;
+            }
+            // The last released episode is watched. A finished title leaves
+            // the queue for the watch history; an ongoing one stays, marked
+            // with the episode it is waiting for, so watching the newest
+            // episode does not make the title disappear.
+            var release = (knownTitles || {})[animeKey(entry)];
+            if (release && release.ongoing) {
+                stats.awaiting += 1;
+                return Object.assign({}, annotated, {
+                    awaiting_next: true,
+                    next_episode: Math.max(reach[animeKey(entry)] || 0, episodeNumber(entry)) + 1,
+                    next_date: Number(release.next_date || 0)
+                });
+            }
+            stats.finished_title += 1;
+            return null;
         }).filter(Boolean);
         lastContinueStats = stats;
         queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
@@ -495,6 +537,8 @@
         card.yani_resume.max_episode = Math.max(0, Number(entry.max_episode || 0));
         card.yani_resume.last_watched_episode = Math.max(0, Number(entry.last_watched_episode || 0));
         card.yani_resume.resume_next = Boolean(entry.resume_next);
+        card.yani_resume.awaiting_episode = entry.awaiting_next ? Number(entry.next_episode || 0) : 0;
+        card.yani_resume.next_date = entry.awaiting_next ? Number(entry.next_date || 0) : 0;
         card.yani_history_entry = entry;
         return card;
     }
@@ -616,7 +660,8 @@
                 ' titles=' + stats.titles +
                 ' queued=' + (stats.resumed + stats.advanced) +
                 ' (resumed=' + stats.resumed + ' advanced=' + stats.advanced + ')' +
-                ' completed=' + stats.finished_title);
+                ' completed=' + stats.finished_title +
+                ' awaiting=' + stats.awaiting);
         }
 
         /**
@@ -627,7 +672,7 @@
          * "this title is over".
          */
         function resolveCeilings(entries) {
-            if (!continueMode || !deps.detail) return Promise.resolve({});
+            if (!continueMode || !deps.detail) return Promise.resolve({ceilings: {}, titles: {}});
             var wanted = {};
             (entries || []).forEach(function (entry) {
                 if (!isFinishedEpisode(entry)) return;
@@ -636,19 +681,26 @@
             });
             var known = cachedCeilings(Object.keys(wanted));
             var ids = known.missing;
-            if (!ids.length) return Promise.resolve(known.ceilings);
+            if (!ids.length) return Promise.resolve({ceilings: known.ceilings, titles: known.titles});
             return Promise.all(ids.map(function (id) {
                 return loadDetail(id).then(function (payload) {
                     var value = payload && payload.response ? payload.response : payload;
                     var episodes = value && (value.episodes || {}) || {};
                     var count = Number(episodes.aired || episodes.released || episodes.count || episodes.total || 0);
-                    return {id: id, count: count > 0 ? count : 0};
-                }).catch(function () { return {id: id, count: 0}; });
+                    return {id: id, count: count > 0 ? count : 0, release: titleReleaseInfo(value)};
+                }).catch(function () { return {id: id, count: 0, release: null}; });
             })).then(function (results) {
                 var ceilings = {};
-                results.forEach(function (result) { if (result.count) ceilings[result.id] = result.count; });
-                rememberCeilings(ceilings);
-                return Object.assign({}, known.ceilings, ceilings);
+                var titles = {};
+                results.forEach(function (result) {
+                    if (result.count) ceilings[result.id] = result.count;
+                    if (result.release) titles[result.id] = result.release;
+                });
+                rememberCeilings(ceilings, titles);
+                return {
+                    ceilings: Object.assign({}, known.ceilings, ceilings),
+                    titles: Object.assign({}, known.titles, titles)
+                };
             });
         }
 
@@ -667,8 +719,8 @@
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
                 var entries = mergeHistory(deps.history() || local, page.entries);
                 if (!continueMode) return cardsFor(uniqueEntries(entries));
-                return resolveCeilings(entries).then(function (ceilings) {
-                    var queue = continueWatchingEntries(entries, {}, ceilings);
+                return resolveCeilings(entries).then(function (known) {
+                    var queue = continueWatchingEntries(entries, {}, known.ceilings, known.titles);
                     reportContinueStats(page);
                     return cardsFor(uniqueEntries(queue));
                 });

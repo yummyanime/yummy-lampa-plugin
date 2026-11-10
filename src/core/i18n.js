@@ -94,6 +94,7 @@
     messages.ru.auto_sync_progress_description = 'Автоматически сохранять в аккаунте YummyAnime прогресс внутреннего плеера Lampa и подтягивать серверный прогресс на главный экран, в историю и карточку тайтла. При отключении доступна ручная синхронизация на странице аккаунта';
     messages.ru.subscribe_all_dubbings = 'Подписаться на все озвучки';
     messages.ru.unsubscribe_all_dubbings = 'Отписаться от всех озвучек';
+    messages.ru.awaiting_episode = 'Ждём серию {episode}';
     messages.ru.session_expired = 'Сессия YummyAnime истекла. Войдите заново: Настройки → YummyAnime → Аккаунт и синхронизация';
     messages.ru.auth_session_expired = 'Сессия истекла — войдите снова';
     messages.ru.episode_flags = 'Метки «Филлер» и «Рекап»';
@@ -208,6 +209,7 @@
     messages.en.auto_sync_progress_description = 'Automatically save internal Lampa player progress to the YummyAnime account and pull server progress onto the home screen, history and title card. When disabled, manual sync is available on the account page';
     messages.en.subscribe_all_dubbings = 'Subscribe to every dubbing';
     messages.en.unsubscribe_all_dubbings = 'Unsubscribe from every dubbing';
+    messages.en.awaiting_episode = 'Waiting for episode {episode}';
     messages.en.session_expired = 'Your YummyAnime session has expired. Sign in again: Settings → YummyAnime → Account and sync';
     messages.en.auth_session_expired = 'Session expired — sign in again';
     messages.en.episode_flags = 'Filler and recap marks';
@@ -776,6 +778,7 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.auto_sync_progress_description = 'Автоматично зберігати в обліковому записі YummyAnime прогрес внутрішнього плеєра Lampa і підтягувати серверний прогрес на головний екран, в історію та картку тайтла. Після вимкнення доступна ручна синхронізація на сторінці облікового запису';
     messages.uk.subscribe_all_dubbings = 'Підписатися на всі озвучки';
     messages.uk.unsubscribe_all_dubbings = 'Відписатися від усіх озвучок';
+    messages.uk.awaiting_episode = 'Чекаємо серію {episode}';
     messages.uk.session_expired = 'Сесія YummyAnime завершилася. Увійдіть знову: Налаштування → YummyAnime → Обліковий запис і синхронізація';
     messages.uk.auth_session_expired = 'Сесія завершилася — увійдіть знову';
     messages.uk.episode_flags = 'Позначки «Філер» і «Рекап»';

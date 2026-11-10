@@ -245,13 +245,38 @@ const finishedRemote = history.continueWatchingEntries(
 );
 assert.strictEqual(finishedRemote.length, 0, 'a fully watched account title stays out of the queue');
 
+// An ongoing title whose newest episode was just watched is not finished: it
+// stays, waiting for the next episode, instead of vanishing until it airs.
+const nextAirs = Date.now() + 7 * 24 * 60 * 60 * 1000;
+const caughtUp = history.continueWatchingEntries(
+    history.mergeHistory({}, [{anime_id: 10004, video_id: 2, number: '5', time: 1440, duration: 1440, updated_at: 6}]),
+    {},
+    {'10004': 5},
+    {'10004': {ongoing: true, next_date: nextAirs}}
+);
+assert.strictEqual(caughtUp.length, 1, 'a caught-up ongoing title stays in the queue');
+assert.strictEqual(caughtUp[0].awaiting_next, true);
+assert.strictEqual(caughtUp[0].next_episode, 6);
+assert.strictEqual(caughtUp[0].next_date, nextAirs);
+assert.strictEqual(String(caughtUp[0].number), '5', 'the card still points at the episode that was watched');
+
+const releasedTitle = history.continueWatchingEntries(
+    history.mergeHistory({}, [{anime_id: 10005, video_id: 3, number: '12', time: 1440, duration: 1440, updated_at: 7}]),
+    {},
+    {'10005': 12},
+    {'10005': {ongoing: false, next_date: 0}}
+);
+assert.strictEqual(releasedTitle.length, 0, 'a finished title leaves the queue for the watch history');
+
 // Continue Watching made the viewer wait through ten history requests chained
 // one after another, plus one episode-count request per finished title on every
 // single open. Pages after the first are independent, and an episode count does
 // not change between openings.
 const sectionsFile = fs.readFileSync('src/home/ui-home-sections.js', 'utf8');
 assert.match(sectionsFile, /function cachedCeilings\(ids\)/, 'episode counts must be remembered between openings');
-assert.match(sectionsFile, /function rememberCeilings\(counts\)/, 'resolved counts must be written back');
+assert.match(sectionsFile, /function rememberCeilings\(counts, titles\)/, 'resolved counts must be written back');
+assert.match(sectionsFile, /typeof item\.ongoing === 'boolean'/,
+    'counts cached before the release status was kept must be fetched again, not read as finished titles');
 assert.match(sectionsFile, /var ids = known\.missing;/, 'only unknown counts may be requested');
 
 let pageCalls = 0;

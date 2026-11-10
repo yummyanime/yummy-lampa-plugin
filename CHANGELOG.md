@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.50.2] - 2026-11-10
+
+### Fixed
+
+- An ongoing title disappearing from Continue Watching once its newest episode was watched; it now stays with a full progress bar and the next episode with its release date, while finished titles move to the watch history
+
 ## [0.50.1] - 2026-11-10
 
 ### Changed

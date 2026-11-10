@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.50.1',
+        version: '0.50.2',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -130,6 +130,7 @@ function pluginYummyAnime() {
     messages.ru.auto_sync_progress_description = 'Автоматически сохранять в аккаунте YummyAnime прогресс внутреннего плеера Lampa и подтягивать серверный прогресс на главный экран, в историю и карточку тайтла. При отключении доступна ручная синхронизация на странице аккаунта';
     messages.ru.subscribe_all_dubbings = 'Подписаться на все озвучки';
     messages.ru.unsubscribe_all_dubbings = 'Отписаться от всех озвучек';
+    messages.ru.awaiting_episode = 'Ждём серию {episode}';
     messages.ru.session_expired = 'Сессия YummyAnime истекла. Войдите заново: Настройки → YummyAnime → Аккаунт и синхронизация';
     messages.ru.auth_session_expired = 'Сессия истекла — войдите снова';
     messages.ru.episode_flags = 'Метки «Филлер» и «Рекап»';
@@ -244,6 +245,7 @@ function pluginYummyAnime() {
     messages.en.auto_sync_progress_description = 'Automatically save internal Lampa player progress to the YummyAnime account and pull server progress onto the home screen, history and title card. When disabled, manual sync is available on the account page';
     messages.en.subscribe_all_dubbings = 'Subscribe to every dubbing';
     messages.en.unsubscribe_all_dubbings = 'Unsubscribe from every dubbing';
+    messages.en.awaiting_episode = 'Waiting for episode {episode}';
     messages.en.session_expired = 'Your YummyAnime session has expired. Sign in again: Settings → YummyAnime → Account and sync';
     messages.en.auth_session_expired = 'Session expired — sign in again';
     messages.en.episode_flags = 'Filler and recap marks';
@@ -812,6 +814,7 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.auto_sync_progress_description = 'Автоматично зберігати в обліковому записі YummyAnime прогрес внутрішнього плеєра Lampa і підтягувати серверний прогрес на головний екран, в історію та картку тайтла. Після вимкнення доступна ручна синхронізація на сторінці облікового запису';
     messages.uk.subscribe_all_dubbings = 'Підписатися на всі озвучки';
     messages.uk.unsubscribe_all_dubbings = 'Відписатися від усіх озвучок';
+    messages.uk.awaiting_episode = 'Чекаємо серію {episode}';
     messages.uk.session_expired = 'Сесія YummyAnime завершилася. Увійдіть знову: Налаштування → YummyAnime → Обліковий запис і синхронізація';
     messages.uk.auth_session_expired = 'Сесія завершилася — увійдіть знову';
     messages.uk.episode_flags = 'Позначки «Філер» і «Рекап»';
@@ -7799,7 +7802,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var episode = playback.number || card.yani_watched_episodes || '';
             if (!episode && !(progress > 0)) return null;
             var reached = Math.max(0, Number(playback.max_episode || 0));
+            var awaiting = Math.max(0, Number(playback.awaiting_episode || 0));
+            // Caught up with an ongoing title: everything released is watched.
+            if (awaiting) progress = 1;
             return {
+                awaiting: awaiting,
+                nextDate: Number(playback.next_date || 0),
                 episode: episode,
                 // How far the viewer got overall, shown next to the episode the
                 // queue is offering. Without it a card reading "episode 5" is
@@ -7823,9 +7831,17 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             }
             existing.remove();
             var parts = [];
-            if (state.episode) parts.push((state.next ? '▶ ' : '') + t('episode') + ' ' + state.episode);
-            if (state.percent) parts.push(state.percent + '%');
-            else if (state.reached) parts.push(t('episodes_watched') + ' ' + state.reached);
+            if (state.awaiting) {
+                // The bar is full; the label says what comes next and when.
+                parts.push(state.nextDate > Date.now()
+                    ? t('episode') + ' ' + state.awaiting + ' · ' +
+                        new Date(state.nextDate).toLocaleDateString(locale(), {day: 'numeric', month: 'short'})
+                    : t('awaiting_episode').replace('{episode}', state.awaiting));
+            } else {
+                if (state.episode) parts.push((state.next ? '▶ ' : '') + t('episode') + ' ' + state.episode);
+                if (state.percent) parts.push(state.percent + '%');
+                else if (state.reached) parts.push(t('episodes_watched') + ' ' + state.reached);
+            }
             view.append($('<span class="yani-card-playback"></span>').text(parts.join(' · ')));
             if (state.progress > 0) {
                 view.append($('<span class="yani-card-playback-progress"><span></span></span>')
@@ -13860,30 +13876,55 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         } catch (error) { return {}; }
     }
 
+    // Entries written before the release status was kept have no `ongoing`
+    // field; they are fetched again once rather than read as finished titles.
     function cachedCeilings(ids) {
         var stored = readCeilingCache();
         var fresh = {};
+        var titles = {};
         var missing = [];
         (ids || []).forEach(function (id) {
             var item = stored[String(id)];
-            if (item && Number(item.count) > 0 && Date.now() - Number(item.at || 0) < CEILING_CACHE_TTL) {
+            if (item && Number(item.count) > 0 && typeof item.ongoing === 'boolean' &&
+                Date.now() - Number(item.at || 0) < CEILING_CACHE_TTL) {
                 fresh[String(id)] = Number(item.count);
+                titles[String(id)] = {ongoing: item.ongoing, next_date: Number(item.next_date || 0)};
             } else {
                 missing.push(String(id));
             }
         });
-        return {ceilings: fresh, missing: missing};
+        return {ceilings: fresh, titles: titles, missing: missing};
     }
 
-    function rememberCeilings(counts) {
+    function rememberCeilings(counts, titles) {
         try {
             if (!window.Lampa || !Lampa.Storage || !Lampa.Storage.set) return;
             var stored = readCeilingCache();
             Object.keys(counts || {}).forEach(function (id) {
-                if (Number(counts[id]) > 0) stored[id] = {count: Number(counts[id]), at: Date.now()};
+                if (!(Number(counts[id]) > 0)) return;
+                var title = titles && titles[id] || {};
+                stored[id] = {
+                    count: Number(counts[id]),
+                    ongoing: Boolean(title.ongoing),
+                    next_date: Number(title.next_date || 0),
+                    at: Date.now()
+                };
             });
             Lampa.Storage.set(CEILING_CACHE_KEY, JSON.stringify(stored));
         } catch (error) {}
+    }
+
+    // What the title page says about releases: whether more episodes are
+    // coming and when the next one airs (`next_date` is in seconds).
+    function titleReleaseInfo(value) {
+        var status = value && value.anime_status;
+        var alias = String(status && typeof status === 'object' ? status.alias || '' : status || '').toLowerCase();
+        var episodes = value && value.episodes || {};
+        var nextDate = Number(episodes.next_date || 0);
+        return {
+            ongoing: alias === 'ongoing' || !alias && Number(status && status.value) === 1,
+            next_date: nextDate > 0 ? nextDate * 1000 : 0
+        };
     }
 
     function historyEntryKey(entry) {
@@ -14035,7 +14076,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return lastContinueStats;
     }
 
-    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings) {
+    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings, knownTitles) {
         excludedAnimeIds = excludedAnimeIds || {};
         var reach = maxWatchedEpisodes(entries);
         var ceilings = episodeCeilings(entries);
@@ -14070,6 +14111,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             titles: titles.length,
             excluded: 0,
             finished_title: 0,
+            awaiting: 0,
             advanced: 0,
             resumed: 0,
             no_target: 0
@@ -14087,9 +14129,25 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return annotated;
             }
             var next = nextEpisodeEntry(annotated, reach, ceilings);
-            if (next) stats.advanced += 1;
-            else stats.finished_title += 1;
-            return next;
+            if (next) {
+                stats.advanced += 1;
+                return next;
+            }
+            // The last released episode is watched. A finished title leaves
+            // the queue for the watch history; an ongoing one stays, marked
+            // with the episode it is waiting for, so watching the newest
+            // episode does not make the title disappear.
+            var release = (knownTitles || {})[animeKey(entry)];
+            if (release && release.ongoing) {
+                stats.awaiting += 1;
+                return Object.assign({}, annotated, {
+                    awaiting_next: true,
+                    next_episode: Math.max(reach[animeKey(entry)] || 0, episodeNumber(entry)) + 1,
+                    next_date: Number(release.next_date || 0)
+                });
+            }
+            stats.finished_title += 1;
+            return null;
         }).filter(Boolean);
         lastContinueStats = stats;
         queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
@@ -14175,6 +14233,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         card.yani_resume.max_episode = Math.max(0, Number(entry.max_episode || 0));
         card.yani_resume.last_watched_episode = Math.max(0, Number(entry.last_watched_episode || 0));
         card.yani_resume.resume_next = Boolean(entry.resume_next);
+        card.yani_resume.awaiting_episode = entry.awaiting_next ? Number(entry.next_episode || 0) : 0;
+        card.yani_resume.next_date = entry.awaiting_next ? Number(entry.next_date || 0) : 0;
         card.yani_history_entry = entry;
         return card;
     }
@@ -14296,7 +14356,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 ' titles=' + stats.titles +
                 ' queued=' + (stats.resumed + stats.advanced) +
                 ' (resumed=' + stats.resumed + ' advanced=' + stats.advanced + ')' +
-                ' completed=' + stats.finished_title);
+                ' completed=' + stats.finished_title +
+                ' awaiting=' + stats.awaiting);
         }
 
         /**
@@ -14307,7 +14368,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
          * "this title is over".
          */
         function resolveCeilings(entries) {
-            if (!continueMode || !deps.detail) return Promise.resolve({});
+            if (!continueMode || !deps.detail) return Promise.resolve({ceilings: {}, titles: {}});
             var wanted = {};
             (entries || []).forEach(function (entry) {
                 if (!isFinishedEpisode(entry)) return;
@@ -14316,19 +14377,26 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             });
             var known = cachedCeilings(Object.keys(wanted));
             var ids = known.missing;
-            if (!ids.length) return Promise.resolve(known.ceilings);
+            if (!ids.length) return Promise.resolve({ceilings: known.ceilings, titles: known.titles});
             return Promise.all(ids.map(function (id) {
                 return loadDetail(id).then(function (payload) {
                     var value = payload && payload.response ? payload.response : payload;
                     var episodes = value && (value.episodes || {}) || {};
                     var count = Number(episodes.aired || episodes.released || episodes.count || episodes.total || 0);
-                    return {id: id, count: count > 0 ? count : 0};
-                }).catch(function () { return {id: id, count: 0}; });
+                    return {id: id, count: count > 0 ? count : 0, release: titleReleaseInfo(value)};
+                }).catch(function () { return {id: id, count: 0, release: null}; });
             })).then(function (results) {
                 var ceilings = {};
-                results.forEach(function (result) { if (result.count) ceilings[result.id] = result.count; });
-                rememberCeilings(ceilings);
-                return Object.assign({}, known.ceilings, ceilings);
+                var titles = {};
+                results.forEach(function (result) {
+                    if (result.count) ceilings[result.id] = result.count;
+                    if (result.release) titles[result.id] = result.release;
+                });
+                rememberCeilings(ceilings, titles);
+                return {
+                    ceilings: Object.assign({}, known.ceilings, ceilings),
+                    titles: Object.assign({}, known.titles, titles)
+                };
             });
         }
 
@@ -14347,8 +14415,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
                 var entries = mergeHistory(deps.history() || local, page.entries);
                 if (!continueMode) return cardsFor(uniqueEntries(entries));
-                return resolveCeilings(entries).then(function (ceilings) {
-                    var queue = continueWatchingEntries(entries, {}, ceilings);
+                return resolveCeilings(entries).then(function (known) {
+                    var queue = continueWatchingEntries(entries, {}, known.ceilings, known.titles);
                     reportContinueStats(page);
                     return cardsFor(uniqueEntries(queue));
                 });

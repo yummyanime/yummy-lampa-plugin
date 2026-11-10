@@ -74,6 +74,17 @@ assert.strictEqual(renderers.cardFreshness(Date.now()).label, 'Today');
 assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_progress: 0.42}).episode, 4);
 assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_progress: 0.42}).percent, 42);
 assert.equal(renderers.cardPlaybackState({yani_watched_episodes: 4, yani_list_progress: 0.42}).progress, 0.42);
+
+// Caught up with an ongoing title: the bar is full and the card names the
+// episode it is waiting for.
+const awaitingState = renderers.cardPlaybackState({
+    yani_id: 77,
+    yani_resume: {number: '5', time: 1440, duration: 1440, awaiting_episode: 6, next_date: Date.now() + 86400000}
+});
+assert.equal(awaitingState.awaiting, 6);
+assert.equal(awaitingState.percent, 100);
+assert.equal(awaitingState.progress, 1);
+assert.ok(awaitingState.nextDate > Date.now());
 assert.strictEqual(renderers.cardPlaybackState({}), null);
 
 const mergePlayback = context.window.LampaYaniCardRenderers.create({
