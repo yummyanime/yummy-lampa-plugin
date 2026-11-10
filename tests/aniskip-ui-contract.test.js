@@ -2,13 +2,14 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
 assert.match(watcher, /value === 'op' \|\| value === 'ed' \|\| value === 'op_ed' \|\| value === 'suggest'/);
 assert.match(
-    ui,
+    settingsSource,
     /values: \{off: t\('aniskip_off'\), op: t\('aniskip_openings'\), ed: t\('aniskip_endings'\), op_ed: t\('aniskip_openings_endings'\), suggest: t\('aniskip_suggest'\)\}/
 );
 assert.match(watcher, /op: mode === 'op' \|\| mode === 'op_ed' \|\| mode === 'suggest'/);

@@ -2,12 +2,13 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const history = fs.readFileSync('src/playback/ui-playback-history.js', 'utf8');
 const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
-assert.match(ui, /name: 'yani_auto_sync_progress', type: 'trigger', default: true/);
-assert.match(ui, /name: 'yani_auto_manage_lists', type: 'trigger', default: false/);
+assert.match(settingsSource, /name: 'yani_auto_sync_progress', type: 'trigger', default: true/);
+assert.match(settingsSource, /name: 'yani_auto_manage_lists', type: 'trigger', default: false/);
 assert.match(history, /function maybeAutoManageList\(card, saved, video, position, duration\)/);
 assert.match(history, /halfCount >= 2/);
 assert.match(history, /allFinished \? \{id: 2, key: 'completed'\}/);

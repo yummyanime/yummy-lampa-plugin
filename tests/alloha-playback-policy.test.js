@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const source = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const embeddedPlayer = fs.readFileSync('src/playback/ui-player.js', 'utf8');
 const launchStart = source.indexOf('function launchVideo');
@@ -34,7 +35,7 @@ assert.ok(
     'the Alloha embed setting must default to disabled'
 );
 assert.ok(
-    source.includes("param: {name: 'yani_alloha_iframe', type: 'trigger', default: false}"),
+    settingsSource.includes("param: {name: 'yani_alloha_iframe', type: 'trigger', default: false}"),
     'the Alloha embed setting must be exposed as a disabled-by-default trigger'
 );
 assert.ok(!source.includes('function showYummyIframe'), 'generic iframe playback must stay disabled');

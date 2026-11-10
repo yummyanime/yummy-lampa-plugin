@@ -2,11 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
 ['new_releases', 'top_rated', 'for_you', 'collections'].forEach((key) => {
     assert.match(ui, new RegExp(`key: '${key}'[^\\n]+group: 'discover'`));
-    assert.match(ui, new RegExp(`\\['${key}', '${key}'\\]`), `${key} must keep an independent visibility setting`);
+    assert.match(settingsSource, new RegExp(`\\['${key}', '${key}'\\]`), `${key} must keep an independent visibility setting`);
 });
 assert.match(ui, /item\.group === 'discover'/);
 assert.match(ui, /yani-home__discover-title/);

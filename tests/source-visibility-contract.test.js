@@ -2,12 +2,13 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(ui, /var PLAYBACK_SOURCE_IDS = \['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'\]/);
 assert.match(ui, /function isPlaybackSourceEnabled\(sourceId\)/);
 assert.match(ui, /function playbackSourceId\(group\)/);
-assert.match(ui, /yani_display_sources_title/);
+assert.match(settingsSource, /yani_display_sources_title/);
 assert.match(ui, /vk: 'VK'/);
 assert.match(ui, /isVkPlaybackSource\(url, group\)[\s\S]{0,200}vk_stream_unavailable/);
 assert.match(ui, /if \(sourceId === 'cvh'\) return isAndroidPlatform\(\)/);
@@ -21,7 +22,7 @@ assert.match(i18n, /messages\.uk\.cvh_stream_unavailable/);
 assert.doesNotMatch(i18n, /cvh_internal_android_unavailable/);
 assert.match(ui, /function registerAndroidDirectVideoTube\(\)/);
 assert.match(ui, /Lampa\.PlayerVideo\.registerTube\(tube\)/);
-assert.match(ui, /sourceId === 'sibnet' \? t\('sibnet_source_description'\)/);
+assert.match(settingsSource, /sourceId === 'sibnet' \? t\('sibnet_source_description'\)/);
 assert.match(i18n, /messages\.ru\.sibnet_source_description/);
 assert.match(i18n, /messages\.en\.sibnet_source_description/);
 assert.match(i18n, /messages\.uk\.sibnet_source_description/);

@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
@@ -20,7 +21,7 @@ assert.match(menu, /EPISODE_FLAGS_WAIT_MS = 1500/);
 assert.match(menu, /Promise\.race\(\[[\s\S]{0,200}episodeFlags\(card\)\)\.catch/);
 assert.match(menu, /if \(flagLabel\) item\.subtitle = flagLabel;/);
 assert.match(menu, /enrichEpisodeTitles\(card\);[\s\S]{0,200}episodeFlags\(card\);/, 'marks must be warmed before the episode list opens');
-assert.match(ui, /name: 'yani_episode_flags', type: 'trigger', default: true/);
+assert.match(settingsSource, /name: 'yani_episode_flags', type: 'trigger', default: true/);
 assert.match(ui, /if \(!malId\) return Promise\.resolve\(\{\}\);/, 'a card without a MAL id must not cost an extra request');
 ['ru', 'en', 'uk'].forEach((lang) => {
     ['episode_flags', 'episode_flags_description', 'episode_filler', 'episode_recap'].forEach((key) => {

@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const source = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
 assert.match(build, /src\/playback\/ui-playback-menu\.js/);
@@ -28,8 +29,8 @@ assert.match(source, /t\(webOsPlayer \? 'watch_webos_player' : 'watch_external_p
 assert.match(ui, /registerAndroidDirectVideoTube\(\);/);
 assert.match(ui, /function isAndroidPlatform\(\)/);
 assert.match(ui, /if \(!externalPlayerAvailable\(\)\) return 'internal'/);
-assert.match(ui, /yani_playback_target_locked/);
-assert.match(ui, /external: t\(webOsTarget \? 'playback_target_webos' : 'playback_target_external'\)/);
+assert.match(settingsSource, /yani_playback_target_locked/);
+assert.match(settingsSource, /external: t\(webOsTarget \? 'playback_target_webos' : 'playback_target_external'\)/);
 assert.match(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), /function isAndroidPlatform\(\)/);
 
 const context = {

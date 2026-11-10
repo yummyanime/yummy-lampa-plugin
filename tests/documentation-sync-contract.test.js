@@ -51,7 +51,7 @@ assert.match(root, /assets\/yummyanime-genre\.jpg/);
 });
 assert.match(root, /<sub>\[Русская версия\]\(docs\/README\.ru\.md\)<\/sub>/);
 assert.ok(fs.existsSync('docs/README.ru.md'), 'optional Russian documentation must be available separately');
-assert.match(fs.readFileSync('src/ui.js', 'utf8'), /t\('official_plugin'\)/);
+assert.match(fs.readFileSync('src/ui/ui-settings.js', 'utf8'), /t\('official_plugin'\)/);
 assert.match(root, /Playback and sources such as Alloha/);
 assert.match(root, /web page rather than a playable video link/);
 assert.match(en, /it is not an Alloha resolver/);

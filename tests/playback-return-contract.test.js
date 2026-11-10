@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const externalPlayer = fs.readFileSync('src/playback/ui-external-player.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
@@ -55,14 +56,14 @@ assert.match(externalPlayer, /if \(!externalRestoreState\.departed && elapsed < 
 assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/);
 assert.match(ui, /playbackReturnState\.session !== callbackSession/,
     'a callback from the closing episode must not restore focus over the next player');
-assert.match(ui, /param: \{name: 'yani_yummytv_enabled', type: 'trigger', default: false\}/);
+assert.match(settingsSource, /param: \{name: 'yani_yummytv_enabled', type: 'trigger', default: false\}/);
 assert.match(externalPlayer, /Storage\.get\('yani_yummytv_enabled', false\)/);
 assert.match(sources, /var beginPlaybackNavigation = playbackMenu\.beginPlaybackNavigation|function beginPlaybackNavigation/);
 
-const settingsStart = ui.indexOf("param: {name: 'yani_home_sections_title'");
-const noticeIndex = ui.indexOf("param: {name: 'yani_repo_notice', type: 'title'}");
+const settingsStart = settingsSource.indexOf("param: {name: 'yani_home_sections_title'");
+const noticeIndex = settingsSource.indexOf("param: {name: 'yani_repo_notice', type: 'title'}");
 assert.ok(settingsStart >= 0 && noticeIndex > settingsStart, 'repository notice must remain at the bottom of settings');
-assert.ok(!ui.slice(noticeIndex, noticeIndex + 250).includes('onChange'), 'repository notice must not be actionable');
+assert.ok(!settingsSource.slice(noticeIndex, noticeIndex + 250).includes('onChange'), 'repository notice must not be actionable');
 ['ru', 'en', 'uk'].forEach((language) => {
     assert.match(i18n, new RegExp(`messages\\.${language}\\.repo_notice\\s*=`));
 });

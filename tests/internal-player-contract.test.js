@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const source = fs.readFileSync('src/ui.js', 'utf8');
+const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const start = source.indexOf('function playInternalDirectVideo');
@@ -49,14 +50,14 @@ assert.ok(!source.includes("playInternalPlayer(current, playlist) || openExterna
 assert.doesNotMatch(source, /yani_player_preference', 'last'\) === 'lampa'\) return 'internal'/);
 assert.match(source, /function migrateLegacyPlayerPreference/);
 assert.match(source, /yani_source_/);
-assert.match(source, /display_sources/);
-assert.match(source, /yani_playback_target_locked/);
-assert.match(source, /player_preference_non_android/);
+assert.match(settingsSource, /display_sources/);
+assert.match(settingsSource, /yani_playback_target_locked/);
+assert.match(settingsSource, /player_preference_non_android/);
 // Android and webOS both have a player to hand a stream to; every other
 // platform keeps the internal one.
 assert.match(source, /function externalPlayerAvailable\(\) \{\s*return isAndroidPlatform\(\) \|\| isWebOsPlatform\(\);/);
 assert.match(source, /if \(!externalPlayerAvailable\(\)\) return 'internal'/);
-assert.match(source, /if \(externalPlayerAvailable\(\)\) \{[\s\S]{0,120}Lampa\.SettingsApi\.addParam\(\{[\s\S]{0,400}yani_playback_target/);
+assert.match(settingsSource, /if \(externalPlayerAvailable\(\)\) \{[\s\S]{0,120}Lampa\.SettingsApi\.addParam\(\{[\s\S]{0,400}yani_playback_target/);
 // The LG system player is launched by Lampa itself and reads only
 // `timeline.time` as the start position.
 assert.match(source, /function openWebOsPlayer\(current, playlist, card\)/);

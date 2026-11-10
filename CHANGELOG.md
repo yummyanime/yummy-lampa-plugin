@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.49.5] - 2026-11-10
+
+### Changed
+
+- Moved the YummyAnime settings section and the account sign-in and sign-out actions from ui.js into ui-settings.js without changing behaviour
+
 ## [0.49.4] - 2026-11-10
 
 ### Changed
