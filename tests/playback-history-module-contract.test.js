@@ -8,6 +8,7 @@ assert.match(source, /persistHistory\(history\);[\s\S]{0,120}publishPlaybackHist
 assert.match(source, /if \(result\.imported\)[\s\S]{0,500}publishPlaybackHistoryChange\(null\)/);
 assert.match(source, /\$\(document\)\.trigger\('yani:watch-progress', \[changedCard \|\| null\]\)/);
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
@@ -39,7 +40,7 @@ assert.match(watcher, /Lampa\.PlayerVideo\.video\(\)/, 'progress must use Lampa 
 assert.match(watcher, /listener\.follow\('timeupdate', state\.playerTimeHandler\)/, 'progress must follow Lampa player events');
 assert.match(watcher, /listener\.follow\('destroy', state\.playerDestroyHandler\)/, 'the final position must be captured before Lampa destroys its media node');
 assert.match(watcher, /listener\.remove\('timeupdate', state\.playerTimeHandler\)/, 'player listeners must be removed with the watcher');
-assert.match(ui, /yani:watch-progress\.yaniHome/, 'the dashboard must refresh when playback history changes');
+assert.match(homeScreen, /yani:watch-progress\.yaniHome/, 'the dashboard must refresh when playback history changes');
 
 const storage = {};
 const context = {

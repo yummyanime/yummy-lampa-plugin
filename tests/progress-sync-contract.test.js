@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const accountScreen = fs.readFileSync('src/screens/ui-account.js', 'utf8');
 const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
@@ -18,7 +19,7 @@ assert.match(ui, /autoProgressSyncEnabled/);
 assert.match(history, /function autoProgressSyncEnabled\(\)/);
 assert.match(history, /function pullRemoteProgress/);
 assert.match(history, /pullRemoteProgress\(300\)/);
-assert.match(ui, /importRemoteEntries\(remoteEntries\)/);
+assert.match(homeScreen, /importRemoteEntries\(remoteEntries\)/);
 assert.match(history, /if \(!window\.LampaYaniAuth \|\| !window\.LampaYaniAuth\.token\(\)/, 'automatic server sync must require authorization');
 assert.match(watcher, /lastLocalSync >= 10000/, 'local progress writes must be throttled');
 assert.match(watcher, /lastServerSync >= 60000/, 'server progress writes must be throttled');

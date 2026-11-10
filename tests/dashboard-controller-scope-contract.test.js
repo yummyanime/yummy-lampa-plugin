@@ -1,7 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const ui = fs.readFileSync('src/ui.js', 'utf8');
+const ui = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const homeStart = ui.indexOf('function Home(object)');
 const createStart = ui.indexOf('this.create = function ()', homeStart);
 const controllerStart = ui.indexOf("Lampa.Controller.add('content'", createStart);

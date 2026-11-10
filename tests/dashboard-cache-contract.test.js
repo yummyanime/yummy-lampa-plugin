@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const source = fs.readFileSync('src/home/ui-home-insights.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 const context = {window: {}};
 vm.runInNewContext(source, context);
@@ -34,8 +35,8 @@ assert.equal(partial.used_cache, true);
 assert.match(ui, /yani_home_dashboard_snapshot/);
 assert.match(ui, /readHomeDashboardSnapshot\(\)/);
 assert.match(ui, /cacheHomeDashboardSnapshot\(dashboard\)/);
-assert.match(ui, /service\.feed && service\.schedule/);
-assert.match(ui, /setIntroDataState\('offline', dashboardCache\.updated_at\)/);
+assert.match(homeScreen, /service\.feed && service\.schedule/);
+assert.match(homeScreen, /setIntroDataState\('offline', dashboardCache\.updated_at\)/);
 assert.match(css, /\.yani-home__intro-data--offline i/);
 
 console.log('dashboard cache contract checks passed');

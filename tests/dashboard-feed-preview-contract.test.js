@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const source = fs.readFileSync('src/home/ui-home-insights.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const context = {window: {}};
 vm.runInNewContext(source, context);
 const insights = context.window.LampaYaniHomeInsights;
@@ -27,9 +28,9 @@ const merged = insights.mergeDashboardSnapshot({discovery}, {service: {api: fals
 assert.equal(merged.discovery.new_release.title, 'Newest');
 assert.equal(merged.discovery.collection.title, 'Summer stories');
 
-assert.match(ui, /setPreview\(homeButtons\.new_releases, newRelease\.title, newRelease\.meta\)/);
-assert.match(ui, /setArtwork\(homeButtons\.new_releases, newRelease\.poster\)/);
-assert.match(ui, /setPreview\(homeButtons\.collections, featuredCollection\.title/);
-assert.match(ui, /setArtwork\(homeButtons\.collections, featuredCollection\.poster\)/);
+assert.match(homeScreen, /setPreview\(homeButtons\.new_releases, newRelease\.title, newRelease\.meta\)/);
+assert.match(homeScreen, /setArtwork\(homeButtons\.new_releases, newRelease\.poster\)/);
+assert.match(homeScreen, /setPreview\(homeButtons\.collections, featuredCollection\.title/);
+assert.match(homeScreen, /setArtwork\(homeButtons\.collections, featuredCollection\.poster\)/);
 
 console.log('dashboard feed preview contract checks passed');

@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const source = fs.readFileSync('src/home/ui-home-insights.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 const context = {window: {}};
 vm.runInNewContext(source, context);
@@ -22,14 +23,14 @@ assert.equal(insights.dashboardInitialFocus('hidden', 'notifications', ['catalog
 assert.equal(insights.dashboardInitialFocus('', 'hidden', ['catalog', 'genres']), 'catalog');
 assert.equal(insights.dashboardInitialFocus('', '', []), '');
 
-assert.match(ui, /function setArtwork\(button, poster\)/);
-assert.match(ui, /reducedMotion \|\| lowMemoryDevice \|\| lowCpuDevice/);
-assert.match(ui, /setArtwork\(homeButtons\.continue_watching, resume\.poster\)/);
-assert.match(ui, /setArtwork\(homeButtons\.schedule, schedule\.preview\.poster\)/);
-assert.match(ui, /setArtwork\(homeButtons\.new_translations, translation\.poster\)/);
-assert.match(ui, /preferredHomeKey = button \? priority\.key/);
-assert.match(ui, /dashboardInitialFocus\(savedKey, preferredHomeKey, availableKeys\)/);
-assert.match(ui, /target = availableNodes\[focusKey\] \|\| false/);
+assert.match(homeScreen, /function setArtwork\(button, poster\)/);
+assert.match(homeScreen, /reducedMotion \|\| lowMemoryDevice \|\| lowCpuDevice/);
+assert.match(homeScreen, /setArtwork\(homeButtons\.continue_watching, resume\.poster\)/);
+assert.match(homeScreen, /setArtwork\(homeButtons\.schedule, schedule\.preview\.poster\)/);
+assert.match(homeScreen, /setArtwork\(homeButtons\.new_translations, translation\.poster\)/);
+assert.match(homeScreen, /preferredHomeKey = button \? priority\.key/);
+assert.match(homeScreen, /dashboardInitialFocus\(savedKey, preferredHomeKey, availableKeys\)/);
+assert.match(homeScreen, /target = availableNodes\[focusKey\] \|\| false/);
 assert.match(css, /\.yani-home__item > \.yani-home__item-art/);
 assert.match(css, /\.yani-home__item--priority:not\(\.focus\)/);
 assert.match(css, /\.yani-home--reduced-motion \.yani-home__item-art \{ display: none; \}/);

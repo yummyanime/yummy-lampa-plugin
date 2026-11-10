@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.50.5] - 2026-11-10
+
+### Changed
+
+- Moved the home screen from ui.js into ui-home.js without changing behaviour
+
 ## [0.50.4] - 2026-11-10
 
 ### Changed

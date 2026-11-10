@@ -4,6 +4,7 @@ const fs = require('fs');
 const uiSource = fs.readFileSync('src/ui.js', 'utf8');
 const controls = fs.readFileSync('src/screens/ui-catalog-controls.js', 'utf8');
 const ui = uiSource + '\n' + controls;
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(ui, /Lampa\.Component\.add\('yani_top', Top\)/);
@@ -12,7 +13,7 @@ assert.match(ui, /var topDefinitions = \[[\s\S]{0,500}key: 'all', types: ''[\s\S
 assert.match(ui, /var controlDefinitions = topMode \? topDefinitions : sortDefinitions/);
 assert.match(ui, /if \(topMode\) \{[\s\S]{0,250}params\.sort = 'top'[\s\S]{0,150}params\.sort_forward = true[\s\S]{0,150}params\.from_year = 1900[\s\S]{0,250}params\.types = definition\.types/);
 assert.match(ui, /component: 'yani_top'[\s\S]{0,100}topMode: true/);
-assert.match(ui, /key: 'top_rated'[\s\S]{0,500}component: 'yani_top'[\s\S]{0,150}sort_forward: true[\s\S]{0,100}from_year: 1900/);
+assert.match(homeScreen, /key: 'top_rated'[\s\S]{0,500}component: 'yani_top'[\s\S]{0,150}sort_forward: true[\s\S]{0,100}from_year: 1900/);
 assert.match(ui, /controlDefinitions\.forEach/);
 assert.match(ui, /topMode \? topTypeIcon\(definition\.key\) : catalogSortIcon\(definition\.key\)/);
 

@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const source = fs.readFileSync('src/home/ui-home-insights.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 const context = {window: {}, Date};
 vm.runInNewContext(source, context);
@@ -19,12 +20,12 @@ assert.equal(insights.releaseCountdown(now - 1, now).state, 'aired');
 assert.equal(insights.releaseCountdown(0, now).state, 'unknown');
 assert.equal(insights.releaseCountdown(now + 1, now).minutes, 1);
 
-assert.match(ui, /var updateEpisodeCountdown = function \(\) \{\};/);
-assert.match(ui, /updateEpisodeCountdown = function \(release\)/);
-assert.match(ui, /releaseCountdown\(release && release\.timestamp, Date\.now\(\)\)/);
-assert.match(ui, /currentEpisodeFlow\) updateEpisodeCountdown\(currentEpisodeFlow\.japan\)/);
-assert.match(ui, /t\('next_broadcast'\)/);
-assert.match(ui, /t\('broadcast_started'\)/);
+assert.match(homeScreen, /var updateEpisodeCountdown = function \(\) \{\};/);
+assert.match(homeScreen, /updateEpisodeCountdown = function \(release\)/);
+assert.match(homeScreen, /releaseCountdown\(release && release\.timestamp, Date\.now\(\)\)/);
+assert.match(homeScreen, /currentEpisodeFlow\) updateEpisodeCountdown\(currentEpisodeFlow\.japan\)/);
+assert.match(homeScreen, /t\('next_broadcast'\)/);
+assert.match(homeScreen, /t\('broadcast_started'\)/);
 assert.match(css, /\.yani-home__episode-flow-live--upcoming/);
 assert.match(css, /\.yani-home__episode-flow-live--aired/);
 

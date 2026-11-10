@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const authSource = fs.readFileSync('src/core/auth.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const storage = {};
 const events = [];
 
@@ -50,13 +51,15 @@ assert.deepStrictEqual(events.map((event) => event.detail.authorized), [true, fa
 auth.clear();
 assert.strictEqual(events.length, 2, 'repeated clears must not emit duplicate state changes');
 
-assert.match(ui, /document\.addEventListener\('yani:auth-changed', onHomeAuthorizationChanged\)/,
+assert.match(homeScreen, /document\.addEventListener\('yani:auth-changed', onHomeAuthorizationChanged\)/,
     'Home must listen for authorization changes while it is retained in the activity stack');
-assert.match(ui, /homeAuthorizationChanged \|\| homeAuthorized !== Boolean\(LampaYaniAuth\.token\(\)\)[\s\S]{0,320}Lampa\.Activity\.replace\(\{[\s\S]{0,180}component: 'yani_home'/,
+assert.match(homeScreen, /homeAuthorizationChanged \|\| homeAuthorized !== Boolean\(LampaYaniAuth\.token\(\)\)[\s\S]{0,320}Lampa\.Activity\.replace\(\{[\s\S]{0,180}component: 'yani_home'/,
     'Home must rebuild before rendering stale account data');
-assert.match(ui, /document\.removeEventListener\('yani:auth-changed', onHomeAuthorizationChanged\)/,
+assert.match(homeScreen, /document\.removeEventListener\('yani:auth-changed', onHomeAuthorizationChanged\)/,
     'Home must remove its authorization listener on destroy');
-assert.match(ui, /onHomeAuthorizationChanged\(\)[\s\S]{0,100}userListsSnapshot = null/,
+assert.match(homeScreen, /onHomeAuthorizationChanged\(\)[\s\S]{0,100}resetUserListsSnapshot\(\)/,
     'account-specific list snapshots must be invalidated with the session');
+assert.match(ui, /resetUserListsSnapshot: function \(\) \{ userListsSnapshot = null; \}/,
+    'the reset must clear the cache that ui.js keeps');
 
 console.log('authorization dashboard state contract tests passed');

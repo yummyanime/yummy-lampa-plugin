@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const model = fs.readFileSync('src/cards/ui-card-model.js', 'utf8');
 const historySource = fs.readFileSync('src/playback/ui-playback-history.js', 'utf8');
 const menuSource = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
@@ -44,24 +45,24 @@ assert.match(historySource, /duration: Math\.max\(0, Number\(video\.duration \|\
 // A title leaves Continue Watching only when its last released episode has been
 // watched. Which user list it sits in says nothing about whether there are
 // unwatched episodes left, so the queue must not consult the lists at all.
-assert.ok(!/fetchExcluded/.test(ui), 'the queue must not filter by user lists');
-assert.ok(!/loadContinueWatchingExclusions/.test(ui), 'the user-list filter must be gone');
-assert.match(ui, /function applyPlaybackSnapshot\(remoteEntries\)/);
-assert.match(ui, /setPreview\(homeButtons\.continue_watching, '', ''\)/, 'empty continue queue must clear the dashboard title');
-assert.match(ui, /LampaYaniHomeSections\.fetchHistoryRange\(LampaYaniApi\.watchHistory, 300, 30, control\)/);
-assert.doesNotMatch(ui, /var recentWatches = LampaYaniHomeSections\.lastWatchTokens/,
+assert.ok(!/fetchExcluded/.test(homeScreen), 'the queue must not filter by user lists');
+assert.ok(!/loadContinueWatchingExclusions/.test(homeScreen), 'the user-list filter must be gone');
+assert.match(homeScreen, /function applyPlaybackSnapshot\(remoteEntries\)/);
+assert.match(homeScreen, /setPreview\(homeButtons\.continue_watching, '', ''\)/, 'empty continue queue must clear the dashboard title');
+assert.match(homeScreen, /LampaYaniHomeSections\.fetchHistoryRange\(LampaYaniApi\.watchHistory, 300, 30, control\)/);
+assert.doesNotMatch(homeScreen, /var recentWatches = LampaYaniHomeSections\.lastWatchTokens/,
     'dashboard history refresh must discover titles watched on other devices');
 assert.match(sectionsSource, /function lastWatchTokens\(saved, limit\)/);
-assert.match(ui, /readHomePlaybackSnapshot\(playbackUserKey\)/);
-assert.match(ui, /cacheHomePlaybackSnapshot\(playbackUserKey, result\[0\]\)/);
-assert.match(ui, /importRemoteEntries\(remoteEntries\)/);
+assert.match(homeScreen, /readHomePlaybackSnapshot\(playbackUserKey\)/);
+assert.match(homeScreen, /cacheHomePlaybackSnapshot\(playbackUserKey, result\[0\]\)/);
+assert.match(homeScreen, /importRemoteEntries\(remoteEntries\)/);
 assert.match(ui, /importRemote: importRemoteEntries/);
 assert.match(historySource, /function pullRemoteProgress/);
 assert.match(historySource, /function importVideosProgress/);
 assert.match(sectionsSource, /function importRemoteIntoLocal/);
 assert.match(ui, /homePlaybackCacheLifetime = 300000/);
-assert.ok(!/yani_continue_excluded_/.test(ui), 'the user-list exclusion cache must be gone with the filter');
-assert.ok(!/\[2, 3\]\.forEach\(function \(listId\)/.test(ui), 'membership of the completed or dropped list must not decide the queue');
+assert.ok(!/yani_continue_excluded_/.test(homeScreen), 'the user-list exclusion cache must be gone with the filter');
+assert.ok(!/\[2, 3\]\.forEach\(function \(listId\)/.test(homeScreen), 'membership of the completed or dropped list must not decide the queue');
 assert.match(model, /window\.LampaYaniUiUtils\.posterSources/, 'poster URLs must go through the shared picker');
 assert.match(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), /value\.huge/, 'large remote history posters must be supported');
 assert.match(ui, /LampaYaniPlaybackHistory\.create/);

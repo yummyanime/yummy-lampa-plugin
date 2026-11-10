@@ -2,32 +2,33 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
 ['catalog', 'genres', 'search'].forEach((key) => {
-    assert.match(ui, new RegExp(`key: '${key}'[^\\n]+group: 'explore'`));
+    assert.match(homeScreen, new RegExp(`key: '${key}'[^\\n]+group: 'explore'`));
 });
 ['schedule', 'new_translations'].forEach((key) => {
-    assert.match(ui, new RegExp(`key: '${key}'[^\\n]+group: 'episode_flow'`));
+    assert.match(homeScreen, new RegExp(`key: '${key}'[^\\n]+group: 'episode_flow'`));
 });
 ['continue_watching', 'user_lists', 'updates'].forEach((key) => {
-    assert.match(ui, new RegExp(`key: '${key}'[^\\n]+group: 'library'`));
+    assert.match(homeScreen, new RegExp(`key: '${key}'[^\\n]+group: 'library'`));
 });
 ['notifications', 'account', 'status'].forEach((key) => {
-    assert.match(ui, new RegExp(`key: '${key}'[^\\n]+group: 'service'`));
+    assert.match(homeScreen, new RegExp(`key: '${key}'[^\\n]+group: 'service'`));
 });
 
-assert.match(ui, /yani-home__intro-title/);
-assert.match(ui, /homeExploreDecoration\(item\.key\)/);
-assert.match(ui, /yani-home__explore-art--catalog/);
-assert.match(ui, /yani-home__explore-art--genres/);
-assert.match(ui, /yani-home__explore-art--search/);
-assert.match(ui, /yani-home__panel--active/);
-assert.match(ui, /yani-home__panel-chapter[^\n]+02/);
-assert.match(ui, /yani-home__panel-chapter[^\n]+04/);
-assert.match(ui, /group === 'explore' \? '01' : group === 'library' \? '03' : group === 'service' \? '05'/);
-assert.match(ui, /hover:enter click\.yaniHome/);
-assert.match(ui, /last && document\.documentElement\.contains\(last\)/);
+assert.match(homeScreen, /yani-home__intro-title/);
+assert.match(homeScreen, /homeExploreDecoration\(item\.key\)/);
+assert.match(homeScreen, /yani-home__explore-art--catalog/);
+assert.match(homeScreen, /yani-home__explore-art--genres/);
+assert.match(homeScreen, /yani-home__explore-art--search/);
+assert.match(homeScreen, /yani-home__panel--active/);
+assert.match(homeScreen, /yani-home__panel-chapter[^\n]+02/);
+assert.match(homeScreen, /yani-home__panel-chapter[^\n]+04/);
+assert.match(homeScreen, /group === 'explore' \? '01' : group === 'library' \? '03' : group === 'service' \? '05'/);
+assert.match(homeScreen, /hover:enter click\.yaniHome/);
+assert.match(homeScreen, /last && document\.documentElement\.contains\(last\)/);
 assert.match(css, /\.yani-home__panel--explore\s*\{[\s\S]{0,100}grid-column: span 12/);
 assert.match(css, /\.yani-home__episode-flow\s*\{[\s\S]{0,180}grid-column: span 8/);
 assert.match(css, /\.yani-home__panel--library\s*\{[\s\S]{0,100}grid-column: span 4/);

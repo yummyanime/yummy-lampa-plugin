@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const collections = fs.readFileSync('src/screens/ui-collections.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
@@ -13,8 +14,8 @@ assert.match(api, /request\('\/collection\?limit='/);
 assert.match(api, /collectionDetail: function/);
 assert.match(api, /request\('\/collection\/'/);
 assert.match(api, /'\?limit='.*'&offset='/);
-assert.match(ui, /key: 'collections'/);
-assert.ok(ui.indexOf("key: 'search'") < ui.indexOf("key: 'collections'"), 'Search must remain ahead of Collections');
+assert.match(homeScreen, /key: 'collections'/);
+assert.ok(homeScreen.indexOf("key: 'search'") < homeScreen.indexOf("key: 'collections'"), 'Search must remain ahead of Collections');
 assert.match(ui, /Lampa\.Component\.add\('yani_collections'/);
 assert.match(ui, /Lampa\.Component\.add\('yani_collection'/);
 assert.match(ui, /Lampa\.Component\.add\('yani_genres'/);

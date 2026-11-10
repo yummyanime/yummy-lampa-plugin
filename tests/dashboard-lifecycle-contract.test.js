@@ -3,6 +3,7 @@ const fs = require('fs');
 
 const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
@@ -14,19 +15,19 @@ assert.match(api, /schedule: function \(control\)/);
 assert.match(api, /lastWatches: function \(watches, control\)/);
 assert.match(api, /watchHistory: function \(limit, offset, control\)/);
 
-assert.match(ui, /var homeAbortController = typeof AbortController !== 'undefined'/);
-assert.match(ui, /var homeTimers = \[\]/);
-assert.match(ui, /scheduleHomeTask\(function \(\) \{[\s\S]*?fetchHistoryRange\(LampaYaniApi\.watchHistory, 300, 30, control\)/);
-assert.doesNotMatch(ui, /var recentWatches = LampaYaniHomeSections\.lastWatchTokens/);
-assert.match(ui, /}, 140 \* homeDelayScale\)/);
-assert.match(ui, /}, 420 \* homeDelayScale\)/);
-assert.match(ui, /}, 760 \* homeDelayScale\)/);
-assert.match(ui, /homeTimers\.forEach\(function \(timer\) \{ clearTimeout\(timer\); \}\)/);
-assert.match(ui, /if \(homeAbortController\) homeAbortController\.abort\(\)/);
-assert.match(ui, /setChapterState\('episode_flow'/);
-assert.match(ui, /setChapterState\('library'/);
-assert.match(ui, /setChapterState\('discover'/);
-assert.match(ui, /setChapterState\('service'/);
+assert.match(homeScreen, /var homeAbortController = typeof AbortController !== 'undefined'/);
+assert.match(homeScreen, /var homeTimers = \[\]/);
+assert.match(homeScreen, /scheduleHomeTask\(function \(\) \{[\s\S]*?fetchHistoryRange\(LampaYaniApi\.watchHistory, 300, 30, control\)/);
+assert.doesNotMatch(homeScreen, /var recentWatches = LampaYaniHomeSections\.lastWatchTokens/);
+assert.match(homeScreen, /}, 140 \* homeDelayScale\)/);
+assert.match(homeScreen, /}, 420 \* homeDelayScale\)/);
+assert.match(homeScreen, /}, 760 \* homeDelayScale\)/);
+assert.match(homeScreen, /homeTimers\.forEach\(function \(timer\) \{ clearTimeout\(timer\); \}\)/);
+assert.match(homeScreen, /if \(homeAbortController\) homeAbortController\.abort\(\)/);
+assert.match(homeScreen, /setChapterState\('episode_flow'/);
+assert.match(homeScreen, /setChapterState\('library'/);
+assert.match(homeScreen, /setChapterState\('discover'/);
+assert.match(homeScreen, /setChapterState\('service'/);
 
 assert.match(css, /\.yani-home__chapter-state--loading/);
 assert.match(css, /\.yani-home__chapter-state--partial/);
