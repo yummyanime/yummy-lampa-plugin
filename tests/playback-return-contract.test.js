@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const externalPlayer = fs.readFileSync('src/playback/ui-external-player.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
 const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
@@ -26,16 +27,16 @@ const actionsSource = menu.slice(actionsStart, actionsEnd);
 assert.ok(actionsStart >= 0 && actionsEnd > actionsStart, 'showYummyActions must exist');
 assert.match(actionsSource, /beginPlaybackNavigation\(originElement, originCollection\);[\s\S]{0,100}openVideos\(card\)/);
 
-assert.match(ui, /function prepareExternalRestore\(\)[\s\S]{0,500}var origin = playbackReturnSnapshot\(\)/);
-assert.match(ui, /function cancelExternalRestore\(\)[\s\S]{0,300}externalRestoreState\.pending = false/);
-assert.match(ui, /function openExternalUri[\s\S]{0,1500}cancelExternalRestore\(\);[\s\S]{0,50}return false/);
-assert.match(ui, /function openAndroidAppUri[\s\S]{0,1200}cancelExternalRestore\(\);[\s\S]{0,50}return false/);
-assert.match(ui, /externalRestoreState\.controller = origin\.controller/);
-assert.match(ui, /externalRestoreState\.session = playbackReturnState\.session/);
-assert.match(ui, /if \(!playbackReturnState\.active \|\| playbackReturnState\.session !== externalRestoreState\.session\)/);
-assert.match(ui, /var snapshot = \{/);
-assert.match(ui, /cancelExternalRestore\(\);\s*restorePlaybackInteraction\(snapshot/);
-assert.match(ui, /restorePlaybackInteraction\(snapshot, \{timeout: 2400, interval: 120\}\)/);
+assert.match(externalPlayer, /function prepareExternalRestore\(\)[\s\S]{0,500}var origin = playbackReturnSnapshot\(\)/);
+assert.match(externalPlayer, /function cancelExternalRestore\(\)[\s\S]{0,300}externalRestoreState\.pending = false/);
+assert.match(externalPlayer, /function openExternalUri[\s\S]{0,1500}cancelExternalRestore\(\);[\s\S]{0,50}return false/);
+assert.match(externalPlayer, /function openAndroidAppUri[\s\S]{0,1200}cancelExternalRestore\(\);[\s\S]{0,50}return false/);
+assert.match(externalPlayer, /externalRestoreState\.controller = origin\.controller/);
+assert.match(externalPlayer, /externalRestoreState\.session = playbackReturnState\.session/);
+assert.match(externalPlayer, /if \(!playbackReturnState\.active \|\| playbackReturnState\.session !== externalRestoreState\.session\)/);
+assert.match(externalPlayer, /var snapshot = \{/);
+assert.match(externalPlayer, /cancelExternalRestore\(\);\s*restorePlaybackInteraction\(snapshot/);
+assert.match(externalPlayer, /restorePlaybackInteraction\(snapshot, \{timeout: 2400, interval: 120\}\)/);
 assert.match(menu, /function restorePlaybackInteraction\(snapshot, options\)[\s\S]{0,500}var deadline = Date\.now\(\) \+ timeout/);
 assert.match(menu, /if \(Date\.now\(\) < deadline\) restore\(interval, true\)/);
 assert.match(menu, /activeController === expectedController && activeFocus && focusInCollection/);
@@ -43,19 +44,19 @@ assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,700}restoreP
 assert.match(watcher, /state\.playerDestroyHandler = function \(event\)[\s\S]{0,700}!state\.advanced && !state\.recovering[\s\S]{0,260}restorePlaybackInteraction\(null, \{timeout: 2400, interval: 120\}\)/,
     'the title focus must start restoring on player destroy without waiting for the late callback');
 ['Lampa.Android.openPlayer', 'Android.openPlayer', 'AndroidJS.openPlayer'].forEach((bridge) => {
-    const start = ui.indexOf("tryExternalOpen('" + bridge + "'");
+    const start = externalPlayer.indexOf("tryExternalOpen('" + bridge + "'");
     assert.ok(start >= 0, bridge + ' bridge must exist');
-    assert.match(ui.slice(start, start + 500), /prepareExternalRestore\(\)/,
+    assert.match(externalPlayer.slice(start, start + 500), /prepareExternalRestore\(\)/,
         bridge + ' must preserve focus before launching an external player');
 });
-assert.match(ui, /externalRestoreState\.departed/);
-assert.match(ui, /setTimeout\(restoreExternalFocus, 1500\)/);
-assert.match(ui, /if \(!externalRestoreState\.departed && elapsed < 1200\)[\s\S]{0,150}setTimeout\(restoreExternalFocus, 1200 - elapsed\)/);
+assert.match(externalPlayer, /externalRestoreState\.departed/);
+assert.match(externalPlayer, /setTimeout\(restoreExternalFocus, 1500\)/);
+assert.match(externalPlayer, /if \(!externalRestoreState\.departed && elapsed < 1200\)[\s\S]{0,150}setTimeout\(restoreExternalFocus, 1200 - elapsed\)/);
 assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/);
 assert.match(ui, /playbackReturnState\.session !== callbackSession/,
     'a callback from the closing episode must not restore focus over the next player');
 assert.match(ui, /param: \{name: 'yani_yummytv_enabled', type: 'trigger', default: false\}/);
-assert.match(ui, /Storage\.get\('yani_yummytv_enabled', false\)/);
+assert.match(externalPlayer, /Storage\.get\('yani_yummytv_enabled', false\)/);
 assert.match(sources, /var beginPlaybackNavigation = playbackMenu\.beginPlaybackNavigation|function beginPlaybackNavigation/);
 
 const settingsStart = ui.indexOf("param: {name: 'yani_home_sections_title'");

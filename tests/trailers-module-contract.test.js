@@ -3,6 +3,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const externalPlayer = fs.readFileSync('src/playback/ui-external-player.js', 'utf8');
 const trailers = fs.readFileSync('src/playback/ui-trailers.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
@@ -24,10 +25,12 @@ assert.match(trailers, /openExternalVideo\(url, title, \{youtubeIntent: true\}\)
 // stop building that string at all and hand Android a plain, App-Links-verified
 // https URL, exactly how YummyTV opens trailers (ExternalIntentUtils.kt: a bare
 // ACTION_VIEW + CATEGORY_BROWSABLE on the unmodified URL).
-assert.doesNotMatch(ui, /'intent:\/\//, 'no intent-URI scheme may be constructed for external playback');
-assert.doesNotMatch(ui, /function youtubeIntentUrl\(/, 'the intent-URI builder must be gone, not just unused');
+[ui, externalPlayer].forEach((code) => {
+    assert.doesNotMatch(code, /'intent:\/\//, 'no intent-URI scheme may be constructed for external playback');
+    assert.doesNotMatch(code, /function youtubeIntentUrl\(/, 'the intent-URI builder must be gone, not just unused');
+});
 assert.match(
-    ui,
+    externalPlayer,
     /options\.youtubeIntent && openAndroidAppUri\(url\)\) return true;\s*\n\s*return openExternalUri\(url\);/,
     'the YouTube trailer URL itself, unmodified, must be what gets opened'
 );

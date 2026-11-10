@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.49.4] - 2026-11-10
+
+### Changed
+
+- Moved the external-player handoff (Android players, YouTube, YummyTV, browser) and the focus restore that follows it from ui.js into ui-external-player.js without changing behaviour
+
 ## [0.49.3] - 2026-11-10
 
 ### Changed
