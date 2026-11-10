@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.50.0',
+        version: '0.50.1',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -209,8 +209,7 @@ function pluginYummyAnime() {
     messages.ru.community_stats = 'Статистика сообщества';
     messages.ru.manage_list = 'Изменить список';
     messages.ru.my_rating = 'Моя оценка';
-    messages.ru.subscribe_episodes = 'Подписаться на новые серии';
-    messages.ru.unsubscribe_episodes = 'Отписаться от новых серий';
+    messages.ru.episode_notifications = 'Уведомления о новых сериях';
     messages.ru.subscription_added = 'Подписка на новые серии включена';
     messages.ru.subscription_removed = 'Подписка на новые серии отключена';
     messages.ru.subscription_error = 'Не удалось изменить подписку';
@@ -324,8 +323,7 @@ function pluginYummyAnime() {
     messages.en.community_stats = 'Community statistics';
     messages.en.manage_list = 'Change list';
     messages.en.my_rating = 'My rating';
-    messages.en.subscribe_episodes = 'Subscribe to new episodes';
-    messages.en.unsubscribe_episodes = 'Unsubscribe from new episodes';
+    messages.en.episode_notifications = 'New episode notifications';
     messages.en.subscription_added = 'New episode subscription enabled';
     messages.en.subscription_removed = 'New episode subscription disabled';
     messages.en.subscription_error = 'Could not update subscription';
@@ -877,8 +875,7 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.community_stats = 'Статистика спільноти';
     messages.uk.manage_list = 'Змінити список';
     messages.uk.my_rating = 'Моя оцінка';
-    messages.uk.subscribe_episodes = 'Підписатися на нові серії';
-    messages.uk.unsubscribe_episodes = 'Відписатися від нових серій';
+    messages.uk.episode_notifications = 'Сповіщення про нові серії';
     messages.uk.subscription_added = 'Підписку на нові серії увімкнено';
     messages.uk.subscription_removed = 'Підписку на нові серії вимкнено';
     messages.uk.subscription_error = 'Не вдалося змінити підписку';
@@ -16922,9 +16919,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         });
     }
 
+    // The button opens the list of dubbings rather than switching one thing,
+    // so it names the feature and says how many dubbings are on instead of
+    // offering a subscribe or unsubscribe it would not perform.
     function syncSubscriptionButton(button, groups, t) {
-        var subscribed = groups.some(function (group) { return group.subscribed; });
-        button.text(subscribed ? t('unsubscribe_episodes') : t('subscribe_episodes'));
+        var active = groups.filter(function (group) { return group.subscribed; }).length;
+        button.text(t('episode_notifications') + (active ? ' · ' + active : ''));
     }
 
     function toggleEpisodeSubscription(card, button, deps) {
@@ -17443,7 +17443,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 openStandardLampaCard(data);
             });
             bindDetailButtonFocus(searchButton);
-            var subscribeButton = $('<div class="yani-detail__button selector"></div>').text(t('subscribe_episodes'));
+            var subscribeButton = $('<div class="yani-detail__button selector"></div>').text(t('episode_notifications'));
             if (LampaYaniAuth.token()) {
                 // Like the other blocks of this page: a saved snapshot is only
                 // drawn, and watch progress is taken from the fresh response.

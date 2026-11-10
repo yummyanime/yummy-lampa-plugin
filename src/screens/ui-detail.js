@@ -51,9 +51,12 @@
         });
     }
 
+    // The button opens the list of dubbings rather than switching one thing,
+    // so it names the feature and says how many dubbings are on instead of
+    // offering a subscribe or unsubscribe it would not perform.
     function syncSubscriptionButton(button, groups, t) {
-        var subscribed = groups.some(function (group) { return group.subscribed; });
-        button.text(subscribed ? t('unsubscribe_episodes') : t('subscribe_episodes'));
+        var active = groups.filter(function (group) { return group.subscribed; }).length;
+        button.text(t('episode_notifications') + (active ? ' · ' + active : ''));
     }
 
     function toggleEpisodeSubscription(card, button, deps) {
@@ -572,7 +575,7 @@
                 openStandardLampaCard(data);
             });
             bindDetailButtonFocus(searchButton);
-            var subscribeButton = $('<div class="yani-detail__button selector"></div>').text(t('subscribe_episodes'));
+            var subscribeButton = $('<div class="yani-detail__button selector"></div>').text(t('episode_notifications'));
             if (LampaYaniAuth.token()) {
                 // Like the other blocks of this page: a saved snapshot is only
                 // drawn, and watch progress is taken from the fresh response.

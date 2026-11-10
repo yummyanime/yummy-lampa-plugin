@@ -79,7 +79,7 @@ const toggle = context.window.LampaYaniDetail.toggleEpisodeSubscription;
     let menu = shown[shown.length - 1];
     assert.strictEqual(menu.items.slice(0, 2).map((item) => item.action).join(','), 'subscribe-all,unsubscribe-all',
         'both bulk actions are offered while some dubbings are on and some off');
-    assert.strictEqual(button.label, 'unsubscribe_episodes', 'the button reflects the server state');
+    assert.strictEqual(button.label, 'episode_notifications · 1', 'the button counts the dubbings that are on');
 
     // Subscribe to everything still off, one request at a time.
     menu.onSelect(menu.items[0]);
@@ -110,7 +110,7 @@ const toggle = context.window.LampaYaniDetail.toggleEpisodeSubscription;
     menu.onSelect(menu.items.find((item) => item.action === 'unsubscribe-all'));
     await flush(); await flush(); await flush();
     assert.strictEqual(calls.slice().sort().join(','), '-1,-3', 'only the dubbings still subscribed are requested');
-    assert.strictEqual(button.label, 'subscribe_episodes');
+    assert.strictEqual(button.label, 'episode_notifications', 'with nothing on the button shows no count');
 
     console.log('episode subscription list checks passed');
 })().catch((error) => { console.error(error); process.exitCode = 1; });

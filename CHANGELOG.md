@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.50.1] - 2026-11-10
+
+### Changed
+
+- The subscription button to read New episode notifications with the number of dubbings subscribed, instead of a subscribe or unsubscribe label that no longer matched the list it opens
+
 ## [0.50.0] - 2026-11-10
 
 ### Added
