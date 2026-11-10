@@ -307,6 +307,16 @@
 
             Lampa.SettingsApi.addParam({
                 component: 'yani',
+                param: {name: 'yani_build_diagnostics', type: 'button'},
+                field: {
+                    name: t('build_diagnostics'),
+                    description: buildDiagnosticsDescription()
+                },
+                onChange: showBuildDiagnostics
+            });
+
+            Lampa.SettingsApi.addParam({
+                component: 'yani',
                 param: {name: 'yani_usage_policy', type: 'button'},
                 field: {name: t('usage_policy_title'), description: t('usage_policy_settings_description')},
                 onChange: showUsagePolicy
@@ -365,6 +375,42 @@
             if (Lampa.Utils && Lampa.Utils.open) return Lampa.Utils.open(url);
             if (window.open) return window.open(url, '_blank');
             Lampa.Noty.show(url);
+        }
+
+        function buildMetadata() {
+            var build = LampaYaniConfig.build || {};
+            var type = String(build.type || 'source');
+            var typeKey = type === 'production' ? 'build_type_production' : type === 'test' ? 'build_type_test' : 'build_type_source';
+            var date = String(build.date || '');
+            if (date) {
+                try { date = new Date(date).toLocaleString(); } catch (ignoreDate) {}
+            }
+            return {
+                version: String(LampaYaniConfig.version || '—'),
+                hash: String(build.hash || '—'),
+                date: date || '—',
+                type: t(typeKey)
+            };
+        }
+
+        function buildDiagnosticsDescription() {
+            var info = buildMetadata();
+            return t('version_label') + ' ' + info.version + ' · ' + info.hash + ' · ' + info.type;
+        }
+
+        function showBuildDiagnostics() {
+            var info = buildMetadata();
+            Lampa.Select.show({
+                title: t('build_diagnostics'),
+                items: [
+                    {title: t('build_version'), subtitle: info.version},
+                    {title: t('build_source_hash'), subtitle: info.hash},
+                    {title: t('build_date'), subtitle: info.date},
+                    {title: t('build_type'), subtitle: info.type}
+                ],
+                onSelect: function (item) { Lampa.Noty.show(item.subtitle); },
+                onBack: function () { Lampa.Controller.toggle('settings'); }
+            });
         }
 
         function openSettingsLogin() {

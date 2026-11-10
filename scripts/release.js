@@ -81,7 +81,11 @@ function writeStable(options) {
     const manifest = stableManifest(version, {releasedAt: options.releasedAt});
     const stableDir = path.join(root, 'stable');
     fs.mkdirSync(stableDir, {recursive: true});
-    fs.writeFileSync(path.join(root, STABLE_PATH), bundle);
+    const productionBundle = bundle.replace(
+        /(build:\s*\{hash:\s*'[^']+',\s*date:\s*'[^']+',\s*type:\s*)'test'/,
+        "$1'production'"
+    );
+    fs.writeFileSync(path.join(root, STABLE_PATH), productionBundle);
     fs.writeFileSync(path.join(root, STABLE_META), JSON.stringify(manifest, null, 4) + '\n');
     return manifest;
 }

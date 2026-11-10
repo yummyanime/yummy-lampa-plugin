@@ -202,6 +202,13 @@ assert.strictEqual(utils.detailEpisodeStats({}, [
 assert.strictEqual(utils.isEpisodeProgressCounted(31, 1440), true);
 assert.strictEqual(utils.isEpisodeProgressCounted(30, 1440), false);
 assert.strictEqual(utils.isEpisodeFinished(1370, 1440), true);
+assert.strictEqual(utils.isEpisodeFinished(1260, 1440), true, 'three minutes of episode credits may remain');
+assert.strictEqual(utils.isEpisodeFinished(2917, 3600), true, 'more than 81 percent finishes an ordinary episode');
+assert.strictEqual(utils.isEpisodeFinished(2916, 3600), false, 'exactly 81 percent is not enough when the credits window was not reached');
+assert.strictEqual(utils.isEpisodeFinished(540, 720), true, 'three minutes remaining finishes an ordinary episode independently of percentage');
+assert.strictEqual(utils.isEpisodeFinished(539, 720), false, 'neither completion condition is met');
+assert.strictEqual(utils.isEpisodeFinished(7000, 7200), true, 'long-form content keeps the 95 percent fallback');
+assert.strictEqual(utils.isEpisodeFinished(6800, 7200), false, 'long-form content must not use the episode credits window');
 assert.strictEqual(utils.isEpisodeFinished(300, 1440), false);
 assert.strictEqual(utils.isEpisodeFinished(300, 0), false, 'an unknown duration cannot prove a watch');
 assert.strictEqual(utils.isEpisodeFinished(0, 1440, {completed: true}), true, 'an explicit completion flag wins');

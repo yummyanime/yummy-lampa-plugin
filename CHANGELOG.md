@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.4] - 2026-11-11
+
+### Added
+
+- Compact version, source hash, build date and channel diagnostics under About
+
+### Changed
+
+- Episode completion to accept either more than 81 percent watched or no more than a three-minute credits tail for ordinary episodes, while retaining the 95 percent long-form fallback
+
 ## [0.53.3] - 2026-11-11
 
 ### Added

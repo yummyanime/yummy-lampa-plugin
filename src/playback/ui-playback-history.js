@@ -77,7 +77,11 @@
         function episodeFinished(position, duration, flags) {
             var utils = window.LampaYaniUiUtils;
             if (utils && utils.isEpisodeFinished) return utils.isEpisodeFinished(position, duration, flags);
-            return positiveNumber(duration) > 0 && positiveNumber(position) / positiveNumber(duration) >= 0.95;
+            duration = positiveNumber(duration);
+            position = positiveNumber(position);
+            if (!(duration > 0)) return false;
+            if (duration <= 60 * 60) return position / duration > 0.81 || duration - position <= 3 * 60;
+            return position / duration >= 0.95;
         }
 
         // How many episodes the title has released. Continue Watching needs a

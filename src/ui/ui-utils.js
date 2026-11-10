@@ -555,12 +555,16 @@
         return 'high';
     }
 
-    // An episode counts as finished at 95% of its length: the tail is credits,
-    // and nobody sits through them. This is the single definition of "watched"
+    // Ordinary episodes count as finished when only a short credits tail is
+    // left. Long-form content keeps the percentage rule. This is the single
+    // definition of "watched"
     // — the detail summary, the furthest-episode reach and the Continue
     // Watching queue all have to agree, or the same episode reads as watched in
     // one place and unwatched in another.
     var EPISODE_FINISHED_RATIO = 0.95;
+    var EPISODE_FINISHED_MIN_RATIO = 0.81;
+    var EPISODE_FINISHED_REMAINING_SECONDS = 3 * 60;
+    var EPISODE_FINISHED_MAX_EPISODE_SECONDS = 60 * 60;
     var EPISODE_WATCHED_SECONDS = 30;
 
     function isEpisodeFinished(position, duration, flags) {
@@ -570,7 +574,12 @@
         // Without a duration there is nothing to measure against, and counting
         // any stray second as a full watch is how a title silently disappears
         // from the queue.
-        return duration > 0 && position / duration >= EPISODE_FINISHED_RATIO;
+        if (!(duration > 0)) return false;
+        var ratio = position / duration;
+        if (duration <= EPISODE_FINISHED_MAX_EPISODE_SECONDS) {
+            return ratio > EPISODE_FINISHED_MIN_RATIO || duration - position <= EPISODE_FINISHED_REMAINING_SECONDS;
+        }
+        return ratio >= EPISODE_FINISHED_RATIO;
     }
 
     function isEpisodeProgressCounted(position, duration, flags) {
@@ -730,6 +739,9 @@
         isEpisodeProgressCounted: isEpisodeProgressCounted,
         ratingTier: ratingTier,
         EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
+        EPISODE_FINISHED_MIN_RATIO: EPISODE_FINISHED_MIN_RATIO,
+        EPISODE_FINISHED_REMAINING_SECONDS: EPISODE_FINISHED_REMAINING_SECONDS,
+        EPISODE_FINISHED_MAX_EPISODE_SECONDS: EPISODE_FINISHED_MAX_EPISODE_SECONDS,
         EPISODE_WATCHED_SECONDS: EPISODE_WATCHED_SECONDS,
         mediaTypeInfo: mediaTypeInfo,
         translationKind: translationKind,

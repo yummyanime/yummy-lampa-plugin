@@ -13,7 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.3',
+        version: '0.53.4',
+        build: {hash: 'f7dd52d863', date: '2026-11-10T23:04:55.492Z', type: 'test'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -389,6 +390,14 @@ function pluginYummyAnime() {
     messages.ru.settings_playback_section = 'Воспроизведение';
     messages.ru.settings_integrations_section = 'Дополнительные возможности';
     messages.ru.settings_about_section = 'О расширении';
+    messages.ru.build_diagnostics = 'Диагностика сборки';
+    messages.ru.build_version = 'Версия';
+    messages.ru.build_source_hash = 'Hash исходников';
+    messages.ru.build_date = 'Дата сборки';
+    messages.ru.build_type = 'Тип сборки';
+    messages.ru.build_type_production = 'Стабильная';
+    messages.ru.build_type_test = 'Тестовая';
+    messages.ru.build_type_source = 'Исходная';
     messages.ru.display_sources = 'Отображать источники';
     messages.ru.display_sources_description = 'Какие видеосервисы показывать в списке озвучек при просмотре';
     messages.ru.source_visibility_description = 'Показывать этот источник в списке озвучек';
@@ -501,6 +510,14 @@ messages.ru.cvh_region_blocked = 'Видео CVH недоступно в ваш�
     messages.en.settings_playback_section = 'Playback';
     messages.en.settings_integrations_section = 'Additional integrations';
     messages.en.settings_about_section = 'About';
+    messages.en.build_diagnostics = 'Build diagnostics';
+    messages.en.build_version = 'Version';
+    messages.en.build_source_hash = 'Source hash';
+    messages.en.build_date = 'Build date';
+    messages.en.build_type = 'Build type';
+    messages.en.build_type_production = 'Stable';
+    messages.en.build_type_test = 'Test';
+    messages.en.build_type_source = 'Source';
     messages.en.display_sources = 'Show sources';
     messages.en.display_sources_description = 'Which video services appear in the dubbing list when watching';
     messages.en.source_visibility_description = 'Show this source in the dubbing list';
@@ -748,6 +765,14 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.settings_playback_section = 'Відтворення';
     messages.uk.settings_integrations_section = 'Додаткові можливості';
     messages.uk.settings_about_section = 'Про розширення';
+    messages.uk.build_diagnostics = 'Діагностика збірки';
+    messages.uk.build_version = 'Версія';
+    messages.uk.build_source_hash = 'Hash джерел';
+    messages.uk.build_date = 'Дата збірки';
+    messages.uk.build_type = 'Тип збірки';
+    messages.uk.build_type_production = 'Стабільна';
+    messages.uk.build_type_test = 'Тестова';
+    messages.uk.build_type_source = 'Вихідна';
     messages.uk.source_external_support_description = 'Експериментальне джерело. Для відтворення можуть знадобитися зовнішні компоненти';
     messages.uk.source_external_support_warning = '{source} увімкнено. Стабільне відтворення без додаткового зовнішнього функціоналу не гарантується.';
     messages.uk.no_enabled_sources = 'Усі джерела приховано в налаштуваннях. Увімкніть хоча б одне в «Показувати джерела»';
@@ -3947,12 +3972,16 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return 'high';
     }
 
-    // An episode counts as finished at 95% of its length: the tail is credits,
-    // and nobody sits through them. This is the single definition of "watched"
+    // Ordinary episodes count as finished when only a short credits tail is
+    // left. Long-form content keeps the percentage rule. This is the single
+    // definition of "watched"
     // — the detail summary, the furthest-episode reach and the Continue
     // Watching queue all have to agree, or the same episode reads as watched in
     // one place and unwatched in another.
     var EPISODE_FINISHED_RATIO = 0.95;
+    var EPISODE_FINISHED_MIN_RATIO = 0.81;
+    var EPISODE_FINISHED_REMAINING_SECONDS = 3 * 60;
+    var EPISODE_FINISHED_MAX_EPISODE_SECONDS = 60 * 60;
     var EPISODE_WATCHED_SECONDS = 30;
 
     function isEpisodeFinished(position, duration, flags) {
@@ -3962,7 +3991,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         // Without a duration there is nothing to measure against, and counting
         // any stray second as a full watch is how a title silently disappears
         // from the queue.
-        return duration > 0 && position / duration >= EPISODE_FINISHED_RATIO;
+        if (!(duration > 0)) return false;
+        var ratio = position / duration;
+        if (duration <= EPISODE_FINISHED_MAX_EPISODE_SECONDS) {
+            return ratio > EPISODE_FINISHED_MIN_RATIO || duration - position <= EPISODE_FINISHED_REMAINING_SECONDS;
+        }
+        return ratio >= EPISODE_FINISHED_RATIO;
     }
 
     function isEpisodeProgressCounted(position, duration, flags) {
@@ -4122,6 +4156,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         isEpisodeProgressCounted: isEpisodeProgressCounted,
         ratingTier: ratingTier,
         EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
+        EPISODE_FINISHED_MIN_RATIO: EPISODE_FINISHED_MIN_RATIO,
+        EPISODE_FINISHED_REMAINING_SECONDS: EPISODE_FINISHED_REMAINING_SECONDS,
+        EPISODE_FINISHED_MAX_EPISODE_SECONDS: EPISODE_FINISHED_MAX_EPISODE_SECONDS,
         EPISODE_WATCHED_SECONDS: EPISODE_WATCHED_SECONDS,
         mediaTypeInfo: mediaTypeInfo,
         translationKind: translationKind,
@@ -5969,6 +6006,16 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
             Lampa.SettingsApi.addParam({
                 component: 'yani',
+                param: {name: 'yani_build_diagnostics', type: 'button'},
+                field: {
+                    name: t('build_diagnostics'),
+                    description: buildDiagnosticsDescription()
+                },
+                onChange: showBuildDiagnostics
+            });
+
+            Lampa.SettingsApi.addParam({
+                component: 'yani',
                 param: {name: 'yani_usage_policy', type: 'button'},
                 field: {name: t('usage_policy_title'), description: t('usage_policy_settings_description')},
                 onChange: showUsagePolicy
@@ -6027,6 +6074,42 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             if (Lampa.Utils && Lampa.Utils.open) return Lampa.Utils.open(url);
             if (window.open) return window.open(url, '_blank');
             Lampa.Noty.show(url);
+        }
+
+        function buildMetadata() {
+            var build = LampaYaniConfig.build || {};
+            var type = String(build.type || 'source');
+            var typeKey = type === 'production' ? 'build_type_production' : type === 'test' ? 'build_type_test' : 'build_type_source';
+            var date = String(build.date || '');
+            if (date) {
+                try { date = new Date(date).toLocaleString(); } catch (ignoreDate) {}
+            }
+            return {
+                version: String(LampaYaniConfig.version || '—'),
+                hash: String(build.hash || '—'),
+                date: date || '—',
+                type: t(typeKey)
+            };
+        }
+
+        function buildDiagnosticsDescription() {
+            var info = buildMetadata();
+            return t('version_label') + ' ' + info.version + ' · ' + info.hash + ' · ' + info.type;
+        }
+
+        function showBuildDiagnostics() {
+            var info = buildMetadata();
+            Lampa.Select.show({
+                title: t('build_diagnostics'),
+                items: [
+                    {title: t('build_version'), subtitle: info.version},
+                    {title: t('build_source_hash'), subtitle: info.hash},
+                    {title: t('build_date'), subtitle: info.date},
+                    {title: t('build_type'), subtitle: info.type}
+                ],
+                onSelect: function (item) { Lampa.Noty.show(item.subtitle); },
+                onBack: function () { Lampa.Controller.toggle('settings'); }
+            });
         }
 
         function openSettingsLogin() {
@@ -8528,7 +8611,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         function episodeFinished(position, duration, flags) {
             var utils = window.LampaYaniUiUtils;
             if (utils && utils.isEpisodeFinished) return utils.isEpisodeFinished(position, duration, flags);
-            return positiveNumber(duration) > 0 && positiveNumber(position) / positiveNumber(duration) >= 0.95;
+            duration = positiveNumber(duration);
+            position = positiveNumber(position);
+            if (!(duration > 0)) return false;
+            if (duration <= 60 * 60) return position / duration > 0.81 || duration - position <= 3 * 60;
+            return position / duration >= 0.95;
         }
 
         // How many episodes the title has released. Continue Watching needs a
