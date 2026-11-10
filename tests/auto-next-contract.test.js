@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const source = fs.readFileSync('src/ui.js', 'utf8');
+const playbackLaunch = fs.readFileSync('src/playback/ui-playback-launch.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 
@@ -23,10 +24,10 @@ assert.match(watchPolicy, /playbackWatcher !== state/, 'stale watcher ticks must
 assert.doesNotMatch(watchPolicy, /remaining <= NEXT_ADVANCE_LEAD/, 'auto-advance must never overlap the ending player');
 assert.match(watcher, /playerVideoElement\(state\.video\)/, 'each watcher must remain attached to its own video element');
 assert.match(watcher, /if \(!element\.ended[\s\S]{0,100}return element/, 'a new watcher must ignore finished videos left in the DOM');
-assert.match(source, /flushPlaybackProgress\(true, callbackContext\)/, 'Lampa callbacks must be scoped to the episode that registered them');
+assert.match(playbackLaunch, /flushPlaybackProgress\(true, callbackContext\)/, 'Lampa callbacks must be scoped to the episode that registered them');
 assert.match(watcher, /expectedContext !== playbackContext/, 'a stale player callback must not stop the next episode watcher');
-assert.match(source, /playbackReturnState\.session !== callbackSession/, 'a stale player callback must not restore focus over the next episode');
-assert.match(source, /autoNextEnabled\(\) && current \? \[current\] : playlist/, 'Lampa playlist autoplay must not skip an extra episode while plugin auto-next is on');
+assert.match(playbackLaunch, /playbackReturnState\.session !== callbackSession/, 'a stale player callback must not restore focus over the next episode');
+assert.match(playbackLaunch, /autoNextEnabled\(\) && current \? \[current\] : playlist/, 'Lampa playlist autoplay must not skip an extra episode while plugin auto-next is on');
 
 const prefetchStart = watcher.indexOf('function prefetchNextEpisode');
 const prefetchEnd = watcher.indexOf('function advanceToNextEpisode', prefetchStart);

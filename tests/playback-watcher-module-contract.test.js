@@ -4,6 +4,7 @@ const vm = require('vm');
 
 const source = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const playbackLaunch = fs.readFileSync('src/playback/ui-playback-launch.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
 assert.match(build, /'src\/playback\/ui-playback-menu\.js', 'src\/playback\/ui-playback-watcher\.js'[\s\S]*'src\/ui\.js'/,
@@ -21,7 +22,7 @@ assert.match(ui, /var flushPlaybackProgress = playbackWatcherApi\.flushPlaybackP
 // The playback context is owned by the watcher; the main UI only sets and
 // reads it through the module, never through a variable of its own.
 assert.doesNotMatch(ui, /^    var playbackContext\b/m);
-assert.match(ui, /playbackWatcherApi\.setContext\(\{card: card, group: group, videos: videos, selected: selected\}\);/);
+assert.match(playbackLaunch, /playbackWatcherApi\.setContext\(\{card: card, group: group, videos: videos, selected: selected\}\);/);
 
 const context = {window: {}};
 vm.runInNewContext(source, context);

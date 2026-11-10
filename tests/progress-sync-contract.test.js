@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const playbackLaunch = fs.readFileSync('src/playback/ui-playback-launch.js', 'utf8');
 const homeScreen = fs.readFileSync('src/home/ui-home.js', 'utf8');
 const accountScreen = fs.readFileSync('src/screens/ui-account.js', 'utf8');
 const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
@@ -32,7 +33,7 @@ assert.match(history, /if \(!autoProgressSyncEnabled\(\) \|\| !window\.LampaYani
 assert.match(history, /if \(!video\.video_id\) \{/, 'a missing video id must be handled explicitly');
 assert.match(history, /progress stays on this device only/, 'an unsyncable episode must be reported');
 assert.match(watcher, /function flushPlaybackProgress\(remote, expectedContext\)/);
-assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/,
+assert.match(playbackLaunch, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/,
     'closing the internal player must flush progress');
 assert.match(history, /context\.card\.yani_resume = \{/);
 assert.match(history, /max_episode: saved\.max_episode/);
@@ -49,8 +50,8 @@ assert.match(i18n, /messages\.uk\.auto_manage_lists/);
 
 // Every way of starting an episode must reach the account, not just the
 // internal player: a watch is a watch whichever player showed it.
-assert.match(ui, /function launchResolvedVideo[\s\S]{0,1100}syncServerProgress\(selected\)/,
+assert.match(playbackLaunch, /function launchResolvedVideo[\s\S]{0,1400}syncServerProgress\(selected\)/,
     'the internal and external launch path must report the watch');
-assert.match(ui, /function openEmbeddedEpisode[\s\S]{0,600}syncServerProgress\(selected\)/,
+assert.match(playbackLaunch, /function openEmbeddedEpisode[\s\S]{0,800}syncServerProgress\(selected\)/,
     'the embedded site player must report the watch too');
 console.log('progress sync contract tests passed');

@@ -2,15 +2,16 @@ const assert = require('assert');
 const fs = require('fs');
 
 const source = fs.readFileSync('src/ui.js', 'utf8');
+const playbackLaunch = fs.readFileSync('src/playback/ui-playback-launch.js', 'utf8');
 const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const embeddedPlayer = fs.readFileSync('src/playback/ui-player.js', 'utf8');
-const launchStart = source.indexOf('function launchVideo');
-const launchEnd = source.indexOf('function launchResolvedVideo', launchStart);
-const launchPolicy = source.slice(launchStart, launchEnd);
-const allohaStart = source.indexOf('function allohaResolvers');
-const allohaEnd = source.indexOf('function setLoading', allohaStart);
-const allohaPolicy = source.slice(allohaStart, allohaEnd);
+const launchStart = playbackLaunch.indexOf('function launchVideo');
+const launchEnd = playbackLaunch.indexOf('function launchResolvedVideo', launchStart);
+const launchPolicy = playbackLaunch.slice(launchStart, launchEnd);
+const allohaStart = playbackLaunch.indexOf('function allohaResolvers');
+const allohaEnd = playbackLaunch.indexOf('function setLoading', allohaStart);
+const allohaPolicy = playbackLaunch.slice(allohaStart, allohaEnd);
 
 assert.ok(launchStart >= 0 && launchEnd > launchStart, 'video launch policy must exist');
 assert.ok(launchPolicy.includes("selected.yani_stream_source || ''"), 'Alloha must identify a resolved Lampac stream');
@@ -31,15 +32,17 @@ assert.ok(allohaPolicy.includes('openAllohaWebPlayer'), 'the web fallback must g
 // Lampa timeline and cannot be handed to a media player.
 assert.ok(allohaPolicy.includes('allohaIframeEnabled() && openAllohaWebPlayer'), 'the Alloha web player must stay behind the opt-in setting and explanation path');
 assert.ok(
-    source.includes("Lampa.Storage.get('yani_alloha_iframe', false)"),
+    playbackLaunch.includes("Lampa.Storage.get('yani_alloha_iframe', false)"),
     'the Alloha embed setting must default to disabled'
 );
 assert.ok(
     settingsSource.includes("param: {name: 'yani_alloha_iframe', type: 'trigger', default: false}"),
     'the Alloha embed setting must be exposed as a disabled-by-default trigger'
 );
-assert.ok(!source.includes('function showYummyIframe'), 'generic iframe playback must stay disabled');
-assert.ok(source.includes('return_snapshot: playbackReturnSnapshot()'), 'embedded Alloha playback must retain the title-page focus snapshot');
+[source, playbackLaunch].forEach((code) => {
+    assert.ok(!code.includes('function showYummyIframe'), 'generic iframe playback must stay disabled');
+});
+assert.ok(playbackLaunch.includes('return_snapshot: playbackReturnSnapshot()'), 'embedded Alloha playback must retain the title-page focus snapshot');
 assert.ok(source.includes('restorePlaybackInteraction(object && object.return_snapshot'), 'closing the embedded player must restore the saved title-page focus');
 assert.ok(embeddedPlayer.includes("iframe.attr('src', 'about:blank')"), 'the remote player page must stop before Lampa regains focus');
 assert.ok(embeddedPlayer.includes('if (closing) return'), 'duplicate Back and click events must not close the activity twice');
@@ -65,10 +68,10 @@ console.log('Alloha playback policy tests passed');
 // which a remote cannot deliver: the page is a cross-origin iframe nothing here
 // can reach into. It does read `autoplay` from the query string, so the
 // embedded page is asked to start by itself.
-assert.match(source, /function allohaAutoplayUrl\(url\)/, 'the embed must ask the page to start itself');
-assert.match(source, /allohaAutoplayUrl\(url\)/, 'the embed must ask the page to start itself');
-const autoplayStart = source.indexOf('function allohaAutoplayUrl');
-const autoplayBody = source.slice(autoplayStart, source.indexOf('function openAllohaEmbed', autoplayStart));
+assert.match(playbackLaunch, /function allohaAutoplayUrl\(url\)/, 'the embed must ask the page to start itself');
+assert.match(playbackLaunch, /allohaAutoplayUrl\(url\)/, 'the embed must ask the page to start itself');
+const autoplayStart = playbackLaunch.indexOf('function allohaAutoplayUrl');
+const autoplayBody = playbackLaunch.slice(autoplayStart, playbackLaunch.indexOf('function openAllohaEmbed', autoplayStart));
 const buildAutoplayUrl = new Function(autoplayBody + '; return allohaAutoplayUrl;')();
 assert.strictEqual(
     buildAutoplayUrl('https://alloha.yani.tv/?token_movie=abc'),
@@ -91,8 +94,8 @@ const bridgePage = fs.readFileSync('embed/alloha.html', 'utf8');
 const pagesWorkflow = fs.readFileSync('.github/workflows/pages.yml', 'utf8');
 
 assert.match(config, /allohaEmbedUrl: 'https:\/\/[^']+\/embed\/alloha\.html'/, 'the bridge address must be configured');
-assert.match(source, /function allohaEmbedUrl\(url\)/, 'the embed must go through the bridge');
-assert.match(source, /openEmbeddedEpisode\(card, group, selected, allohaEmbedUrl\(url\)\)/);
+assert.match(playbackLaunch, /function allohaEmbedUrl\(url\)/, 'the embed must go through the bridge');
+assert.match(playbackLaunch, /openEmbeddedEpisode\(card, group, selected, allohaEmbedUrl\(url\)\)/);
 assert.match(pagesWorkflow, /cp -R embed _pages\/embed/, 'the bridge must be published with the site');
 
 // The bridge must never become a way to embed arbitrary sites through the
@@ -107,9 +110,9 @@ assert.strictEqual(allowedHost.test('cdn.alloha.yani.tv'), true);
 assert.strictEqual(allowedHost.test('alloha.yani.tv.evil.example'), false, 'a lookalike host must be refused');
 assert.strictEqual(allowedHost.test('evil.example'), false);
 
-const bridgeStart = source.indexOf('function allohaAutoplayUrl');
+const bridgeStart = playbackLaunch.indexOf('function allohaAutoplayUrl');
 const buildBridgeUrl = new Function('window', 'LampaYaniConfig',
-    source.slice(bridgeStart, source.indexOf('function openAllohaEmbed', bridgeStart)) + '; return allohaEmbedUrl;'
+    playbackLaunch.slice(bridgeStart, playbackLaunch.indexOf('function openAllohaEmbed', bridgeStart)) + '; return allohaEmbedUrl;'
 )({LampaYaniConfig: {allohaEmbedUrl: 'https://pages.test/embed/alloha.html'}}, {allohaEmbedUrl: 'https://pages.test/embed/alloha.html'});
 const bridged = buildBridgeUrl('https://alloha.yani.tv/?token_movie=abc');
 assert.ok(bridged.indexOf('https://pages.test/embed/alloha.html?url=') === 0, 'the player must be opened through the bridge');

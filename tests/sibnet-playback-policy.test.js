@@ -2,9 +2,10 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const launchStart = ui.indexOf('function launchVideo');
-const launchEnd = ui.indexOf('function launchResolvedVideo', launchStart);
-const launchPolicy = ui.slice(launchStart, launchEnd);
+const playbackLaunch = fs.readFileSync('src/playback/ui-playback-launch.js', 'utf8');
+const launchStart = playbackLaunch.indexOf('function launchVideo');
+const launchEnd = playbackLaunch.indexOf('function launchResolvedVideo', launchStart);
+const launchPolicy = playbackLaunch.slice(launchStart, launchEnd);
 
 assert.match(ui, /function isSibnetPlaybackSource\(url, group\)/);
 // Sibnet's MP4 is guarded by a Referer check that Lampa's built-in <video>
@@ -14,7 +15,7 @@ assert.match(ui, /function isSibnetPlaybackSource\(url, group\)/);
 // screen that could never play.
 assert.match(launchPolicy, /if \(isSibnetPlaybackSource\(sibnetPageUrl, group\)\) \{\s*return openEmbeddedEpisode\(card, group, selected, sibnetPageUrl\);/,
     'Sibnet must open its embedded page on every platform');
-assert.match(ui, /function needsRequestHeaders\(item\)/, 'a stream that needs headers must be recognised');
+assert.match(playbackLaunch, /function needsRequestHeaders\(item\)/, 'a stream that needs headers must be recognised');
 const resolverSource = fs.readFileSync('src/playback/stream-resolver.js', 'utf8');
 assert.match(resolverSource, /source: 'sibnet',[\s\S]{0,700}headersRequired: true/,
     'Sibnet must declare that its file is refused without the referrer');
@@ -66,8 +67,8 @@ assert.match(playerSource, /function claimScreen\(on\)[\s\S]{0,320}catch \(error
 // by a referrer check cannot be fetched by a <video> element - it signs every
 // request with the Lampa page - and the failure looks like a broken plugin
 // rather than a source that needs a different player. So it is said out loud.
-assert.match(ui, /function warnAboutRequestHeaders\(item\)/, 'the trade-off must be stated, not met as a failure');
-assert.match(ui, /if \(started\) \{\s*warnAboutRequestHeaders\(current\);/,
+assert.match(playbackLaunch, /function warnAboutRequestHeaders\(item\)/, 'the trade-off must be stated, not met as a failure');
+assert.match(playbackLaunch, /if \(started\) \{\s*warnAboutRequestHeaders\(current\);/,
     'the warning belongs to the moment internal playback actually starts');
 const i18nSource = fs.readFileSync('src/core/i18n.js', 'utf8');
 ['ru', 'en', 'uk'].forEach(function (locale) {

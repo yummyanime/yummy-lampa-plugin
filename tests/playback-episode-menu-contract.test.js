@@ -3,6 +3,7 @@ const fs = require('fs');
 
 const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const playbackLaunch = fs.readFileSync('src/playback/ui-playback-launch.js', 'utf8');
 const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
 const videoData = fs.readFileSync('src/playback/ui-video-data.js', 'utf8');
@@ -13,7 +14,7 @@ assert.match(videoData, /window\.LampaYaniVideoData = \{create: create/);
 assert.match(ui, /LampaYaniVideoData\.create/);
 assert.match(ui, /videoData\.payload\(id, options\)/);
 assert.match(ui, /videoData\.list\(id, options\)/);
-assert.match(ui, /videoData\.retain\(card\.yani_id, selected\)/);
+assert.match(playbackLaunch, /videoData\.retain\(card\.yani_id, selected\)/);
 assert.match(menu, /deps\.loadVideos \|\| function \(id, options\)/);
 assert.match(menu, /function lastWatchedVoice\(voices, card\)/);
 assert.match(menu, /markLastWatchedVoice\(voices, card\)/);

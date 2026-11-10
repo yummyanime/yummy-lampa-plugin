@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.50.7] - 2026-11-11
+
+### Changed
+
+- Moved episode launch (stream resolution, the Alloha and embedded-page policies, and the internal, webOS and external players) from ui.js into ui-playback-launch.js without changing behaviour
+
 ## [0.50.6] - 2026-11-11
 
 ### Fixed
