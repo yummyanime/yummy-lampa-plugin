@@ -331,7 +331,7 @@
         if (Number(options.continue_count || 0) > 0) return {key: 'continue_watching', label: 'continue_now'};
         if (Number(options.notification_count || 0) > 0) return {key: 'notifications', label: 'notifications_new'};
         if (options.has_translation) return {key: 'new_translations', label: 'fresh_translation'};
-        return options.authorized ? {key: 'for_you', label: 'recommended_now'} : {key: 'catalog', label: 'start_catalog'};
+        return options.authorized ? {key: 'personal_feed', label: 'recommended_now'} : {key: 'catalog', label: 'start_catalog'};
     }
 
     function dashboardInitialFocus(savedKey, priorityKey, availableKeys) {

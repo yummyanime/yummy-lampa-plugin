@@ -1469,6 +1469,13 @@
 
     function homeSectionEnabled(key) {
         if (!Lampa.Storage || !Lampa.Storage.get) return true;
+        if (key === 'personal_feed') {
+            var personal = Lampa.Storage.get('yani_section_personal_feed', null);
+            if (personal !== null && personal !== undefined) return personal !== false && personal !== 'false';
+            var legacyForYou = Lampa.Storage.get('yani_section_for_you', true);
+            var legacyUpdates = Lampa.Storage.get('yani_section_updates', true);
+            return (legacyForYou !== false && legacyForYou !== 'false') || (legacyUpdates !== false && legacyUpdates !== 'false');
+        }
         var value = Lampa.Storage.get('yani_section_' + key, true);
         return value !== false && value !== 'false';
     }

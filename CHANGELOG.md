@@ -9,6 +9,23 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.0] - 2026-11-11
+
+### Added
+
+- Add TV-friendly event filters to My Feed 
+- Add lightweight CSS illustrations for the main dashboard actions
+
+### Changed
+
+- Refactor For You and Updates into one My Feed backed by the existing personal event and related-title sources
+- Refactor Account and Notifications into one profile card 
+- Move service status into a focusable dashboard indicator
+
+### Removed
+
+- Remove the duplicate Updates and Status dashboard tiles while keeping their underlying screens available
+
 ## [0.52.2] - 2026-11-11
 
 ### Fixed

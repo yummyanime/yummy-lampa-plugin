@@ -174,4 +174,4 @@ GitHub Actions automatically checks JavaScript syntax on every push and pull req
 
 The authenticated token is automatically refreshed through `GET /profile/token`.
 
-The detailed view uses Yani data. The For You feed combines lists, watch history, schedule, new videos, and notifications. Related titles come from the viewing order of up to four recent titles, while trailers are loaded through `/anime/{id}/trailers`.
+The detailed view uses Yani data. My Feed combines lists, watch history, schedule, new videos, and notifications. Its TV-friendly filters separate episodes, translations, related titles, news, and trailers without another API request. Related titles come from the viewing order of up to four recent titles, while trailers are loaded through `/anime/{id}/trailers`.

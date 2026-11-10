@@ -25,13 +25,18 @@ assert.match(homeScreen, /resolveNotificationCount/);
 assert.match(homeScreen, /notificationCache\.count === 0/);
 assert.match(ui, /onUnreadCount:/);
 assert.match(ui, /yani_home_notification_count/);
-assert.match(homeScreen, /setServiceState\(homeButtons\.status, serviceState\)/);
 assert.match(homeScreen, /yani-home__service-hub/);
 assert.match(homeScreen, /setServiceHub\(serviceState, serviceTitle/);
+assert.match(homeScreen, /homeButtons\.status = serviceHub/);
+assert.match(homeScreen, /component: 'yani_status'/);
+assert.match(homeScreen, /definition\.key === 'service' \|\| items\.some/);
+assert.match(homeScreen, /if \(!panelRoots\.service\) panel\('service'\)/);
 assert.match(css, /\.yani-home__service-state--up/);
 assert.match(css, /\.yani-home__service-state--degraded/);
 assert.match(css, /\.yani-home__service-state--down/);
 assert.match(css, /\.yani-home__service-constellation/);
+assert.match(css, /\.yani-home__service-hub\.focus/);
+assert.match(css, /\.yani-home__profile-card/);
 assert.match(css, /@keyframes yani-home-service-orbit/);
 
 (async () => {

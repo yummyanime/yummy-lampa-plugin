@@ -220,13 +220,13 @@
             } else if (video) {
                 card.yani_update_label = videoEventLabel(video, deps.t) || deps.t('personal_new_translation');
                 card.yani_update_date = videoDate;
-                card.yani_personal_event = 'video';
+                card.yani_personal_event = 'translation';
             } else if (scheduleDate) {
                 card.yani_update_label = Number(episodes.next_date || 0) && !Number(episodes.prev_date || 0)
                     ? deps.t('upcoming_release')
                     : deps.t('personal_new_episode') + (episodes.aired ? ' ' + episodes.aired : '');
                 card.yani_update_date = scheduleDate;
-                card.yani_personal_event = 'schedule';
+                card.yani_personal_event = 'episode';
             }
             return card;
         }).filter(function (card) {
@@ -321,6 +321,68 @@
 
     function component(object, deps) {
         var comp = new Lampa.InteractionCategory(object);
+        var allCards = [];
+        var activeFilter = 'all';
+
+        function feedKind(card) {
+            var kind = String(card && card.yani_personal_event || '');
+            if (kind === 'schedule') return 'episode';
+            if (kind === 'video') return 'translation';
+            if (kind === 'trailer' || kind === 'news') return 'news';
+            return kind;
+        }
+
+        function filteredCards() {
+            if (activeFilter === 'all') return allCards;
+            return allCards.filter(function (card) { return feedKind(card) === activeFilter; });
+        }
+
+        function filterDefinitions() {
+            var definitions = [
+                {key: 'all', title: deps.t('feed_filter_all')},
+                {key: 'episode', title: deps.t('feed_filter_episodes')},
+                {key: 'translation', title: deps.t('feed_filter_translations')},
+                {key: 'related', title: deps.t('feed_filter_related')},
+                {key: 'news', title: deps.t('feed_filter_news')}
+            ];
+            return definitions.filter(function (definition) {
+                return definition.key === 'all' || allCards.some(function (card) { return feedKind(card) === definition.key; });
+            });
+        }
+
+        function focusFilter(self) {
+            var root = self.render && self.render();
+            var target = root && root.find('.yani-personal-feed__filter--active.selector').first();
+            if (!target || !target.length) return;
+            Lampa.Controller.collectionSet(root);
+            if (window.Navigator && Navigator.add) Navigator.add(target[0]);
+            Lampa.Controller.collectionFocus(target[0], root);
+        }
+
+        function renderFeed(self, restoreFilterFocus) {
+            self.build({results: filteredCards(), total_pages: 1, title: deps.t('personal_feed')});
+            var root = self.render && self.render();
+            if (!root || !root.length) return;
+            root.addClass('yani-personal-feed');
+            var filters = $('<div class="yani-personal-feed__filters"></div>');
+            filterDefinitions().forEach(function (definition) {
+                var count = definition.key === 'all' ? allCards.length : allCards.filter(function (card) { return feedKind(card) === definition.key; }).length;
+                var button = $('<div class="yani-personal-feed__filter selector"></div>');
+                button.toggleClass('yani-personal-feed__filter--active', definition.key === activeFilter);
+                button.attr('data-feed-filter', definition.key);
+                button.append($('<span></span>').text(definition.title), $('<b></b>').text(String(count)));
+                button.on('hover:enter click.yaniPersonalFeed', function () {
+                    if (activeFilter === definition.key) return;
+                    activeFilter = definition.key;
+                    renderFeed(self, true);
+                });
+                filters.append(button);
+            });
+            root.prepend(filters);
+            if (self.scroll && self.scroll.minus) self.scroll.minus(filters);
+            if (restoreFilterFocus) setTimeout(function () { focusFilter(self); }, 0);
+        }
+
         comp.create = function () {
             var self = this;
             var states = LampaYaniSectionState.forActivity(self.activity, deps);
@@ -361,7 +423,8 @@
                             states.focus();
                             return;
                         }
-                        self.build({results: cards, total_pages: 1, title: deps.t('for_you')});
+                        allCards = cards;
+                        renderFeed(self, false);
                         states.ready();
                     });
                 }).catch(function (error) {

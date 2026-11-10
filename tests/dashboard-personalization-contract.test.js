@@ -15,7 +15,7 @@ assert.equal(insights.posterOf({anime: {poster: {big: 'https://cdn.example/anime
 assert.deepEqual({...insights.dashboardPriority({continue_count: 2, notification_count: 8})}, {key: 'continue_watching', label: 'continue_now'});
 assert.deepEqual({...insights.dashboardPriority({notification_count: 3})}, {key: 'notifications', label: 'notifications_new'});
 assert.deepEqual({...insights.dashboardPriority({has_translation: true})}, {key: 'new_translations', label: 'fresh_translation'});
-assert.deepEqual({...insights.dashboardPriority({authorized: true})}, {key: 'for_you', label: 'recommended_now'});
+assert.deepEqual({...insights.dashboardPriority({authorized: true})}, {key: 'personal_feed', label: 'recommended_now'});
 assert.deepEqual({...insights.dashboardPriority({authorized: false})}, {key: 'catalog', label: 'start_catalog'});
 assert.equal(insights.dashboardInitialFocus('genres', 'continue_watching', ['catalog', 'genres', 'continue_watching']), 'genres');
 assert.equal(insights.dashboardInitialFocus('', 'continue_watching', ['catalog', 'continue_watching']), 'continue_watching');

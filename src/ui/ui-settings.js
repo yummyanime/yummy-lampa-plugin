@@ -277,12 +277,9 @@
                 ['user_lists', 'user_lists'],
                 ['new_releases', 'new_releases'],
                 ['top_rated', 'top_rated'],
-                ['for_you', 'for_you'],
-                ['updates', 'updates'],
+                ['personal_feed', 'personal_feed'],
                 ['collections', 'collections'],
-                ['notifications', 'notifications'],
-                ['account', 'account'],
-                ['status', 'status']
+                ['account', 'account']
             ].forEach(function (section) {
                 Lampa.SettingsApi.addParam({
                     component: 'yani',
