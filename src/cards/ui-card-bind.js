@@ -75,25 +75,50 @@
             };
         }
 
-        function bindYummyCardRender(first, second, third, options) {
-            var element;
-            var card;
-            [first, second, third].forEach(function (value) {
+        function isRenderedElement(value) {
+            return Boolean(value && (value.jquery || value.nodeType ||
+                (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement)));
+        }
+
+        /**
+         * Finds the card data and its element among the arguments Lampa passes
+         * to a `cardRender` hook, whatever their order. Lampa 3.4 calls it as
+         * (activity object, card data, Card instance): no DOM element is passed
+         * at all, only the Card that can render one, and the activity object
+         * comes first with a `title` of its own.
+         */
+        function cardRenderTarget(first, second, third) {
+            var values = [first, second, third];
+            var element = null;
+            var card = null;
+            values.forEach(function (value) {
                 if (!value) return;
-                var isElement = value.jquery || value.nodeType || (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement);
-                if (isElement) element = value;
-                else if (!card && hasYummyCardData(value)) card = value;
+                if (isRenderedElement(value)) {
+                    if (!element) element = value;
+                } else if (!card && hasYummyCardData(value)) {
+                    card = value;
+                }
             });
-            [first, second, third].forEach(function (value) {
+            values.forEach(function (value) {
                 if (!value || card) return;
                 var candidate = value.card || value.object || value.data;
                 if (candidate && hasYummyCardData(candidate)) card = candidate;
             });
-            if (!element && second && (second.jquery || second.nodeType)) element = second;
-            if (!card && first && hasYummyCardData(first)) card = first;
-            if (!element && card && card.render) element = card.render(true);
-            if (!card || !element) return;
-            bindYummyCard(element, card, options);
+            values.forEach(function (value) {
+                if (element || !value || isRenderedElement(value) || typeof value.render !== 'function') return;
+                try {
+                    element = value.render(true);
+                } catch (error) {
+                    element = null;
+                }
+            });
+            return {card: card, element: element};
+        }
+
+        function bindYummyCardRender(first, second, third, options) {
+            var target = cardRenderTarget(first, second, third);
+            if (!target.card || !target.element) return;
+            bindYummyCard(target.element, target.card, options);
         }
 
         function bindRecommendedCardRender(first, second, third) {
@@ -106,7 +131,8 @@
             openCardOnce: openCardOnce,
             bindYummyCard: bindYummyCard,
             bindYummyCardRender: bindYummyCardRender,
-            bindRecommendedCardRender: bindRecommendedCardRender
+            bindRecommendedCardRender: bindRecommendedCardRender,
+            cardRenderTarget: cardRenderTarget
         };
     }
 

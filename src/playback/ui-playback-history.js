@@ -9,6 +9,7 @@
         deps = deps || {};
         var t = deps.t || function (name) { return name; };
         var bindYummyCardRender = deps.bindYummyCardRender || function () {};
+        var cardRenderTarget = deps.cardRenderTarget || function () { return {card: null, element: null}; };
         var cardRenderElement = deps.cardRenderElement || function (element, card) {
             var render = element && element.jquery ? element : element ? $(element) : $();
             if (!render.length && card && card.render) render = $(card.render(true));
@@ -342,8 +343,19 @@
             var episode = playback.last_watched_episode || playback.number;
             var label = episode ? t('episode') + ' ' + episode : t('continue_watching');
             if (percent) label += ' · ' + percent + '%';
+            var awaiting = Number(playback.awaiting_episode || 0);
+            if (awaiting) {
+                // Caught up with an ongoing title: everything released is
+                // watched, so the bar is full and the label names what is next.
+                var nextDate = Number(playback.next_date || 0);
+                var language = window.LampaYaniI18n && LampaYaniI18n.locale ? LampaYaniI18n.locale() : 'ru-RU';
+                label = nextDate > Date.now()
+                    ? t('episode') + ' ' + awaiting + ' · ' + new Date(nextDate).toLocaleDateString(language, {day: 'numeric', month: 'short'})
+                    : t('awaiting_episode').replace('{episode}', awaiting);
+                percent = 100;
+            }
             view.append($('<span class="yani-card-history"></span>').text(label));
-            if (duration > 0) {
+            if (duration > 0 || awaiting) {
                 view.append($('<span class="yani-card-history-progress"><span></span></span>').find('span').css('width', percent + '%').end());
             }
             syncCardOverlayLayout(rendered);
@@ -459,17 +471,9 @@
 
         function bindHistoryCardRender(first, second, third) {
             bindYummyCardRender(first, second, third);
-            var card;
-            var element;
-            [first, second, third].forEach(function (value) {
-                if (!value) return;
-                if (!element && (value.jquery || value.nodeType || (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement))) element = value;
-                if (!card && (value.render || value.yani_id || value.title)) card = value;
-                else if (!card) {
-                    var candidate = value.card || value.object || value.data;
-                    if (candidate && (candidate.render || candidate.yani_id || candidate.title)) card = candidate;
-                }
-            });
+            var target = cardRenderTarget(first, second, third);
+            var card = target.card;
+            var element = target.element;
             if (card && card.yani_id) {
                 // Continue Watching is a playback queue, not an information catalog.
                 var openHistoryEntry = function () { openVideos(card, true); };

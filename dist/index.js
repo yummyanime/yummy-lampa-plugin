@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.50.2',
+        version: '0.50.3',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -8024,25 +8024,50 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             };
         }
 
-        function bindYummyCardRender(first, second, third, options) {
-            var element;
-            var card;
-            [first, second, third].forEach(function (value) {
+        function isRenderedElement(value) {
+            return Boolean(value && (value.jquery || value.nodeType ||
+                (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement)));
+        }
+
+        /**
+         * Finds the card data and its element among the arguments Lampa passes
+         * to a `cardRender` hook, whatever their order. Lampa 3.4 calls it as
+         * (activity object, card data, Card instance): no DOM element is passed
+         * at all, only the Card that can render one, and the activity object
+         * comes first with a `title` of its own.
+         */
+        function cardRenderTarget(first, second, third) {
+            var values = [first, second, third];
+            var element = null;
+            var card = null;
+            values.forEach(function (value) {
                 if (!value) return;
-                var isElement = value.jquery || value.nodeType || (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement);
-                if (isElement) element = value;
-                else if (!card && hasYummyCardData(value)) card = value;
+                if (isRenderedElement(value)) {
+                    if (!element) element = value;
+                } else if (!card && hasYummyCardData(value)) {
+                    card = value;
+                }
             });
-            [first, second, third].forEach(function (value) {
+            values.forEach(function (value) {
                 if (!value || card) return;
                 var candidate = value.card || value.object || value.data;
                 if (candidate && hasYummyCardData(candidate)) card = candidate;
             });
-            if (!element && second && (second.jquery || second.nodeType)) element = second;
-            if (!card && first && hasYummyCardData(first)) card = first;
-            if (!element && card && card.render) element = card.render(true);
-            if (!card || !element) return;
-            bindYummyCard(element, card, options);
+            values.forEach(function (value) {
+                if (element || !value || isRenderedElement(value) || typeof value.render !== 'function') return;
+                try {
+                    element = value.render(true);
+                } catch (error) {
+                    element = null;
+                }
+            });
+            return {card: card, element: element};
+        }
+
+        function bindYummyCardRender(first, second, third, options) {
+            var target = cardRenderTarget(first, second, third);
+            if (!target.card || !target.element) return;
+            bindYummyCard(target.element, target.card, options);
         }
 
         function bindRecommendedCardRender(first, second, third) {
@@ -8055,7 +8080,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             openCardOnce: openCardOnce,
             bindYummyCard: bindYummyCard,
             bindYummyCardRender: bindYummyCardRender,
-            bindRecommendedCardRender: bindRecommendedCardRender
+            bindRecommendedCardRender: bindRecommendedCardRender,
+            cardRenderTarget: cardRenderTarget
         };
     }
 
@@ -8120,7 +8146,15 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var data = node.card_data;
             if (data.yani_more || data.yani_genre_tile || data.yani_collection_tile || data.yani_id) card = data;
         }
-        if (!element && card && card.render) element = card.render(true);
+        // Lampa 3.4 passes the Card instance, not its element: render it.
+        [first, second, third].forEach(function (value) {
+            if (element || !value || value === card || typeof value.render !== 'function') return;
+            try {
+                element = value.render(true);
+            } catch (error) {
+                element = null;
+            }
+        });
         return {card: card, element: element};
     }
 
@@ -8366,6 +8400,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         deps = deps || {};
         var t = deps.t || function (name) { return name; };
         var bindYummyCardRender = deps.bindYummyCardRender || function () {};
+        var cardRenderTarget = deps.cardRenderTarget || function () { return {card: null, element: null}; };
         var cardRenderElement = deps.cardRenderElement || function (element, card) {
             var render = element && element.jquery ? element : element ? $(element) : $();
             if (!render.length && card && card.render) render = $(card.render(true));
@@ -8699,8 +8734,19 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var episode = playback.last_watched_episode || playback.number;
             var label = episode ? t('episode') + ' ' + episode : t('continue_watching');
             if (percent) label += ' · ' + percent + '%';
+            var awaiting = Number(playback.awaiting_episode || 0);
+            if (awaiting) {
+                // Caught up with an ongoing title: everything released is
+                // watched, so the bar is full and the label names what is next.
+                var nextDate = Number(playback.next_date || 0);
+                var language = window.LampaYaniI18n && LampaYaniI18n.locale ? LampaYaniI18n.locale() : 'ru-RU';
+                label = nextDate > Date.now()
+                    ? t('episode') + ' ' + awaiting + ' · ' + new Date(nextDate).toLocaleDateString(language, {day: 'numeric', month: 'short'})
+                    : t('awaiting_episode').replace('{episode}', awaiting);
+                percent = 100;
+            }
             view.append($('<span class="yani-card-history"></span>').text(label));
-            if (duration > 0) {
+            if (duration > 0 || awaiting) {
                 view.append($('<span class="yani-card-history-progress"><span></span></span>').find('span').css('width', percent + '%').end());
             }
             syncCardOverlayLayout(rendered);
@@ -8816,17 +8862,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
         function bindHistoryCardRender(first, second, third) {
             bindYummyCardRender(first, second, third);
-            var card;
-            var element;
-            [first, second, third].forEach(function (value) {
-                if (!value) return;
-                if (!element && (value.jquery || value.nodeType || (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement))) element = value;
-                if (!card && (value.render || value.yani_id || value.title)) card = value;
-                else if (!card) {
-                    var candidate = value.card || value.object || value.data;
-                    if (candidate && (candidate.render || candidate.yani_id || candidate.title)) card = candidate;
-                }
-            });
+            var target = cardRenderTarget(first, second, third);
+            var card = target.card;
+            var element = target.element;
             if (card && card.yani_id) {
                 // Continue Watching is a playback queue, not an information catalog.
                 var openHistoryEntry = function () { openVideos(card, true); };
@@ -13426,7 +13464,15 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 if (candidate && candidate.yani_list_key) card = candidate;
             }
         });
-        if (!element && card && card.render) element = card.render(true);
+        // Lampa 3.4 passes the Card instance, not its element: render it.
+        [first, second, third].forEach(function (value) {
+            if (element || !value || value === card || typeof value.render !== 'function') return;
+            try {
+                element = value.render(true);
+            } catch (error) {
+                element = null;
+            }
+        });
         return {card: card, element: element};
     }
 
@@ -14993,7 +15039,15 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var candidate = value.card || value.object || value.data;
             if (candidate && candidate.yani_collection_id) card = candidate;
         });
-        if (!element && card && card.render) element = card.render(true);
+        // Lampa 3.4 passes the Card instance, not its element: render it.
+        [first, second, third].forEach(function (value) {
+            if (element || !value || value === card || typeof value.render !== 'function') return;
+            try {
+                element = value.render(true);
+            } catch (error) {
+                element = null;
+            }
+        });
         return {element: element && element.jquery ? element : element ? $(element) : $(), card: card};
     }
 
@@ -18308,6 +18362,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         bindYummyCardRender: function (first, second, third, options) {
             return bindYummyCardRender(first, second, third, options);
         },
+        cardRenderTarget: function (first, second, third) { return cardBind.cardRenderTarget(first, second, third); },
         cardRenderElement: cardRenderElement,
         openVideos: function (card, resume) { return openVideos(card, resume); },
         addCardPlaybackProgress: addCardPlaybackProgress,

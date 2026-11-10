@@ -148,6 +148,7 @@
         bindYummyCardRender: function (first, second, third, options) {
             return bindYummyCardRender(first, second, third, options);
         },
+        cardRenderTarget: function (first, second, third) { return cardBind.cardRenderTarget(first, second, third); },
         cardRenderElement: cardRenderElement,
         openVideos: function (card, resume) { return openVideos(card, resume); },
         addCardPlaybackProgress: addCardPlaybackProgress,

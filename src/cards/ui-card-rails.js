@@ -53,7 +53,15 @@
             var data = node.card_data;
             if (data.yani_more || data.yani_genre_tile || data.yani_collection_tile || data.yani_id) card = data;
         }
-        if (!element && card && card.render) element = card.render(true);
+        // Lampa 3.4 passes the Card instance, not its element: render it.
+        [first, second, third].forEach(function (value) {
+            if (element || !value || value === card || typeof value.render !== 'function') return;
+            try {
+                element = value.render(true);
+            } catch (error) {
+                element = null;
+            }
+        });
         return {card: card, element: element};
     }
 

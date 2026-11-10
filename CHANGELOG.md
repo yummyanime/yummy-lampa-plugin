@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.50.3] - 2026-11-10
+
+### Fixed
+
+- Card badges, ratings and watch progress missing on every YummyAnime card list under Lampa 3.4, which passes the Card instance instead of its element to cardRender; Continue Watching, rows, account lists and collections now render through the Card instance
+
 ## [0.50.2] - 2026-11-10
 
 ### Fixed

@@ -96,7 +96,15 @@
                 if (candidate && candidate.yani_list_key) card = candidate;
             }
         });
-        if (!element && card && card.render) element = card.render(true);
+        // Lampa 3.4 passes the Card instance, not its element: render it.
+        [first, second, third].forEach(function (value) {
+            if (element || !value || value === card || typeof value.render !== 'function') return;
+            try {
+                element = value.render(true);
+            } catch (error) {
+                element = null;
+            }
+        });
         return {card: card, element: element};
     }
 
