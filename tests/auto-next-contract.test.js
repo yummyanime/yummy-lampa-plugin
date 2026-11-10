@@ -24,10 +24,14 @@ assert.match(watchPolicy, /playbackWatcher !== state/, 'stale watcher ticks must
 assert.doesNotMatch(watchPolicy, /remaining <= NEXT_ADVANCE_LEAD/, 'auto-advance must never overlap the ending player');
 assert.match(watcher, /playerVideoElement\(state\.video\)/, 'each watcher must remain attached to its own video element');
 assert.match(watcher, /if \(!element\.ended[\s\S]{0,100}return element/, 'a new watcher must ignore finished videos left in the DOM');
-assert.match(playbackLaunch, /flushPlaybackProgress\(true, callbackContext\)/, 'Lampa callbacks must be scoped to the episode that registered them');
+assert.match(playbackLaunch, /function bindPlayerCallback\(context, session\)[\s\S]{0,200}flushPlaybackProgress\(true, context\)/, 'Lampa callbacks must be scoped to the episode that registered them');
 assert.match(watcher, /expectedContext !== playbackContext/, 'a stale player callback must not stop the next episode watcher');
-assert.match(playbackLaunch, /playbackReturnState\.session !== callbackSession/, 'a stale player callback must not restore focus over the next episode');
-assert.match(playbackLaunch, /autoNextEnabled\(\) && current \? \[current\] : playlist/, 'Lampa playlist autoplay must not skip an extra episode while plugin auto-next is on');
+assert.match(playbackLaunch, /if \(playbackReturnState\.session !== session\) return;/, 'a stale player callback must not restore focus over the next episode');
+// The whole dubbing is in Lampa's playlist; when Lampa opens the next episode
+// itself, the plugin's auto-next must not open it a second time.
+assert.match(watcher, /function advancePlaybackWatcher\(generation, context, state\) \{[\s\S]{0,200}if \(lampaAdvancesItself\(\)\) return;/,
+    'Lampa playlist autoplay must not skip an extra episode while plugin auto-next is on');
+assert.match(watcher, /Lampa\.Storage\.field\('playlist_next'\)[\s\S]{0,160}Lampa\.PlayerPlaylist\.canNext\(\)/);
 
 const prefetchStart = watcher.indexOf('function prefetchNextEpisode');
 const prefetchEnd = watcher.indexOf('function advanceToNextEpisode', prefetchStart);

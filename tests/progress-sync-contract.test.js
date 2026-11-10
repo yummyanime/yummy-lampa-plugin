@@ -33,7 +33,7 @@ assert.match(history, /if \(!autoProgressSyncEnabled\(\) \|\| !window\.LampaYani
 assert.match(history, /if \(!video\.video_id\) \{/, 'a missing video id must be handled explicitly');
 assert.match(history, /progress stays on this device only/, 'an unsyncable episode must be reported');
 assert.match(watcher, /function flushPlaybackProgress\(remote, expectedContext\)/);
-assert.match(playbackLaunch, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/,
+assert.match(playbackLaunch, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, context\)/,
     'closing the internal player must flush progress');
 assert.match(history, /context\.card\.yani_resume = \{/);
 assert.match(history, /max_episode: saved\.max_episode/);

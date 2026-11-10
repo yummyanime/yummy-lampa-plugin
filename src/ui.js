@@ -1656,7 +1656,6 @@
         stopPlaybackWatcher: stopPlaybackWatcher,
         flushPlaybackProgress: flushPlaybackProgress,
         destroySkipPrompt: destroySkipPrompt,
-        autoNextEnabled: autoNextEnabled,
         startPlaybackWatcher: startPlaybackWatcher,
         videoStreamHeaders: videoStreamHeaders,
         videoStreamQualities: videoStreamQualities,

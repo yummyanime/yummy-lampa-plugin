@@ -9,6 +9,13 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-11-11
+
+### Added
+
+- The built-in player's next and previous episode buttons and Lampa's Next episode setting for every source, by putting the whole dubbing in Lampa's playlist and resolving each episode's stream when it is opened
+- The MIT license file back to the repository
+
 ## [0.51.1] - 2026-11-11
 
 ### Removed

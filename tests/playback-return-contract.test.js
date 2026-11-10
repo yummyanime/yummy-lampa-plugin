@@ -54,8 +54,8 @@ assert.match(watcher, /state\.playerDestroyHandler = function \(event\)[\s\S]{0,
 assert.match(externalPlayer, /externalRestoreState\.departed/);
 assert.match(externalPlayer, /setTimeout\(restoreExternalFocus, 1500\)/);
 assert.match(externalPlayer, /if \(!externalRestoreState\.departed && elapsed < 1200\)[\s\S]{0,150}setTimeout\(restoreExternalFocus, 1200 - elapsed\)/);
-assert.match(playbackLaunch, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/);
-assert.match(playbackLaunch, /playbackReturnState\.session !== callbackSession/,
+assert.match(playbackLaunch, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, context\)/);
+assert.match(playbackLaunch, /playbackReturnState\.session !== session/,
     'a callback from the closing episode must not restore focus over the next player');
 assert.match(settingsSource, /param: \{name: 'yani_yummytv_enabled', type: 'trigger', default: false\}/);
 assert.match(externalPlayer, /Storage\.get\('yani_yummytv_enabled', false\)/);

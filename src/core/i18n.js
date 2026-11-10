@@ -130,6 +130,7 @@
     messages.ru.no_unread_notifications = 'Новых уведомлений нет';
     messages.ru.continue_now = 'Продолжить сейчас';
     messages.ru.continue_short = 'Продолжить';
+    messages.ru.player_episode_unavailable = 'Не удалось открыть эту серию во встроенном плеере. Выберите другую серию или источник';
     messages.ru.notifications_new = 'Требует внимания';
     messages.ru.fresh_translation = 'Свежая озвучка';
     messages.ru.recommended_now = 'Для вас сейчас';
@@ -246,6 +247,7 @@
     messages.en.no_unread_notifications = 'No new notifications';
     messages.en.continue_now = 'Continue now';
     messages.en.continue_short = 'Continue';
+    messages.en.player_episode_unavailable = 'This episode could not be opened in the built-in player. Choose another episode or source';
     messages.en.notifications_new = 'Needs attention';
     messages.en.fresh_translation = 'Fresh dub';
     messages.en.recommended_now = 'For you now';
@@ -742,6 +744,7 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.no_unread_notifications = 'Нових сповіщень немає';
     messages.uk.continue_now = 'Продовжити зараз';
     messages.uk.continue_short = 'Продовжити';
+    messages.uk.player_episode_unavailable = 'Не вдалося відкрити цю серію у вбудованому плеєрі. Виберіть іншу серію або джерело';
     messages.uk.notifications_new = 'Потребує уваги';
     messages.uk.fresh_translation = 'Свіже озвучення';
     messages.uk.recommended_now = 'Для вас зараз';

@@ -375,8 +375,27 @@
             applySkip(video, segment, state);
         }
 
+        // Every episode of the dubbing is in Lampa's playlist, so when its own
+        // "Next episode" setting is on Lampa opens the next one as a video
+        // ends. The plugin must not open it a second time.
+        function lampaAdvancesItself() {
+            try {
+                return Boolean(Lampa.Storage && Lampa.Storage.field && Lampa.Storage.field('playlist_next') &&
+                    Lampa.PlayerPlaylist && typeof Lampa.PlayerPlaylist.canNext === 'function' && Lampa.PlayerPlaylist.canNext());
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // Lampa is about to replace the playing episode with another one from
+        // its playlist. Closing this one must keep the player on screen.
+        function beginEpisodeSwitch() {
+            if (playbackWatcher) playbackWatcher.switching = true;
+        }
+
         function advancePlaybackWatcher(generation, context, state) {
             if (generation !== playbackWatcherGeneration || playbackWatcher !== state || !state.autoNext || state.advanced) return;
+            if (lampaAdvancesItself()) return;
             var closingVideo = state.video;
             state.advanced = true;
             stopPlaybackWatcher();
@@ -451,7 +470,7 @@
                 // for the later callback. Auto-next and stream recovery deliberately
                 // close the player themselves and must keep ownership of navigation.
                 storeObservedPlayback(generation, context, state, event, true);
-                if (!state.advanced && !state.recovering && !state.returnRestoreScheduled) {
+                if (!state.advanced && !state.recovering && !state.switching && !state.returnRestoreScheduled) {
                     state.returnRestoreScheduled = true;
                     restorePlaybackInteraction(null, {timeout: 2400, interval: 120});
                 }
@@ -768,7 +787,8 @@
             startPlaybackWatcher: startPlaybackWatcher,
             stopPlaybackWatcher: stopPlaybackWatcher,
             flushPlaybackProgress: flushPlaybackProgress,
-            destroySkipPrompt: destroySkipPrompt
+            destroySkipPrompt: destroySkipPrompt,
+            beginEpisodeSwitch: beginEpisodeSwitch
         };
     }
 

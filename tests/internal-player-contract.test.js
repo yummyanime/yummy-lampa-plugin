@@ -13,7 +13,7 @@ const internalPlayback = playbackLaunch.slice(start, end > start ? end : start +
 assert.ok(start >= 0, 'internal playback implementation must exist');
 assert.ok(internalPlayback.includes("Lampa.Player.runas('lampa')"), 'internal playback must force the Lampa engine');
 assert.ok(
-    internalPlayback.indexOf("Lampa.Player.runas('lampa')") < internalPlayback.indexOf('Lampa.Player.play(directCurrent)'),
+    internalPlayback.indexOf("Lampa.Player.runas('lampa')") < internalPlayback.indexOf('Lampa.Player.play(native.current)'),
     'the Lampa engine must be selected before playback starts'
 );
 assert.ok(playbackLaunch.includes('LampaYaniUiUtils.internalPlayerItem'), 'internal playback must preserve normalized stream metadata');
@@ -43,7 +43,8 @@ assert.doesNotMatch(tubeSource, /crossorigin\s*=/i,
     'the direct video element must not enable CORS mode because the CDN omits ACAO');
 assert.doesNotMatch(menu, /internalPlayerAvailable|canInternal/,
     'CVH must not be hidden from the internal-player picker');
-assert.ok(internalPlayback.includes('isExternalPlayableUrl(item.url, item.source)'), 'resolved streams without a filename extension must remain in the internal playlist');
+assert.match(playbackLaunch, /function resolveInternalStream\(video\) \{[\s\S]{0,120}if \(url && isExternalPlayableUrl\(url, video\)\) return Promise\.resolve\(url\);/,
+    'resolved streams without a filename extension must remain playable in the internal playlist');
 assert.ok(playbackLaunch.includes('isExternalPlayableUrl(current && current.url, current && current.source)'), 'the internal player must accept a resolver-confirmed CVH stream');
 assert.match(playbackLaunch, /isCvhPlaybackSource\(url, group\)[\s\S]{0,260}cvh_stream_unavailable/,
     'a failed CVH resolution must show a source-specific error instead of opening an iframe');
@@ -78,7 +79,7 @@ console.log('internal-player contract tests passed');
 // stream with headers fall through to the globally configured player was what
 // broke CVH and VK, whose headers are optional. What a stream that genuinely
 // needs its headers gets is a warning, decided by a flag the resolver sets.
-assert.match(playbackLaunch, /Lampa\.Player\.runas\('lampa'\);\s*Lampa\.Player\.play\(directCurrent\);/,
+assert.match(playbackLaunch, /Lampa\.Player\.runas\('lampa'\);\s*Lampa\.Player\.play\(native\.current\);/,
     'internal playback must always use the built-in engine');
 assert.match(playbackLaunch, /function needsRequestHeaders\(item\)[\s\S]{0,400}yani_stream_headers_required/,
     'the requirement must come from the resolver flag, not from the mere presence of headers');
