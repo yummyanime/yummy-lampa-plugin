@@ -207,6 +207,8 @@ assert.strictEqual(utils.isEpisodeFinished(2917, 3600), true, 'more than 81 perc
 assert.strictEqual(utils.isEpisodeFinished(2916, 3600), false, 'exactly 81 percent is not enough when the credits window was not reached');
 assert.strictEqual(utils.isEpisodeFinished(540, 720), true, 'three minutes remaining finishes an ordinary episode independently of percentage');
 assert.strictEqual(utils.isEpisodeFinished(539, 720), false, 'neither completion condition is met');
+assert.strictEqual(utils.isEpisodeFinished(10, 100), false, 'a short clip must not be finished only because its whole duration is under three minutes');
+assert.strictEqual(utils.isEpisodeFinished(82, 100), true, 'a short clip still uses the 81 percent rule');
 assert.strictEqual(utils.isEpisodeFinished(7000, 7200), true, 'long-form content keeps the 95 percent fallback');
 assert.strictEqual(utils.isEpisodeFinished(6800, 7200), false, 'long-form content must not use the episode credits window');
 assert.strictEqual(utils.isEpisodeFinished(300, 1440), false);

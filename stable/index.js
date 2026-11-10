@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.4',
-        build: {hash: 'f7dd52d863', date: '2026-11-10T23:04:55.492Z', type: 'production'},
+        version: '0.53.5',
+        build: {hash: 'db048aade1', date: '2026-11-10T23:40:47.337Z', type: 'production'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -3981,6 +3981,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var EPISODE_FINISHED_RATIO = 0.95;
     var EPISODE_FINISHED_MIN_RATIO = 0.81;
     var EPISODE_FINISHED_REMAINING_SECONDS = 3 * 60;
+    var EPISODE_FINISHED_MIN_EPISODE_SECONDS = 10 * 60;
     var EPISODE_FINISHED_MAX_EPISODE_SECONDS = 60 * 60;
     var EPISODE_WATCHED_SECONDS = 30;
 
@@ -3994,7 +3995,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         if (!(duration > 0)) return false;
         var ratio = position / duration;
         if (duration <= EPISODE_FINISHED_MAX_EPISODE_SECONDS) {
-            return ratio > EPISODE_FINISHED_MIN_RATIO || duration - position <= EPISODE_FINISHED_REMAINING_SECONDS;
+            var reachedCreditsTail = duration >= EPISODE_FINISHED_MIN_EPISODE_SECONDS &&
+                duration - position <= EPISODE_FINISHED_REMAINING_SECONDS;
+            return ratio > EPISODE_FINISHED_MIN_RATIO || reachedCreditsTail;
         }
         return ratio >= EPISODE_FINISHED_RATIO;
     }
@@ -4158,6 +4161,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         EPISODE_FINISHED_RATIO: EPISODE_FINISHED_RATIO,
         EPISODE_FINISHED_MIN_RATIO: EPISODE_FINISHED_MIN_RATIO,
         EPISODE_FINISHED_REMAINING_SECONDS: EPISODE_FINISHED_REMAINING_SECONDS,
+        EPISODE_FINISHED_MIN_EPISODE_SECONDS: EPISODE_FINISHED_MIN_EPISODE_SECONDS,
         EPISODE_FINISHED_MAX_EPISODE_SECONDS: EPISODE_FINISHED_MAX_EPISODE_SECONDS,
         EPISODE_WATCHED_SECONDS: EPISODE_WATCHED_SECONDS,
         mediaTypeInfo: mediaTypeInfo,
@@ -8614,7 +8618,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             duration = positiveNumber(duration);
             position = positiveNumber(position);
             if (!(duration > 0)) return false;
-            if (duration <= 60 * 60) return position / duration > 0.81 || duration - position <= 3 * 60;
+            if (duration <= 60 * 60) {
+                return position / duration > 0.81 || duration >= 10 * 60 && duration - position <= 3 * 60;
+            }
             return position / duration >= 0.95;
         }
 

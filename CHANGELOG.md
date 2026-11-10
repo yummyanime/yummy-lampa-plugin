@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.5] - 2026-11-11
+
+### Fixed
+
+- Fix short clips being marked complete only because their total duration was below the three-minute credits window
+
 ## [0.53.4] - 2026-11-11
 
 ### Added

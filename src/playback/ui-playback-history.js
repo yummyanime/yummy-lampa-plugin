@@ -80,7 +80,9 @@
             duration = positiveNumber(duration);
             position = positiveNumber(position);
             if (!(duration > 0)) return false;
-            if (duration <= 60 * 60) return position / duration > 0.81 || duration - position <= 3 * 60;
+            if (duration <= 60 * 60) {
+                return position / duration > 0.81 || duration >= 10 * 60 && duration - position <= 3 * 60;
+            }
             return position / duration >= 0.95;
         }
 
