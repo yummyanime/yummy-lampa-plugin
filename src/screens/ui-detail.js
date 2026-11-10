@@ -1,36 +1,103 @@
 (function (window) {
     'use strict';
 
+    // A subscription belongs to one dubbing on one player: every record of
+    // `/anime/{id}/videos` is an episode of a dubbing on a player, and the
+    // server marks each record the signed-in viewer is subscribed to with
+    // `subscribed`. The state therefore comes from the server and never from
+    // this device, so a subscription made on the site or another device shows.
+    function subscriptionPlayerKey(data) {
+        var playerId = Number(data.player_id);
+        if (playerId > 0) return 'id:' + playerId;
+        return 'name:' + String(data.player || '').trim().replace(/^(?:плеер|player)\s+/i, '').toLowerCase();
+    }
+
+    function subscriptionGroups(videos) {
+        var groups = {};
+        var order = [];
+        (Array.isArray(videos) ? videos : []).forEach(function (video) {
+            var id = Number(video && (video.video_id || video.id));
+            var data = video && video.data || {};
+            var dubbing = String(data.dubbing || '').trim();
+            if (!(id > 0) || !dubbing) return;
+            var key = subscriptionPlayerKey(data) + '|' + dubbing.toLowerCase();
+            if (!groups[key]) {
+                groups[key] = {dubbing: dubbing, player: String(data.player || '').trim(), videos: [], views: 0};
+                order.push(key);
+            }
+            groups[key].videos.push(video);
+            groups[key].views += Number(video.views || 0);
+        });
+        return order.map(function (key) {
+            var group = groups[key];
+            var latest = group.videos.slice().sort(function (a, b) {
+                var episodes = (parseFloat(b.number) || 0) - (parseFloat(a.number) || 0);
+                return episodes || Number(b.video_id || b.id) - Number(a.video_id || a.id);
+            })[0];
+            // Unsubscribing goes through the record the server itself marks.
+            var marked = group.videos.filter(function (video) {
+                return video.subscribed === true || video.subscribed === 1 || video.subscribed === '1';
+            })[0];
+            return {
+                dubbing: group.dubbing,
+                player: group.player,
+                episodes: group.videos.length,
+                views: group.views,
+                subscribed: Boolean(marked),
+                videoId: String((marked || latest).video_id || (marked || latest).id)
+            };
+        }).sort(function (a, b) {
+            return b.views - a.views || a.player.localeCompare(b.player);
+        });
+    }
+
+    function syncSubscriptionButton(button, groups, t) {
+        var subscribed = groups.some(function (group) { return group.subscribed; });
+        button.text(subscribed ? t('unsubscribe_episodes') : t('subscribe_episodes'));
+    }
+
     function toggleEpisodeSubscription(card, button, deps) {
         var t = deps.t;
         if (!LampaYaniAuth.token()) return Lampa.Noty.show(t('login_required'));
         if (!card || !card.yani_id) return;
-        var key = 'yani_subscribed_video_' + card.yani_id;
-        var subscribed = Lampa.Storage && Lampa.Storage.get(key, '');
-        var videoRequest = subscribed ? Promise.resolve(String(subscribed)) : Promise.resolve(
-            deps.loadVideos ? deps.loadVideos(card.yani_id) : LampaYaniApi.videos(card.yani_id)
-        ).then(function (payload) {
-            var videos = Array.isArray(payload) ? payload : payload && payload.response ? payload.response : payload;
-            videos = Array.isArray(videos) ? videos : videos && (videos.videos || videos.items) || [];
-            videos = videos.filter(function (video) { return video && (video.video_id || video.id); });
-            if (!videos.length) throw new Error('No subscribable videos');
-            videos.sort(function (a, b) { return Number(b.number || b.index || 0) - Number(a.number || a.index || 0); });
-            return String(videos[0].video_id || videos[0].id);
-        });
-        videoRequest.then(function (videoId) {
-            var action = subscribed ? LampaYaniApi.unsubscribeVideo(videoId) : LampaYaniApi.subscribeVideo(videoId);
-            return action.then(function () {
-                if (Lampa.Storage) {
-                    if (subscribed) Lampa.Storage.set(key, '');
-                    else Lampa.Storage.set(key, String(videoId));
-                }
-                button.text(subscribed ? t('subscribe_episodes') : t('unsubscribe_episodes'));
-                Lampa.Noty.show(subscribed ? t('subscription_removed') : t('subscription_added'));
-            });
-        }).catch(function (error) {
+
+        function fail(error) {
             console.error('[YummyAnime] Subscription failed', error);
             Lampa.Noty.show(t('subscription_error'));
-        });
+        }
+
+        function apply(group, groups) {
+            var action = group.subscribed
+                ? LampaYaniApi.unsubscribeVideo(group.videoId)
+                : LampaYaniApi.subscribeVideo(group.videoId);
+            return action.then(function () {
+                group.subscribed = !group.subscribed;
+                syncSubscriptionButton(button, groups, t);
+                Lampa.Noty.show(group.subscribed ? t('subscription_added') : t('subscription_removed'));
+            });
+        }
+
+        // The cached list may predate a change made elsewhere, so the choice
+        // is always made on a fresh one.
+        Promise.resolve(deps.loadVideos({forceRefresh: true})).then(function (videos) {
+            var groups = subscriptionGroups(videos);
+            if (!groups.length) throw new Error('No subscribable videos');
+            syncSubscriptionButton(button, groups, t);
+            if (groups.length === 1 || !deps.showSelect) return apply(groups[0], groups);
+            deps.showSelect({
+                title: t('subscriptions'),
+                items: groups.map(function (group) {
+                    return {
+                        title: (group.subscribed ? '✓ ' : '') + group.dubbing,
+                        subtitle: [group.player, group.episodes + ' ' + t('episodes_short')].filter(Boolean).join(' · '),
+                        group: group
+                    };
+                }),
+                onSelect: function (item) {
+                    apply(item.group, groups).catch(fail);
+                }
+            });
+        }).catch(fail);
     }
 
     function keepHorizontalFocusVisible(container, element) {
@@ -288,6 +355,7 @@
 
         function loadDetailVideos() {
             var onCached = arguments[0];
+            var request = arguments[1] || {};
             var load = deps.loadVideos || function (id, options) {
                 return LampaYaniApi.videos(id, options).then(function (payload) {
                     var videos = payload && payload.response ? payload.response : payload;
@@ -302,6 +370,7 @@
                     onCached(videos);
                 } : null
             };
+            if (request.forceRefresh) options.forceRefresh = true;
             return load(data.yani_id, options).then(function (videos) {
                 if (deps.importVideosProgress && !(videos && videos._yaniStaleDisplay)) {
                     deps.importVideosProgress(data, videos);
@@ -458,13 +527,18 @@
             });
             bindDetailButtonFocus(searchButton);
             var subscribeButton = $('<div class="yani-detail__button selector"></div>').text(t('subscribe_episodes'));
-            if (Lampa.Storage && Lampa.Storage.get('yani_subscribed_video_' + data.yani_id, '')) {
-                subscribeButton.text(t('unsubscribe_episodes'));
+            if (LampaYaniAuth.token()) {
+                // Like the other blocks of this page: a saved snapshot is only
+                // drawn, and watch progress is taken from the fresh response.
+                loadDetailVideos(function () {}).then(function (videos) {
+                    syncSubscriptionButton(subscribeButton, subscriptionGroups(videos), t);
+                }).catch(function () {});
             }
             subscribeButton.on('hover:enter', function () {
                 toggleEpisodeSubscription(data, subscribeButton, {
                     t: t,
-                    loadVideos: function () { return loadDetailVideos(); }
+                    showSelect: showYummySelect,
+                    loadVideos: function (request) { return loadDetailVideos(null, request); }
                 });
             });
             bindDetailButtonFocus(subscribeButton);
@@ -1092,5 +1166,5 @@
     }
 
     window.LampaYani = window.LampaYani || {};
-    window.LampaYani.Detail = window.LampaYaniDetail = {create: create};
+    window.LampaYani.Detail = window.LampaYaniDetail = {create: create, subscriptionGroups: subscriptionGroups};
 }(window));

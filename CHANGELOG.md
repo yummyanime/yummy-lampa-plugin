@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.49.7] - 2026-11-10
+
+### Fixed
+
+- The new-episode subscription button ignoring subscriptions made on the site or another device, and subscribing to an arbitrary dubbing; the state now comes from the server and the dubbing is chosen from a list
+
 ## [0.49.6] - 2026-11-10
 
 ### Changed
