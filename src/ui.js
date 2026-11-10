@@ -172,6 +172,7 @@
     var refreshVisiblePlaybackProgress = playbackHistoryApi.refreshVisiblePlaybackProgress;
     var updatePlaybackProgress = playbackHistoryApi.updatePlaybackProgress;
     var syncPlaybackHistoryManually = playbackHistoryApi.syncPlaybackHistoryManually;
+    var syncHistoryAfterSignIn = playbackHistoryApi.syncHistoryAfterSignIn;
     var bindHistoryCardRender = playbackHistoryApi.bindHistoryCardRender;
 
     var externalPlayer = LampaYaniExternalPlayer.create({
@@ -757,7 +758,7 @@
             hint: function () { return localizedAuthText('auth_hint'); },
             onAuthChanged: syncSettingsAuthStatus,
             onAuthorized: function () {
-                ensureRemoteHistory(true).catch(function () {});
+                syncHistoryAfterSignIn();
                 if (object && object.refresh_account_on_authorized) {
                     setTimeout(function () {
                         Lampa.Activity.replace({url: 'yani/account', title: 'YummyAnime ' + t('account'), component: 'yani_account'});
@@ -1285,6 +1286,7 @@
             openSubjectCatalog: openSubjectCatalog,
             beginPlaybackNavigation: beginPlaybackNavigation,
             openTitlePlaybackOptions: openTitlePlaybackOptions,
+            openVideos: openVideos,
             openTrailers: openTrailers,
             lampaIcon: lampaIcon,
             openStandardLampaCard: openStandardLampaCard,

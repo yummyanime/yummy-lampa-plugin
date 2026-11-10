@@ -293,6 +293,7 @@
         var openSubjectCatalog = deps.openSubjectCatalog;
         var beginPlaybackNavigation = deps.beginPlaybackNavigation;
         var openTitlePlaybackOptions = deps.openTitlePlaybackOptions;
+        var openVideos = deps.openVideos;
         var openTrailers = deps.openTrailers;
         var lampaIcon = deps.lampaIcon;
         var openStandardLampaCard = deps.openStandardLampaCard;
@@ -323,6 +324,41 @@
         var titleFocus;
         var destroyed = false;
         var refreshDetailWatchState = function () {};
+        var refreshContinueButton = function () {};
+
+        // Where "Continue" leads from this device's watch history: the episode
+        // that was left unfinished, at its saved position, or the next one once
+        // that is released. Nothing when the newest released episode is
+        // watched - there is nothing to continue yet.
+        function continueTarget(cardData) {
+            var playback = getPlayback(cardData.yani_id) || {};
+            var number = Number(playback.number || 0);
+            if (!(number > 0)) return null;
+            var time = Number(playback.time || 0);
+            var duration = Number(playback.duration || 0);
+            if (time > 0 && duration > 0 && !LampaYaniUiUtils.isEpisodeFinished(time, duration, playback)) {
+                return {
+                    label: t('continue_short') + ' · ' + t('episode') + ' ' + number + ' · ' + Math.round(time / duration * 100) + '%',
+                    resume: playback
+                };
+            }
+            var episodes = cardData.yani_episodes || {};
+            var aired = Number(episodes.aired || 0);
+            var next = number + 1;
+            if (!(time > 0) || !aired || next > aired) return null;
+            return {
+                label: t('continue_short') + ' · ' + t('episode') + ' ' + next,
+                resume: {
+                    number: String(next),
+                    player: playback.player || '',
+                    voice: playback.voice || '',
+                    video_id: '',
+                    time: 0,
+                    duration: 0,
+                    resume_next: true
+                }
+            };
+        }
         var videosAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var posterViewer = null;
         var posterExpanded = false;
@@ -370,6 +406,7 @@
             if (destroyed) return;
             if (!card || String(card.yani_id) !== String(data.yani_id)) return;
             refreshDetailWatchState();
+            refreshContinueButton();
         });
 
         function closePosterViewer() {
@@ -561,6 +598,29 @@
                 openTitlePlaybackOptions(data);
             });
             bindDetailButtonFocus(button);
+            // Straight to the episode in progress with its dubbing and source,
+            // next to Watch, which keeps the full choice of dubbing and episode.
+            var continueButton = $('<div class="yani-detail__button yani-detail__button--continue selector"></div>');
+            continueButton.on('hover:enter click.yaniContinue', function () {
+                var target = continueTarget(data);
+                if (!target) return;
+                beginPlaybackNavigation(continueButton, scroll.render());
+                openVideos(Object.assign({}, data, {yani_resume: target.resume}), true);
+            });
+            bindDetailButtonFocus(continueButton);
+            // Taken out of the page rather than hidden: a hidden `.selector`
+            // could still receive the remote's focus.
+            refreshContinueButton = function () {
+                var target = continueTarget(data);
+                if (!target) {
+                    // Focus remembered on the button would be lost with it.
+                    if (detailFocus.target() === continueButton[0]) detailFocus.remember(button[0]);
+                    continueButton.detach();
+                    return;
+                }
+                continueButton.text(target.label);
+                if (!continueButton.parent().length) button.before(continueButton);
+            };
             var trailersButton = $('<div class="yani-detail__button selector"></div>').text(t('trailers'));
             trailersButton.on('hover:enter click.yaniDetailTrailers', function () { openTrailers(data); });
             bindDetailButtonFocus(trailersButton);
@@ -593,6 +653,7 @@
             bindDetailButtonFocus(subscribeButton);
             var comments = $('<div class="yani-detail__comments"></div>');
             actions.append(button, trailersButton, searchButton);
+            refreshContinueButton();
             actions.append(subscribeButton);
             // Keep the principal actions next to the synopsis, before the
             // long viewing-order, recommendations and comments sections.
@@ -1185,6 +1246,7 @@
 
         comp.start = function () {
             refreshDetailWatchState();
+            refreshContinueButton();
             if (!remoteListShortcutHandler) {
                 remoteListShortcutHandler = handleRemoteListShortcut;
                 document.addEventListener('keydown', remoteListShortcutHandler, true);

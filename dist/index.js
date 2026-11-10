@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.50.7',
+        version: '0.51.0',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -165,6 +165,7 @@ function pluginYummyAnime() {
     messages.ru.flow_no_data = 'Нет свежих данных';
     messages.ru.no_unread_notifications = 'Новых уведомлений нет';
     messages.ru.continue_now = 'Продолжить сейчас';
+    messages.ru.continue_short = 'Продолжить';
     messages.ru.notifications_new = 'Требует внимания';
     messages.ru.fresh_translation = 'Свежая озвучка';
     messages.ru.recommended_now = 'Для вас сейчас';
@@ -280,6 +281,7 @@ function pluginYummyAnime() {
     messages.en.flow_no_data = 'No recent data';
     messages.en.no_unread_notifications = 'No new notifications';
     messages.en.continue_now = 'Continue now';
+    messages.en.continue_short = 'Continue';
     messages.en.notifications_new = 'Needs attention';
     messages.en.fresh_translation = 'Fresh dub';
     messages.en.recommended_now = 'For you now';
@@ -775,6 +777,7 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.flow_no_data = 'Немає свіжих даних';
     messages.uk.no_unread_notifications = 'Нових сповіщень немає';
     messages.uk.continue_now = 'Продовжити зараз';
+    messages.uk.continue_short = 'Продовжити';
     messages.uk.notifications_new = 'Потребує уваги';
     messages.uk.fresh_translation = 'Свіже озвучення';
     messages.uk.recommended_now = 'Для вас зараз';
@@ -8855,6 +8858,43 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             return remotePull;
         }
 
+        // This device's history in the form the account accepts: the episode
+        // by its video id, how far it was watched and when.
+        function localHistoryWatches() {
+            var history = playbackHistory();
+            return Object.keys(history).map(function (id) {
+                var item = history[id] || {};
+                if (!item.video_id) return null;
+                return {
+                    video_id: Number(item.video_id),
+                    time: Number(item.time || 0),
+                    date: Math.floor(Number(item.updated_at || Date.now()) / 1000)
+                };
+            }).filter(function (item) { return item && item.video_id; });
+        }
+
+        // Progress recorded while the server rejected the session never reached
+        // the account: it answered 401 and nothing retries that. Signing in
+        // again therefore exchanges the history both ways, quietly - the
+        // account's is pulled in, then this device's is sent up.
+        function syncHistoryAfterSignIn() {
+            if (!autoProgressSyncEnabled() || !window.LampaYaniAuth || !window.LampaYaniAuth.token()) {
+                return Promise.resolve({imported: 0, sent: 0, skipped: true});
+            }
+            return ensureRemoteHistory(true).then(function (pulled) {
+                var imported = pulled && pulled.imported || 0;
+                var videos = localHistoryWatches();
+                if (!videos.length) return {imported: imported, sent: 0};
+                return window.LampaYaniApi.syncVideoWatches(videos).then(function () {
+                    console.log('[YummyAnime] Sent ' + videos.length + ' history entries to the account after sign-in');
+                    return {imported: imported, sent: videos.length};
+                });
+            }).catch(function (error) {
+                console.warn('[YummyAnime] Could not send the history to the account after sign-in', error);
+                return {imported: 0, sent: 0, failed: true};
+            });
+        }
+
         function syncPlaybackHistoryManually() {
             if (!window.LampaYaniAuth || !window.LampaYaniAuth.token()) {
                 if (window.Lampa && window.Lampa.Noty) window.Lampa.Noty.show(t('login_required'));
@@ -8865,16 +8905,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 console.warn('[YummyAnime] Remote history pull failed', error);
                 return {imported: 0};
             }).then(function (pulled) {
-                var history = playbackHistory();
-                var videos = Object.keys(history).map(function (id) {
-                    var item = history[id] || {};
-                    if (!item.video_id) return null;
-                    return {
-                        video_id: Number(item.video_id),
-                        time: Number(item.time || 0),
-                        date: Math.floor(Number(item.updated_at || Date.now()) / 1000)
-                    };
-                }).filter(function (item) { return item && item.video_id; });
+                var videos = localHistoryWatches();
                 if (!videos.length) {
                     if (window.Lampa && window.Lampa.Loading && window.Lampa.Loading.stop) window.Lampa.Loading.stop();
                     if (window.Lampa && window.Lampa.Noty) {
@@ -8939,6 +8970,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             refreshVisiblePlaybackProgress: refreshVisiblePlaybackProgress,
             updatePlaybackProgress: updatePlaybackProgress,
             syncPlaybackHistoryManually: syncPlaybackHistoryManually,
+            syncHistoryAfterSignIn: syncHistoryAfterSignIn,
             bindHistoryCardRender: bindHistoryCardRender
         };
     }
@@ -19307,6 +19339,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var openSubjectCatalog = deps.openSubjectCatalog;
         var beginPlaybackNavigation = deps.beginPlaybackNavigation;
         var openTitlePlaybackOptions = deps.openTitlePlaybackOptions;
+        var openVideos = deps.openVideos;
         var openTrailers = deps.openTrailers;
         var lampaIcon = deps.lampaIcon;
         var openStandardLampaCard = deps.openStandardLampaCard;
@@ -19337,6 +19370,41 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var titleFocus;
         var destroyed = false;
         var refreshDetailWatchState = function () {};
+        var refreshContinueButton = function () {};
+
+        // Where "Continue" leads from this device's watch history: the episode
+        // that was left unfinished, at its saved position, or the next one once
+        // that is released. Nothing when the newest released episode is
+        // watched - there is nothing to continue yet.
+        function continueTarget(cardData) {
+            var playback = getPlayback(cardData.yani_id) || {};
+            var number = Number(playback.number || 0);
+            if (!(number > 0)) return null;
+            var time = Number(playback.time || 0);
+            var duration = Number(playback.duration || 0);
+            if (time > 0 && duration > 0 && !LampaYaniUiUtils.isEpisodeFinished(time, duration, playback)) {
+                return {
+                    label: t('continue_short') + ' · ' + t('episode') + ' ' + number + ' · ' + Math.round(time / duration * 100) + '%',
+                    resume: playback
+                };
+            }
+            var episodes = cardData.yani_episodes || {};
+            var aired = Number(episodes.aired || 0);
+            var next = number + 1;
+            if (!(time > 0) || !aired || next > aired) return null;
+            return {
+                label: t('continue_short') + ' · ' + t('episode') + ' ' + next,
+                resume: {
+                    number: String(next),
+                    player: playback.player || '',
+                    voice: playback.voice || '',
+                    video_id: '',
+                    time: 0,
+                    duration: 0,
+                    resume_next: true
+                }
+            };
+        }
         var videosAbort = typeof AbortController !== 'undefined' ? new AbortController() : null;
         var posterViewer = null;
         var posterExpanded = false;
@@ -19384,6 +19452,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             if (destroyed) return;
             if (!card || String(card.yani_id) !== String(data.yani_id)) return;
             refreshDetailWatchState();
+            refreshContinueButton();
         });
 
         function closePosterViewer() {
@@ -19575,6 +19644,29 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 openTitlePlaybackOptions(data);
             });
             bindDetailButtonFocus(button);
+            // Straight to the episode in progress with its dubbing and source,
+            // next to Watch, which keeps the full choice of dubbing and episode.
+            var continueButton = $('<div class="yani-detail__button yani-detail__button--continue selector"></div>');
+            continueButton.on('hover:enter click.yaniContinue', function () {
+                var target = continueTarget(data);
+                if (!target) return;
+                beginPlaybackNavigation(continueButton, scroll.render());
+                openVideos(Object.assign({}, data, {yani_resume: target.resume}), true);
+            });
+            bindDetailButtonFocus(continueButton);
+            // Taken out of the page rather than hidden: a hidden `.selector`
+            // could still receive the remote's focus.
+            refreshContinueButton = function () {
+                var target = continueTarget(data);
+                if (!target) {
+                    // Focus remembered on the button would be lost with it.
+                    if (detailFocus.target() === continueButton[0]) detailFocus.remember(button[0]);
+                    continueButton.detach();
+                    return;
+                }
+                continueButton.text(target.label);
+                if (!continueButton.parent().length) button.before(continueButton);
+            };
             var trailersButton = $('<div class="yani-detail__button selector"></div>').text(t('trailers'));
             trailersButton.on('hover:enter click.yaniDetailTrailers', function () { openTrailers(data); });
             bindDetailButtonFocus(trailersButton);
@@ -19607,6 +19699,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             bindDetailButtonFocus(subscribeButton);
             var comments = $('<div class="yani-detail__comments"></div>');
             actions.append(button, trailersButton, searchButton);
+            refreshContinueButton();
             actions.append(subscribeButton);
             // Keep the principal actions next to the synopsis, before the
             // long viewing-order, recommendations and comments sections.
@@ -20199,6 +20292,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
         comp.start = function () {
             refreshDetailWatchState();
+            refreshContinueButton();
             if (!remoteListShortcutHandler) {
                 remoteListShortcutHandler = handleRemoteListShortcut;
                 document.addEventListener('keydown', remoteListShortcutHandler, true);
@@ -20443,6 +20537,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var refreshVisiblePlaybackProgress = playbackHistoryApi.refreshVisiblePlaybackProgress;
     var updatePlaybackProgress = playbackHistoryApi.updatePlaybackProgress;
     var syncPlaybackHistoryManually = playbackHistoryApi.syncPlaybackHistoryManually;
+    var syncHistoryAfterSignIn = playbackHistoryApi.syncHistoryAfterSignIn;
     var bindHistoryCardRender = playbackHistoryApi.bindHistoryCardRender;
 
     var externalPlayer = LampaYaniExternalPlayer.create({
@@ -21028,7 +21123,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             hint: function () { return localizedAuthText('auth_hint'); },
             onAuthChanged: syncSettingsAuthStatus,
             onAuthorized: function () {
-                ensureRemoteHistory(true).catch(function () {});
+                syncHistoryAfterSignIn();
                 if (object && object.refresh_account_on_authorized) {
                     setTimeout(function () {
                         Lampa.Activity.replace({url: 'yani/account', title: 'YummyAnime ' + t('account'), component: 'yani_account'});
@@ -21556,6 +21651,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             openSubjectCatalog: openSubjectCatalog,
             beginPlaybackNavigation: beginPlaybackNavigation,
             openTitlePlaybackOptions: openTitlePlaybackOptions,
+            openVideos: openVideos,
             openTrailers: openTrailers,
             lampaIcon: lampaIcon,
             openStandardLampaCard: openStandardLampaCard,

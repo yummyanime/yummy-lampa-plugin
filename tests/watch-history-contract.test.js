@@ -329,3 +329,18 @@ assert.match(detailModule, /text: t\('episode'\) \+ ' ' \+ number \+ ' · ' \+ M
     'an unfinished episode shows its number and percentage');
 assert.match(detailModule, /var resume = resumeItem\(\);\s*if \(resume\) items\.push\(resume\);/);
 console.log('Watch history navigation checks passed');
+
+// "Continue" on the title page goes straight to the episode in progress, with
+// its dubbing and source, next to Watch which keeps the full choice.
+assert.match(detailModule, /function continueTarget\(cardData\)/);
+assert.match(detailModule, /openVideos\(Object\.assign\(\{\}, data, \{yani_resume: target\.resume\}\), true\);/,
+    'Continue resumes through the playback menu with the chosen episode');
+assert.match(detailModule, /if \(!\(time > 0\) \|\| !aired \|\| next > aired\) return null;/,
+    'a next episode that has not aired yet is not offered');
+assert.match(detailModule, /continueButton\.detach\(\);/, 'without a target the button is taken out, not hidden');
+assert.match(detailModule, /if \(detailFocus\.target\(\) === continueButton\[0\]\) detailFocus\.remember\(button\[0\]\);/,
+    'focus remembered on a removed Continue button moves to Watch');
+assert.match(detailModule, /comp\.start = function \(\) \{\s*refreshDetailWatchState\(\);\s*refreshContinueButton\(\);/,
+    'the button is refreshed when the title page is shown again');
+assert.match(fs.readFileSync('src/ui.js', 'utf8'), /openTitlePlaybackOptions: openTitlePlaybackOptions,\s*openVideos: openVideos,/);
+console.log('Continue button checks passed');

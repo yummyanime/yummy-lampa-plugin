@@ -9,6 +9,18 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-11-11
+
+### Added
+
+- A Continue button on the title page that starts the unfinished episode at its saved position with the same dubbing and source, or the next released episode
+
+## [0.50.8] - 2026-11-11
+
+### Fixed
+
+- Watch progress recorded while the server rejected the session never reaching the account; signing in now pulls the account history and sends this device's history up
+
 ## [0.50.7] - 2026-11-11
 
 ### Changed

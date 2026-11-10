@@ -33,7 +33,9 @@ assert.match(source, /function pullRemoteProgress/);
 assert.match(source, /fetchHistoryRange\(window\.LampaYaniApi\.watchHistory, maximum, 30\)/);
 // Signing in must refresh from the account immediately: the point of signing
 // in is to see what the other devices already watched.
-assert.match(ui, /onAuthorized: function \(\) \{[\s\S]{0,180}ensureRemoteHistory\(true\)/);
+assert.match(ui, /onAuthorized: function \(\) \{\s*syncHistoryAfterSignIn\(\);/);
+assert.match(source, /function syncHistoryAfterSignIn\(\) \{[\s\S]{0,400}ensureRemoteHistory\(true\)\.then[\s\S]{0,300}syncVideoWatches\(videos\)/,
+    'after sign-in the account history is pulled first, then the local one is sent up');
 assert.match(source, /function ensureRemoteHistory\(force\)/, 'the shared account history must have a single pull entry point');
 assert.match(ui, /ensureRemoteHistory\(\);/, 'the account history must be pulled when the plugin starts');
 assert.match(watcher, /Lampa\.PlayerVideo\.video\(\)/, 'progress must use Lampa player accessor when native playback has no DOM video');
@@ -127,4 +129,31 @@ assert.strictEqual(imported.imported, 1);
 assert.strictEqual(api.getPlayback(77).time, 240);
 assert.strictEqual(api.getPlayback(77).number, '5');
 
-console.log('playback history module contract checks passed');
+// Signing in again sends up what this device recorded while the server was
+// rejecting the session: those progress updates were answered 401 and lost.
+(async () => {
+    const sent = [];
+    let pulls = 0;
+    context.window.LampaYaniAuth = {token: function () { return 'token'; }};
+    context.LampaYaniAuth = context.window.LampaYaniAuth;
+    context.window.LampaYaniApi = {
+        watchHistory: function () { pulls += 1; return Promise.resolve({response: []}); },
+        syncVideoWatches: function (videos) { sent.push(videos); return Promise.resolve(true); }
+    };
+    context.LampaYaniApi = context.window.LampaYaniApi;
+
+    const result = await api.syncHistoryAfterSignIn();
+    assert.strictEqual(pulls, 1, 'the account history is pulled');
+    assert.strictEqual(sent.length, 1, 'the local history is sent once');
+    const ids = sent[0].map((item) => item.video_id).sort((a, b) => a - b).join(',');
+    assert.strictEqual(ids, '99,7701', 'every local episode with a video id is sent');
+    assert.strictEqual(sent[0].find((item) => item.video_id === 7701).time, 240);
+    assert.strictEqual(result.sent, 2);
+
+    storage.yani_auto_sync_progress = false;
+    const skipped = await api.syncHistoryAfterSignIn();
+    assert.strictEqual(skipped.skipped, true, 'with sync turned off nothing is sent');
+    assert.strictEqual(sent.length, 1);
+
+    console.log('playback history module contract checks passed');
+})().catch((error) => { console.error(error); process.exitCode = 1; });

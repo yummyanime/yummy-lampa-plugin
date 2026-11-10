@@ -432,6 +432,43 @@
             return remotePull;
         }
 
+        // This device's history in the form the account accepts: the episode
+        // by its video id, how far it was watched and when.
+        function localHistoryWatches() {
+            var history = playbackHistory();
+            return Object.keys(history).map(function (id) {
+                var item = history[id] || {};
+                if (!item.video_id) return null;
+                return {
+                    video_id: Number(item.video_id),
+                    time: Number(item.time || 0),
+                    date: Math.floor(Number(item.updated_at || Date.now()) / 1000)
+                };
+            }).filter(function (item) { return item && item.video_id; });
+        }
+
+        // Progress recorded while the server rejected the session never reached
+        // the account: it answered 401 and nothing retries that. Signing in
+        // again therefore exchanges the history both ways, quietly - the
+        // account's is pulled in, then this device's is sent up.
+        function syncHistoryAfterSignIn() {
+            if (!autoProgressSyncEnabled() || !window.LampaYaniAuth || !window.LampaYaniAuth.token()) {
+                return Promise.resolve({imported: 0, sent: 0, skipped: true});
+            }
+            return ensureRemoteHistory(true).then(function (pulled) {
+                var imported = pulled && pulled.imported || 0;
+                var videos = localHistoryWatches();
+                if (!videos.length) return {imported: imported, sent: 0};
+                return window.LampaYaniApi.syncVideoWatches(videos).then(function () {
+                    console.log('[YummyAnime] Sent ' + videos.length + ' history entries to the account after sign-in');
+                    return {imported: imported, sent: videos.length};
+                });
+            }).catch(function (error) {
+                console.warn('[YummyAnime] Could not send the history to the account after sign-in', error);
+                return {imported: 0, sent: 0, failed: true};
+            });
+        }
+
         function syncPlaybackHistoryManually() {
             if (!window.LampaYaniAuth || !window.LampaYaniAuth.token()) {
                 if (window.Lampa && window.Lampa.Noty) window.Lampa.Noty.show(t('login_required'));
@@ -442,16 +479,7 @@
                 console.warn('[YummyAnime] Remote history pull failed', error);
                 return {imported: 0};
             }).then(function (pulled) {
-                var history = playbackHistory();
-                var videos = Object.keys(history).map(function (id) {
-                    var item = history[id] || {};
-                    if (!item.video_id) return null;
-                    return {
-                        video_id: Number(item.video_id),
-                        time: Number(item.time || 0),
-                        date: Math.floor(Number(item.updated_at || Date.now()) / 1000)
-                    };
-                }).filter(function (item) { return item && item.video_id; });
+                var videos = localHistoryWatches();
                 if (!videos.length) {
                     if (window.Lampa && window.Lampa.Loading && window.Lampa.Loading.stop) window.Lampa.Loading.stop();
                     if (window.Lampa && window.Lampa.Noty) {
@@ -516,6 +544,7 @@
             refreshVisiblePlaybackProgress: refreshVisiblePlaybackProgress,
             updatePlaybackProgress: updatePlaybackProgress,
             syncPlaybackHistoryManually: syncPlaybackHistoryManually,
+            syncHistoryAfterSignIn: syncHistoryAfterSignIn,
             bindHistoryCardRender: bindHistoryCardRender
         };
     }
