@@ -5,7 +5,7 @@ const {execFileSync} = require('child_process');
 const changelog = require('./changelog');
 
 const FILES = {
-    config: 'src/config.js',
+    config: 'src/core/config.js',
     readme: 'README.md',
     changelog: 'CHANGELOG.md',
     docsEn: 'docs/README.en.md'
@@ -47,7 +47,7 @@ function nextVersion(current, bump) {
 
 function readConfigVersion(source) {
     const match = String(source || '').match(/version:\s*'(\d+\.\d+\.\d+)'/);
-    if (!match) throw new Error('Could not find version in src/config.js');
+    if (!match) throw new Error('Could not find version in src/core/config.js');
     return match[1];
 }
 
@@ -154,7 +154,7 @@ function usage() {
         '',
         'Notes must start with Added, Changed, Deprecated, Removed, Fixed, or Security. Fix/Add/Remove/Refactor still work. Use | for related changes.',
         'If [Unreleased] already has entries, -m can be omitted.',
-        'Updates src/config.js, README version, CHANGELOG, and dist/index.js together.'
+        'Updates src/core/config.js, README version, CHANGELOG, and dist/index.js together.'
     ].join('\n');
 }
 

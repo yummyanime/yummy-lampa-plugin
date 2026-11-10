@@ -1,14 +1,14 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const auth = fs.readFileSync('src/ui-auth.js', 'utf8');
-const status = fs.readFileSync('src/ui-status.js', 'utf8');
-const notifications = fs.readFileSync('src/ui-notifications.js', 'utf8');
-const player = fs.readFileSync('src/ui-player.js', 'utf8');
+const auth = fs.readFileSync('src/screens/ui-auth.js', 'utf8');
+const status = fs.readFileSync('src/screens/ui-status.js', 'utf8');
+const notifications = fs.readFileSync('src/screens/ui-notifications.js', 'utf8');
+const player = fs.readFileSync('src/playback/ui-player.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const schedule = fs.readFileSync('src/ui-schedule.js', 'utf8');
+const schedule = fs.readFileSync('src/screens/ui-schedule.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(auth, /data-yani-focus-key/);
 assert.match(auth, /function refreshFocus\(\)[\s\S]{0,800}collectionFocus/);

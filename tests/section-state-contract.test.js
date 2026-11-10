@@ -2,17 +2,17 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-section-state.js', 'utf8');
-const api = fs.readFileSync('src/api.js', 'utf8');
+const source = fs.readFileSync('src/ui/ui-section-state.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
-const schedule = fs.readFileSync('src/ui-schedule.js', 'utf8');
-const notifications = fs.readFileSync('src/ui-notifications.js', 'utf8');
-const releases = fs.readFileSync('src/ui-releases.js', 'utf8');
-const translations = fs.readFileSync('src/ui-translations.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
+const schedule = fs.readFileSync('src/screens/ui-schedule.js', 'utf8');
+const notifications = fs.readFileSync('src/screens/ui-notifications.js', 'utf8');
+const releases = fs.readFileSync('src/screens/ui-releases.js', 'utf8');
+const translations = fs.readFileSync('src/screens/ui-translations.js', 'utf8');
 
-assert.match(build, /src\/ui-section-state\.js/);
+assert.match(build, /src\/ui\/ui-section-state\.js/);
 assert.match(api, /function markFromCache\(payload\)/);
 assert.match(api, /fromCache: fromCache/);
 assert.match(source, /function forActivity\(activity, deps\)/);

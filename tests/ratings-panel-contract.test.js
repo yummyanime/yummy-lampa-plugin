@@ -2,11 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const renderersSource = fs.readFileSync('src/ui-card-renderers.js', 'utf8');
-const model = fs.readFileSync('src/ui-card-model.js', 'utf8');
+const renderersSource = fs.readFileSync('src/cards/ui-card-renderers.js', 'utf8');
+const model = fs.readFileSync('src/cards/ui-card-model.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
-const history = fs.readFileSync('src/ui-playback-history.js', 'utf8');
+const history = fs.readFileSync('src/playback/ui-playback-history.js', 'utf8');
 
 assert.match(renderersSource, /function visibleCardRatings\(ratings\)/);
 assert.match(renderersSource, /function syncCardOverlayLayout\(element, card\)/);
@@ -78,14 +78,14 @@ assert.deepStrictEqual(api.visibleCardRatings([{key: 'kp', value: 0}]), []);
 // A score should read at a glance from across the room, so the YummyAnime
 // rating is banded by colour. Only that one: colouring every source would turn
 // the row into a traffic light.
-const utilsSource = fs.readFileSync('src/ui-utils.js', 'utf8');
+const utilsSource = fs.readFileSync('src/ui/ui-utils.js', 'utf8');
 assert.match(utilsSource, /function ratingTier\(value\)/, 'the band rule must live in one place');
 assert.match(css, /\.yani-ratings__value--low[\s\S]{0,80}#F66/, 'below 5 is red');
 assert.match(css, /\.yani-ratings__value--mid[\s\S]{0,80}#F2B800/, '5 to 7 is amber');
 assert.match(css, /\.yani-ratings__value--high[\s\S]{0,80}#3CCE7B/, '7 and up is green');
 
 const ratingCtx = {window: {}, console};
-vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), ratingCtx);
+vm.runInNewContext(fs.readFileSync('src/core/episode.js', 'utf8'), ratingCtx);
 vm.runInNewContext(utilsSource, ratingCtx);
 const tier = ratingCtx.window.LampaYaniUiUtils.ratingTier;
 assert.strictEqual(tier(0), '', 'an absent score gets no colour');

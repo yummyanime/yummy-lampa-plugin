@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const authSource = fs.readFileSync('src/auth.js', 'utf8');
+const authSource = fs.readFileSync('src/core/auth.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const storage = {};
 const events = [];

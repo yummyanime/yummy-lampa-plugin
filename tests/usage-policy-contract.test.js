@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(ui, /Lampa\.Component\.add\('yani_policy', UsagePolicy\)/);
 assert.match(ui, /param: \{name: 'yani_usage_policy', type: 'button'\}/);

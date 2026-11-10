@@ -22,11 +22,11 @@ assert.match(workflow, /gh release create/);
 assert.match(workflow, /tags:[\s\S]*v\*/);
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yani-release-'));
-fs.mkdirSync(path.join(root, 'src'));
+fs.mkdirSync(path.join(root, 'src', 'core'), {recursive: true});
 fs.mkdirSync(path.join(root, 'dist'));
 const bundle = "window.LampaYaniConfig = { version: '0.41.40' };\n";
 const older = "window.LampaYaniConfig = { version: '0.41.38' };\n";
-fs.writeFileSync(path.join(root, 'src/config.js'), bundle);
+fs.writeFileSync(path.join(root, 'src/core/config.js'), bundle);
 fs.writeFileSync(path.join(root, 'dist/index.js'), bundle);
 fs.writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n\n## 0.41.40 — 2026-08-13\n\n- Current.\n');
 
@@ -72,9 +72,9 @@ assert.match(fs.readFileSync(path.join(root, 'dist/index.js'), 'utf8'), /0\.41\.
 fs.rmSync(root, {recursive: true, force: true});
 
 const bumpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'yani-release-bump-'));
-fs.mkdirSync(path.join(bumpRoot, 'src'));
+fs.mkdirSync(path.join(bumpRoot, 'src', 'core'), {recursive: true});
 fs.mkdirSync(path.join(bumpRoot, 'dist'));
-fs.writeFileSync(path.join(bumpRoot, 'src/config.js'), "window.LampaYaniConfig = { version: '0.47.0' };\n");
+fs.writeFileSync(path.join(bumpRoot, 'src/core/config.js'), "window.LampaYaniConfig = { version: '0.47.0' };\n");
 fs.writeFileSync(path.join(bumpRoot, 'README.md'), 'Current version: `0.47.0`\n');
 fs.writeFileSync(path.join(bumpRoot, 'dist/index.js'), "window.LampaYaniConfig = { version: '0.47.0' };\n");
 fs.writeFileSync(path.join(bumpRoot, 'CHANGELOG.md'), [
@@ -99,13 +99,13 @@ const bumped = release.promote({
     bumpUnreleased: true,
     releasedAt: '2026-09-21T00:00:00.000Z',
     build: function () {
-        const next = fs.readFileSync(path.join(bumpRoot, 'src/config.js'), 'utf8');
+        const next = fs.readFileSync(path.join(bumpRoot, 'src/core/config.js'), 'utf8');
         fs.writeFileSync(path.join(bumpRoot, 'dist/index.js'), next);
     }
 });
 assert.strictEqual(bumped.bumped.from, '0.47.0');
 assert.strictEqual(bumped.version, '0.47.1');
-assert.match(fs.readFileSync(path.join(bumpRoot, 'src/config.js'), 'utf8'), /0\.47\.1/);
+assert.match(fs.readFileSync(path.join(bumpRoot, 'src/core/config.js'), 'utf8'), /0\.47\.1/);
 assert.match(fs.readFileSync(path.join(bumpRoot, 'stable/index.js'), 'utf8'), /0\.47\.1/);
 assert.match(fs.readFileSync(path.join(bumpRoot, 'CHANGELOG.md'), 'utf8'), /## \[0\.47\.1\]/);
 assert.doesNotMatch(fs.readFileSync(path.join(bumpRoot, 'CHANGELOG.md'), 'utf8'), /Overlay[\s\S]*## \[Unreleased\]/);

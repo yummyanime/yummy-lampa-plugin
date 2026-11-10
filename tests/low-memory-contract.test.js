@@ -1,10 +1,10 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const media = fs.readFileSync('src/ui-media.js', 'utf8');
+const media = fs.readFileSync('src/cards/ui-media.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const card = fs.readFileSync('src/ui-standard-card.js', 'utf8');
-const api = fs.readFileSync('src/api.js', 'utf8');
+const card = fs.readFileSync('src/cards/ui-standard-card.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 

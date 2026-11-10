@@ -22,14 +22,14 @@ assert.match(bump.formatNotes(['Add official label.', 'Refactor button']), /### 
 assert.throws(function () { bump.formatNotes('Normalize dist bundle newlines'); });
 
 const source = fs.readFileSync('scripts/bump-version.js', 'utf8');
-['src/config.js', 'README.md', 'CHANGELOG.md', 'docs/README.en.md', 'dist/index.js', 'build.js'].forEach((file) => {
+['src/core/config.js', 'README.md', 'CHANGELOG.md', 'docs/README.en.md', 'dist/index.js', 'build.js'].forEach((file) => {
     assert.ok(source.includes(file) || source.includes(file.replace(/\\/g, '/')), 'bump-version must mention ' + file);
 });
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'yani-version-'));
-fs.mkdirSync(path.join(root, 'src'));
+fs.mkdirSync(path.join(root, 'src', 'core'), {recursive: true});
 fs.mkdirSync(path.join(root, 'docs'));
-fs.writeFileSync(path.join(root, 'src/config.js'), "window.LampaYaniConfig = { version: '0.41.39' };\n");
+fs.writeFileSync(path.join(root, 'src/core/config.js'), "window.LampaYaniConfig = { version: '0.41.39' };\n");
 fs.writeFileSync(path.join(root, 'README.md'), [
     'Current version: `0.41.39`',
     '',
@@ -51,7 +51,7 @@ const result = bump.applyVersion({
 assert.strictEqual(result.from, '0.41.39');
 assert.strictEqual(result.version, '0.41.40');
 assert.strictEqual(built, true);
-assert.match(fs.readFileSync(path.join(root, 'src/config.js'), 'utf8'), /version: '0\.41\.40'/);
+assert.match(fs.readFileSync(path.join(root, 'src/core/config.js'), 'utf8'), /version: '0\.41\.40'/);
 assert.match(fs.readFileSync(path.join(root, 'README.md'), 'utf8'), /Current version: `0\.41\.40`/);
 assert.match(fs.readFileSync(path.join(root, 'README.md'), 'utf8'), /dist\/index\.js/);
 assert.match(fs.readFileSync(path.join(root, 'README.md'), 'utf8'), /stable\/index\.js/);
@@ -68,9 +68,9 @@ assert.match(changelog, /## \[0\.41\.39\] - 2026-08-13/);
 fs.rmSync(root, {recursive: true, force: true});
 
 const keepRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'yani-version-keep-'));
-fs.mkdirSync(path.join(keepRoot, 'src'));
+fs.mkdirSync(path.join(keepRoot, 'src', 'core'), {recursive: true});
 fs.mkdirSync(path.join(keepRoot, 'docs'));
-fs.writeFileSync(path.join(keepRoot, 'src/config.js'), "window.LampaYaniConfig = { version: '0.47.0' };\n");
+fs.writeFileSync(path.join(keepRoot, 'src/core/config.js'), "window.LampaYaniConfig = { version: '0.47.0' };\n");
 fs.writeFileSync(path.join(keepRoot, 'README.md'), 'Current version: `0.47.0`\n');
 fs.writeFileSync(path.join(keepRoot, 'docs/README.en.md'), '');
 fs.writeFileSync(path.join(keepRoot, 'CHANGELOG.md'), [

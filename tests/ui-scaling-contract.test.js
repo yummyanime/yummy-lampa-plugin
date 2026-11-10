@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const css = fs.readFileSync('style.css', 'utf8');
-const renderers = fs.readFileSync('src/ui-card-renderers.js', 'utf8');
+const renderers = fs.readFileSync('src/cards/ui-card-renderers.js', 'utf8');
 
 // Layout chrome must track Lampa interface scale (root font-size → em), not
 // hard-coded device pixels outside media-query breakpoints.

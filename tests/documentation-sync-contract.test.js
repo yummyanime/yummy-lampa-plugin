@@ -1,7 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const config = fs.readFileSync('src/config.js', 'utf8');
+const config = fs.readFileSync('src/core/config.js', 'utf8');
 const root = fs.readFileSync('README.md', 'utf8');
 const en = fs.readFileSync('docs/README.en.md', 'utf8');
 const ru = fs.readFileSync('docs/README.ru.md', 'utf8');
@@ -34,7 +34,7 @@ assert.match(pages, /cp -R stable _pages\/stable/);
 assert.match(releaseWorkflow, /tags:[\s\S]*v\*/);
 assert.match(en, /Russian, English and Ukrainian extension interface/);
 assert.match(en, /Available translations panel/);
-assert.match(en, /src\/ui-detail\.js/);
+assert.match(en, /src\/screens\/ui-detail\.js/);
 assert.match(root, /The official YummyAnime plugin for Lampa/);
 assert.doesNotMatch(root, /unofficial/i);
 assert.match(ru, /Официальный плагин YummyAnime для Lampa/);

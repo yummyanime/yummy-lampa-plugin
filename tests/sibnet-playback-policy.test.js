@@ -15,7 +15,7 @@ assert.match(ui, /function isSibnetPlaybackSource\(url, group\)/);
 assert.match(launchPolicy, /if \(isSibnetPlaybackSource\(sibnetPageUrl, group\)\) \{\s*return openEmbeddedEpisode\(card, group, selected, sibnetPageUrl\);/,
     'Sibnet must open its embedded page on every platform');
 assert.match(ui, /function needsRequestHeaders\(item\)/, 'a stream that needs headers must be recognised');
-const resolverSource = fs.readFileSync('src/stream-resolver.js', 'utf8');
+const resolverSource = fs.readFileSync('src/playback/stream-resolver.js', 'utf8');
 assert.match(resolverSource, /source: 'sibnet',[\s\S]{0,700}headersRequired: true/,
     'Sibnet must declare that its file is refused without the referrer');
 assert.ok(
@@ -29,7 +29,7 @@ console.log('Sibnet playback policy tests passed');
 // component with its empty-list screen. The player must therefore survive any
 // dependency the caller forgot, and the caller must pass the translator.
 const vm = require('vm');
-const playerSource = fs.readFileSync('src/ui-player.js', 'utf8');
+const playerSource = fs.readFileSync('src/playback/ui-player.js', 'utf8');
 const uiSource = fs.readFileSync('src/ui.js', 'utf8');
 assert.match(uiSource, /LampaYaniPlayer\.create\(object, \{\s*t: t,/, 'the embedded player must receive the translator');
 
@@ -69,7 +69,7 @@ assert.match(playerSource, /function claimScreen\(on\)[\s\S]{0,320}catch \(error
 assert.match(ui, /function warnAboutRequestHeaders\(item\)/, 'the trade-off must be stated, not met as a failure');
 assert.match(ui, /if \(started\) \{\s*warnAboutRequestHeaders\(current\);/,
     'the warning belongs to the moment internal playback actually starts');
-const i18nSource = fs.readFileSync('src/i18n.js', 'utf8');
+const i18nSource = fs.readFileSync('src/core/i18n.js', 'utf8');
 ['ru', 'en', 'uk'].forEach(function (locale) {
     assert.ok(
         i18nSource.indexOf('messages.' + locale + '.internal_player_headers_warning') > 0,

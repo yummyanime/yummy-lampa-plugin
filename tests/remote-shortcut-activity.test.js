@@ -7,10 +7,10 @@ function source(name) {
 }
 
 [
-    ['ui-catalog-controls.js', 'comp'],
-    ['ui-account-lists.js', 'component'],
-    ['ui-schedule.js', 'comp'],
-    ['ui-detail.js', 'detailComponent']
+    ['screens/ui-catalog-controls.js', 'comp'],
+    ['screens/ui-account-lists.js', 'component'],
+    ['screens/ui-schedule.js', 'comp'],
+    ['screens/ui-detail.js', 'detailComponent']
 ].forEach(function (entry) {
     const body = source(entry[0]);
     const owner = entry[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

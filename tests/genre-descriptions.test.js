@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/genre-descriptions.js', 'utf8');
+const source = fs.readFileSync('src/core/genre-descriptions.js', 'utf8');
 const context = {window: {}};
 vm.runInNewContext(source, context);
 

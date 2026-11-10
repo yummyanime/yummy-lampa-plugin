@@ -2,8 +2,8 @@ const assert = require('assert');
 const fs = require('fs');
 
 const source = fs.readFileSync('src/ui.js', 'utf8');
-const detail = fs.readFileSync('src/ui-detail.js', 'utf8');
-const card = fs.readFileSync('src/ui-standard-card.js', 'utf8');
+const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
+const card = fs.readFileSync('src/cards/ui-standard-card.js', 'utf8');
 
 assert.match(detail, /var routeId = LampaYaniUiUtils\.detailRouteId\(object\)/);
 assert.match(detail, /LampaYaniApi\.detail\(detailId\)/);

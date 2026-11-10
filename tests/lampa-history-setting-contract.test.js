@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(ui, /name: 'yani_add_to_lampa_history', type: 'trigger', default: true/,
     'Lampa history integration must be enabled by default');

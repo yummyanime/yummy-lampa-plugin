@@ -3,10 +3,10 @@ const fs = require('fs');
 const vm = require('vm');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const trailers = fs.readFileSync('src/ui-trailers.js', 'utf8');
+const trailers = fs.readFileSync('src/playback/ui-trailers.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /'src\/ui-trailers\.js'[\s\S]*'src\/ui\.js'/, 'trailers module must load before the main UI');
+assert.match(build, /'src\/playback\/ui-trailers\.js'[\s\S]*'src\/ui\.js'/, 'trailers module must load before the main UI');
 assert.match(ui, /LampaYaniTrailers\.create\(/, 'main UI must create the trailers controller');
 assert.match(ui, /openEmbedded: openEmbeddedTrailer/);
 assert.match(ui, /function openEmbeddedTrailer\(url, title\)[\s\S]{0,400}component: 'yani_player'/);

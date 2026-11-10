@@ -2,8 +2,8 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const authPage = fs.readFileSync('src/ui-auth.js', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const authPage = fs.readFileSync('src/screens/ui-auth.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(ui, /authSettingsParamDefinition = \{[\s\S]{0,220}name: 'yani_account_state', type: 'button'[\s\S]{0,220}description: settingsAuthDescription\(\)[\s\S]{0,220}syncSettingsAuthStatus\(item\)[\s\S]{0,120}onChange: openSettingsLogin/,
     'settings must expose one stable account-management entry');

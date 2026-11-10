@@ -2,11 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-card-bind.js', 'utf8');
+const source = fs.readFileSync('src/cards/ui-card-bind.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /src\/ui-card-bind\.js/);
+assert.match(build, /src\/cards\/ui-card-bind\.js/);
 assert.match(ui, /LampaYaniCardBind\.create/);
 assert.match(ui, /var bindYummyCardRender = cardBind\.bindYummyCardRender/);
 assert.match(ui, /var bindRecommendedCardRender = cardBind\.bindRecommendedCardRender/);

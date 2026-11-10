@@ -2,8 +2,8 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const watcher = fs.readFileSync('src/ui-playback-watcher.js', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
 assert.match(watcher, /value === 'op' \|\| value === 'ed' \|\| value === 'op_ed' \|\| value === 'suggest'/);

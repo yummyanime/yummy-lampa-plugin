@@ -2,12 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-card-rails.js', 'utf8');
+const source = fs.readFileSync('src/cards/ui-card-rails.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
-assert.match(build, /src\/ui-card-rails\.js/);
+assert.match(build, /src\/cards\/ui-card-rails\.js/);
 assert.match(ui, /Lampa\.Component\.add\('yani_genres', Genres\)/);
 assert.match(ui, /function createGenreRowLoader\(\)/);
 assert.match(ui, /function loadGenreRows\(page\)/);

@@ -22,7 +22,7 @@ const context = {
 };
 context.Lampa = context.window.Lampa;
 context.LampaYaniUiUtils = context.window.LampaYaniUiUtils;
-vm.runInNewContext(fs.readFileSync('src/lampac-resolver.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/playback/lampac-resolver.js', 'utf8'), context);
 
 const resolver = context.window.LampaYaniLampacResolver;
 assert.strictEqual(resolver.normalizeBaseUrl('http://lampac.local:9118/'), 'http://lampac.local:9118');

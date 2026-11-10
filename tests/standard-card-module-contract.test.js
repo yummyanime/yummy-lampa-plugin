@@ -2,11 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-standard-card.js', 'utf8');
+const source = fs.readFileSync('src/cards/ui-standard-card.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /src\/ui-standard-card\.js/);
+assert.match(build, /src\/cards\/ui-standard-card\.js/);
 assert.match(ui, /LampaYaniStandardCard\.create/);
 assert.match(ui, /var openStandardLampaCard = standardCard\.openStandardLampaCard/);
 assert.match(ui, /var installFullRating = standardCard\.installFullRating/);

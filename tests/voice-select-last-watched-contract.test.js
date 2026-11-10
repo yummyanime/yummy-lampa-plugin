@@ -2,8 +2,8 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const menuSource = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
-const utilsSource = fs.readFileSync('src/ui-utils.js', 'utf8');
+const menuSource = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
+const utilsSource = fs.readFileSync('src/ui/ui-utils.js', 'utf8');
 const uiSource = fs.readFileSync('src/ui.js', 'utf8');
 
 assert.match(menuSource, /function lastWatchedVoice\(voices, card\)/);

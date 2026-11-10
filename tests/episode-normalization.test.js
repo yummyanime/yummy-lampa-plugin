@@ -3,7 +3,7 @@ const fs = require('fs');
 const vm = require('vm');
 
 const context = {window: {}};
-vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/episode.js', 'utf8'), context);
 const episode = context.window.LampaYaniEpisode;
 
 assert.strictEqual(episode.normalize('01'), '1');

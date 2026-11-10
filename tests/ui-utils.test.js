@@ -3,8 +3,8 @@ const fs = require('fs');
 const vm = require('vm');
 
 const context = {window: {}, URL};
-vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
-vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/episode.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), context);
 const utils = context.window.LampaYaniUiUtils;
 
 assert.deepStrictEqual(Array.from(utils.titleValues({title: 'Покемон', aliases: ['Pokemon', {name: 'ポケモン'}]})), ['Покемон', 'Pokemon', 'ポケモン']);
@@ -15,30 +15,30 @@ assert.strictEqual(utils.isAndroidPlatform(), false);
 assert.strictEqual(utils.isAndroidTvPlatform(), false);
 assert.strictEqual(utils.isWebOsPlatform(), false);
 const androidContext = {window: {Lampa: {Platform: {is: function (name) { return name === 'android'; }, get: function () { return 'android'; }}}}};
-vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), androidContext);
+vm.runInNewContext(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), androidContext);
 assert.strictEqual(androidContext.window.LampaYaniUiUtils.isAndroidPlatform(), true);
 assert.strictEqual(androidContext.window.LampaYaniUiUtils.isAndroidTvPlatform(), true);
 const androidPhoneContext = {window: {
     navigator: {userAgent: 'Mozilla/5.0 (Linux; Android 14; Mobile)'},
     Lampa: {Platform: {is: function (name) { return name === 'android'; }, get: function () { return 'android'; }}}
 }};
-vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), androidPhoneContext);
+vm.runInNewContext(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), androidPhoneContext);
 assert.strictEqual(androidPhoneContext.window.LampaYaniUiUtils.isAndroidTvPlatform(), false);
 const androidTvContext = {window: {
     navigator: {userAgent: 'Mozilla/5.0 (Linux; Android 12; Android TV)'},
     Lampa: {Platform: {is: function (name) { return name === 'android'; }, get: function () { return 'android'; }}}
 }};
-vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), androidTvContext);
+vm.runInNewContext(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), androidTvContext);
 assert.strictEqual(androidTvContext.window.LampaYaniUiUtils.isAndroidTvPlatform(), true);
 const webOsPlatformContext = {window: {
     navigator: {userAgent: 'Mozilla/5.0 (Web0S; Linux/SmartTV)'},
     Lampa: {Platform: {is: function (name) { return name === 'webos'; }, get: function () { return 'webos'; }}}
 }};
-vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), webOsPlatformContext);
+vm.runInNewContext(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), webOsPlatformContext);
 assert.strictEqual(webOsPlatformContext.window.LampaYaniUiUtils.isWebOsPlatform(), true);
 assert.strictEqual(webOsPlatformContext.window.LampaYaniUiUtils.isAndroidPlatform(), false);
 const webOsUserAgentContext = {window: {navigator: {userAgent: 'Mozilla/5.0 (Web0S; Linux/SmartTV)'}}};
-vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), webOsUserAgentContext);
+vm.runInNewContext(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), webOsUserAgentContext);
 assert.strictEqual(webOsUserAgentContext.window.LampaYaniUiUtils.isWebOsPlatform(), true);
 assert.deepStrictEqual(Array.from(utils.standardSearchTitles({title: 'Anime (2026)', yani_titles: ['Anime']})), ['Anime', 'Anime (2026)']);
 assert.deepStrictEqual(Array.from(utils.standardSearchTitles({

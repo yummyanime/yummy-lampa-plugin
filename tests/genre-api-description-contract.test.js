@@ -1,7 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const api = fs.readFileSync('src/api.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 
 assert.match(api, /genre: function \(id, control\)/);

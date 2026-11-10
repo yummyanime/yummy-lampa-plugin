@@ -2,12 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-home-insights.js', 'utf8');
+const source = fs.readFileSync('src/home/ui-home-insights.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
-assert.match(build, /src\/ui-home-insights\.js/);
+assert.match(build, /src\/home\/ui-home-insights\.js/);
 assert.match(ui, /LampaYaniHomeInsights\.dashboard\(\{/);
 assert.match(ui, /schedule: function \(\) \{ return LampaYaniApi\.schedule\(requestControl\); \}/);
 assert.match(ui, /refreshEpisodeDashboard = function \(\) \{ return refreshDashboardInsights\(true\); \}/);

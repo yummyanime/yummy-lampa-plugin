@@ -2,12 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-card-model.js', 'utf8');
-const utils = fs.readFileSync('src/ui-utils.js', 'utf8');
+const source = fs.readFileSync('src/cards/ui-card-model.js', 'utf8');
+const utils = fs.readFileSync('src/ui/ui-utils.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /src\/ui-card-model\.js/);
+assert.match(build, /src\/cards\/ui-card-model\.js/);
 assert.match(ui, /LampaYaniCardModel\.create/);
 assert.match(ui, /var toCard = cardModel\.toCard/);
 assert.match(ui, /var createDetailRatings = cardModel\.createDetailRatings/);

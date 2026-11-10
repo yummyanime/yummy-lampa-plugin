@@ -3,12 +3,12 @@ const fs = require('fs');
 const vm = require('vm');
 
 const context = {window: {}};
-vm.runInNewContext(fs.readFileSync('src/i18n.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/i18n.js', 'utf8'), context);
 const i18n = context.window.LampaYaniI18n;
 
 // The module reads the active language from Lampa.Storage; without Lampa it
 // falls back to Russian, which is the reference locale.
-const source = ['src/ui.js', 'src/ui-detail.js', 'src/ui-schedule.js', 'src/ui-media.js', 'src/ui-status.js', 'src/ui-notifications.js', 'src/ui-collections.js', 'src/ui-releases.js', 'src/ui-recommendations.js', 'src/ui-updates.js', 'src/ui-translations.js', 'src/ui-section-state.js']
+const source = ['src/ui.js', 'src/screens/ui-detail.js', 'src/screens/ui-schedule.js', 'src/cards/ui-media.js', 'src/screens/ui-status.js', 'src/screens/ui-notifications.js', 'src/screens/ui-collections.js', 'src/screens/ui-releases.js', 'src/screens/ui-recommendations.js', 'src/screens/ui-updates.js', 'src/screens/ui-translations.js', 'src/ui/ui-section-state.js']
     .map((file) => fs.readFileSync(file, 'utf8'))
     .join('\n');
 
@@ -27,7 +27,7 @@ assert.deepEqual(missing, [], `keys used by the UI but not translated: ${missing
 // silently gets Russian text for the missing entries.
 const localeContext = {window: {}};
 vm.runInNewContext(
-    fs.readFileSync('src/i18n.js', 'utf8').replace('}(window));', 'window.__messages = messages;\n}(window));'),
+    fs.readFileSync('src/core/i18n.js', 'utf8').replace('}(window));', 'window.__messages = messages;\n}(window));'),
     localeContext
 );
 const all = localeContext.window.__messages;

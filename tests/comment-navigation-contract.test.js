@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const detail = fs.readFileSync('src/ui-detail.js', 'utf8');
+const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
 
 assert.match(detail, /row\.on\('hover:enter click\.yaniComment'[\s\S]{0,500}transientNavigationSnapshot\(\)[\s\S]{0,300}commentReplies\(comment, 0, \[\], null, navigation\)/);
 assert.doesNotMatch(ui, /commentReplies\(comment, 0, \[\], function \(\) \{\}\)/);

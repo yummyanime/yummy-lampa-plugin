@@ -89,9 +89,9 @@ function writeStable(options) {
 function readCurrentBundle(root) {
     const bundle = fs.readFileSync(path.join(root, TEST_PATH), 'utf8');
     const version = bundleVersion(bundle);
-    const configVersion = bump.readConfigVersion(fs.readFileSync(path.join(root, 'src/config.js'), 'utf8'));
+    const configVersion = bump.readConfigVersion(fs.readFileSync(path.join(root, 'src/core/config.js'), 'utf8'));
     if (version !== configVersion) {
-        throw new Error('dist/index.js version ' + version + ' does not match src/config.js ' + configVersion + '. Run node build.js');
+        throw new Error('dist/index.js version ' + version + ' does not match src/core/config.js ' + configVersion + '. Run node build.js');
     }
     return {bundle: bundle, version: version};
 }

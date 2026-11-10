@@ -2,12 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 
 const uiSource = fs.readFileSync('src/ui.js', 'utf8');
-const controls = fs.readFileSync('src/ui-catalog-controls.js', 'utf8');
+const controls = fs.readFileSync('src/screens/ui-catalog-controls.js', 'utf8');
 const ui = uiSource + '\n' + controls;
 const css = fs.readFileSync('style.css', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
-const filters = fs.readFileSync('src/ui-catalog-filters.js', 'utf8');
-const genreDescriptions = fs.readFileSync('src/genre-descriptions.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
+const filters = fs.readFileSync('src/screens/ui-catalog-filters.js', 'utf8');
+const genreDescriptions = fs.readFileSync('src/core/genre-descriptions.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
 assert.match(ui, /Lampa\.Component\.add\('yani_catalog', Catalog\)/);
@@ -22,7 +22,7 @@ assert.match(uiSource, /LampaYaniGenreDescriptions\.resolve\(genre, locale\(\)\)
 assert.match(genreDescriptions, /function resolve\(genre, language\)/);
 assert.match(genreDescriptions, /'isekai':/);
 assert.match(genreDescriptions, /function fallback\(genreTitle, language\)/);
-assert.match(build, /src\/genre-descriptions\.js/);
+assert.match(build, /src\/core\/genre-descriptions\.js/);
 assert.match(controls, /genre_context: object\.genre_context/);
 assert.match(controls, /catalog_params: params/);
 assert.match(css, /\.yani-genre-catalog-header/);

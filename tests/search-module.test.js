@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui-search.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'screens', 'ui-search.js'), 'utf8');
 const context = {window: {}, URL, setTimeout, clearTimeout, console};
 vm.runInNewContext(source, context);
 

@@ -2,16 +2,16 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-video-data.js', 'utf8');
-const api = fs.readFileSync('src/api.js', 'utf8');
+const source = fs.readFileSync('src/playback/ui-video-data.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const detail = fs.readFileSync('src/ui-detail.js', 'utf8');
-const menu = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
-const renderers = fs.readFileSync('src/ui-card-renderers.js', 'utf8');
+const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
+const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
+const renderers = fs.readFileSync('src/cards/ui-card-renderers.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
-const config = fs.readFileSync('src/config.js', 'utf8');
+const config = fs.readFileSync('src/core/config.js', 'utf8');
 
-assert.match(build, /src\/ui-video-data\.js/);
+assert.match(build, /src\/playback\/ui-video-data\.js/);
 assert.match(config, /videosCacheTtl: 120000/);
 assert.match(config, /videosCacheEntries: 20/);
 assert.match(config, /videosStaleCacheTtl:/);

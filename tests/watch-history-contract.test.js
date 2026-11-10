@@ -2,12 +2,12 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const api = fs.readFileSync('src/api.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const model = fs.readFileSync('src/ui-card-model.js', 'utf8');
-const historySource = fs.readFileSync('src/ui-playback-history.js', 'utf8');
-const menuSource = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
-const sectionsSource = fs.readFileSync('src/ui-home-sections.js', 'utf8');
+const model = fs.readFileSync('src/cards/ui-card-model.js', 'utf8');
+const historySource = fs.readFileSync('src/playback/ui-playback-history.js', 'utf8');
+const menuSource = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
+const sectionsSource = fs.readFileSync('src/home/ui-home-sections.js', 'utf8');
 const capturedWarnings = [];
 const context = {
     window: {},
@@ -19,7 +19,7 @@ const context = {
     }
 };
 
-vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/episode.js', 'utf8'), context);
 vm.runInNewContext(sectionsSource, context);
 const history = context.window.LampaYaniHomeSections;
 const lastWatchTokens = history.lastWatchTokens({
@@ -63,7 +63,7 @@ assert.match(ui, /homePlaybackCacheLifetime = 300000/);
 assert.ok(!/yani_continue_excluded_/.test(ui), 'the user-list exclusion cache must be gone with the filter');
 assert.ok(!/\[2, 3\]\.forEach\(function \(listId\)/.test(ui), 'membership of the completed or dropped list must not decide the queue');
 assert.match(model, /window\.LampaYaniUiUtils\.posterSources/, 'poster URLs must go through the shared picker');
-assert.match(fs.readFileSync('src/ui-utils.js', 'utf8'), /value\.huge/, 'large remote history posters must be supported');
+assert.match(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), /value\.huge/, 'large remote history posters must be supported');
 assert.match(ui, /LampaYaniPlaybackHistory\.create/);
 assert.match(ui, /historyCardRender: bindHistoryCardRender/);
 assert.match(sectionsSource, /var limit = 30/);
@@ -249,7 +249,7 @@ assert.strictEqual(finishedRemote.length, 0, 'a fully watched account title stay
 // one after another, plus one episode-count request per finished title on every
 // single open. Pages after the first are independent, and an episode count does
 // not change between openings.
-const sectionsFile = fs.readFileSync('src/ui-home-sections.js', 'utf8');
+const sectionsFile = fs.readFileSync('src/home/ui-home-sections.js', 'utf8');
 assert.match(sectionsFile, /function cachedCeilings\(ids\)/, 'episode counts must be remembered between openings');
 assert.match(sectionsFile, /function rememberCeilings\(counts\)/, 'resolved counts must be written back');
 assert.match(sectionsFile, /var ids = known\.missing;/, 'only unknown counts may be requested');

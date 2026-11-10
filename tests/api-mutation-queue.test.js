@@ -51,7 +51,7 @@ context.Lampa = context.window.Lampa;
 context.LampaYaniAuth = context.window.LampaYaniAuth;
 context.LampaYaniConfig = context.window.LampaYaniConfig;
 context.LampaYaniI18n = context.window.LampaYaniI18n;
-vm.runInNewContext(fs.readFileSync('src/api.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/api.js', 'utf8'), context);
 
 (async function () {
     const api = context.window.LampaYaniApi;
@@ -93,7 +93,7 @@ vm.runInNewContext(fs.readFileSync('src/api.js', 'utf8'), context);
     const rejected = await api.flushMutations();
     assert.strictEqual(rejected.pending, 0, 'a permanent 4xx rejection must be removed');
     assert.strictEqual(api.pendingMutations(), 0);
-    assert.match(fs.readFileSync('src/api.js', 'utf8'), /item\.id === entry\.id/,
+    assert.match(fs.readFileSync('src/core/api.js', 'utf8'), /item\.id === entry\.id/,
         'a completed older request must not delete a newer mutation with the same key');
     console.log('API mutation queue tests passed');
 })().catch(function (error) {

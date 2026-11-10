@@ -2,11 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-playback-watcher.js', 'utf8');
+const source = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /'src\/ui-playback-menu\.js', 'src\/ui-playback-watcher\.js'[\s\S]*'src\/ui\.js'/,
+assert.match(build, /'src\/playback\/ui-playback-menu\.js', 'src\/playback\/ui-playback-watcher\.js'[\s\S]*'src\/ui\.js'/,
     'the watcher must load after the playback menu and before the main UI');
 assert.match(ui, /var playbackWatcherApi = LampaYaniPlaybackWatcher\.create\(\{/);
 assert.match(ui, /var startPlaybackWatcher = playbackWatcherApi\.startPlaybackWatcher;/);

@@ -1,10 +1,10 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const cards = fs.readFileSync('src/ui-card-renderers.js', 'utf8');
-const model = fs.readFileSync('src/ui-card-model.js', 'utf8');
+const cards = fs.readFileSync('src/cards/ui-card-renderers.js', 'utf8');
+const model = fs.readFileSync('src/cards/ui-card-model.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(cards, /function cardUpdateTimestamp\(value\)/);
 assert.match(cards, /function cardFreshness\(value\)/);

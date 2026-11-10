@@ -2,11 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-translations.js', 'utf8');
+const source = fs.readFileSync('src/screens/ui-translations.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /src\/ui-translations\.js/);
+assert.match(build, /src\/screens\/ui-translations\.js/);
 assert.match(ui, /LampaYaniTranslations\.component/);
 assert.match(source, /Number\(b && b\.date \|\| 0\) - Number\(a && a\.date \|\| 0\)/);
 assert.match(source, /grouped\[id\]\.count \+= 1/);

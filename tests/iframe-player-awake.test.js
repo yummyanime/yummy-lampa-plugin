@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui-player.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'playback', 'ui-player.js'), 'utf8');
 
 assert.match(source, /screensaverPreviousState\s*=\s*typeof screensaver\.enabled === 'boolean'/,
     'iframe player must preserve the previous Lampa screensaver state');

@@ -1,13 +1,13 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const navigation = fs.readFileSync('src/ui-navigation.js', 'utf8');
+const navigation = fs.readFileSync('src/ui/ui-navigation.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const detail = fs.readFileSync('src/ui-detail.js', 'utf8');
-const catalog = fs.readFileSync('src/ui-catalog-controls.js', 'utf8');
-const accountControls = fs.readFileSync('src/ui-account-list-controls.js', 'utf8');
-const accountLists = fs.readFileSync('src/ui-account-lists.js', 'utf8');
-const schedule = fs.readFileSync('src/ui-schedule.js', 'utf8');
+const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
+const catalog = fs.readFileSync('src/screens/ui-catalog-controls.js', 'utf8');
+const accountControls = fs.readFileSync('src/screens/ui-account-list-controls.js', 'utf8');
+const accountLists = fs.readFileSync('src/screens/ui-account-lists.js', 'utf8');
+const schedule = fs.readFileSync('src/screens/ui-schedule.js', 'utf8');
 
 assert.match(navigation, /var MAX_SCOPES = 32/);
 assert.match(navigation, /function createScope\(options\)/);

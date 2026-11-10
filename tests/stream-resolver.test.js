@@ -145,7 +145,7 @@ global.fetch = async function (url) {
     throw new Error('Unexpected request: ' + url);
 };
 
-eval(fs.readFileSync(require.resolve('../src/stream-resolver.js'), 'utf8'));
+eval(fs.readFileSync(require.resolve('../src/playback/stream-resolver.js'), 'utf8'));
 
 function moonPage(file, key) {
     key = key || 's3cr3t';
@@ -269,7 +269,7 @@ Promise.all([
 // <video> in the WebView and cannot send custom headers, so it always requests
 // with the WebView's own agent: asking CVH with a hardcoded desktop agent
 // produced links that player could never fetch.
-const cvhSource = fs.readFileSync('src/stream-resolver.js', 'utf8');
+const cvhSource = fs.readFileSync('src/playback/stream-resolver.js', 'utf8');
 assert.match(cvhSource, /function streamExpiresAt\(url\)/, 'signed stream expiry must be read from the URL');
 assert.match(cvhSource, /Number\(item\.expiresAt\) - 60 \* 1000/, 'expiring links must leave the cache before playback');
 assert.match(cvhSource, /if \(options\.force\) invalidate\(url\)/, 'a player recovery must be able to force a fresh signed URL');

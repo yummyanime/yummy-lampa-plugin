@@ -2,9 +2,9 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const api = fs.readFileSync('src/api.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const collections = fs.readFileSync('src/ui-collections.js', 'utf8');
+const collections = fs.readFileSync('src/screens/ui-collections.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
@@ -60,8 +60,8 @@ assert.match(collections, /cardApi\.onEnter = function \(\) \{ deps\.open\(card\
 assert.doesNotMatch(collections, /hover:enter\.yaniCollection/);
 assert.doesNotMatch(collections, /click\.yaniCollection/);
 assert.doesNotMatch(collections, /setTimeout\(function \(\) \{ bindVisibleCollectionTiles/);
-assert.match(build, /src\/ui-collections\.js/);
-assert.match(build, /src\/ui-card-rails\.js/);
+assert.match(build, /src\/screens\/ui-collections\.js/);
+assert.match(build, /src\/cards\/ui-card-rails\.js/);
 assert.match(css, /\.yani-collection-card__previews/);
 assert.match(css, /\.yani-collection-card__meta/);
 assert.match(css, /\.yani-collection-tile-card \.card__view/);

@@ -2,16 +2,16 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-playback-history.js', 'utf8');
+const source = fs.readFileSync('src/playback/ui-playback-history.js', 'utf8');
 assert.match(source, /function publishPlaybackHistoryChange\(card\)/);
 assert.match(source, /persistHistory\(history\);[\s\S]{0,120}publishPlaybackHistoryChange\(card\)/);
 assert.match(source, /if \(result\.imported\)[\s\S]{0,500}publishPlaybackHistoryChange\(null\)/);
 assert.match(source, /\$\(document\)\.trigger\('yani:watch-progress', \[changedCard \|\| null\]\)/);
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const watcher = fs.readFileSync('src/ui-playback-watcher.js', 'utf8');
+const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /src\/ui-playback-history\.js/);
+assert.match(build, /src\/playback\/ui-playback-history\.js/);
 assert.match(ui, /LampaYaniPlaybackHistory\.create/);
 assert.match(ui, /var getPlayback = playbackHistoryApi\.getPlayback/);
 assert.match(ui, /var bindHistoryCardRender = playbackHistoryApi\.bindHistoryCardRender/);
@@ -78,7 +78,7 @@ const context = {
     HTMLElement: function () {}
 };
 context.window.LampaYani = {};
-vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/episode.js', 'utf8'), context);
 vm.runInNewContext(source, context);
 
 const api = context.window.LampaYaniPlaybackHistory.create({
@@ -111,7 +111,7 @@ assert.strictEqual(api.getPlayback(42).max_episode, 2);
 assert.strictEqual(resetVideos[0].watched.end_time, 0);
 assert.strictEqual(resetVideos[1].watched.end_time, 0);
 
-vm.runInNewContext(fs.readFileSync('src/ui-home-sections.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/home/ui-home-sections.js', 'utf8'), context);
 const imported = api.importRemoteEntries([{
     anime_id: 77,
     video_id: 7701,

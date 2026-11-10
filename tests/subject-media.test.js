@@ -19,7 +19,7 @@ const context = {
     }
 };
 context.window.fetch = context.fetch;
-vm.runInNewContext(fs.readFileSync('src/ui-media.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/cards/ui-media.js', 'utf8'), context);
 
 Promise.all([
     context.window.LampaYaniMedia.findSubjectImage('studio', {id: 1, title: 'Madhouse'}, {}),

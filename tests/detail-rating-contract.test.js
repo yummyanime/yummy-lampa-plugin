@@ -1,11 +1,11 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const api = fs.readFileSync('src/api.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const detail = fs.readFileSync('src/ui-detail.js', 'utf8');
+const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(api, /rate: function \(id, value\)[\s\S]{0,350}method: 'PUT'[\s\S]{0,180}JSON\.stringify\(\{rate: value\}\)/);
 assert.match(api, /removeRate: function \(id\)[\s\S]{0,180}method: 'DELETE'/);

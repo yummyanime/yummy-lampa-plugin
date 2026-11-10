@@ -2,9 +2,9 @@ const assert = require('assert');
 const fs = require('fs');
 
 const uiSource = fs.readFileSync('src/ui.js', 'utf8');
-const controls = fs.readFileSync('src/ui-catalog-controls.js', 'utf8');
+const controls = fs.readFileSync('src/screens/ui-catalog-controls.js', 'utf8');
 const ui = uiSource + '\n' + controls;
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(ui, /Lampa\.Component\.add\('yani_top', Top\)/);
 assert.match(uiSource, /function Top\(object\)[\s\S]{0,300}topMode = true[\s\S]{0,250}sort: 'top'[\s\S]{0,150}sort_forward: true[\s\S]{0,150}from_year: 1900[\s\S]{0,150}return Catalog\(object\)/);

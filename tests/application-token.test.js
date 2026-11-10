@@ -12,7 +12,7 @@ const context = {
     }
 };
 context.window.Lampa = context.Lampa;
-vm.runInNewContext(fs.readFileSync('src/config.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/config.js', 'utf8'), context);
 
 const config = context.window.LampaYaniConfig;
 assert.strictEqual(config.applicationToken(), config.defaultApplicationToken);
@@ -25,8 +25,8 @@ assert.doesNotMatch(ui, /yani_public_application_token/);
 assert.doesNotMatch(ui, /editPublicApplicationToken/);
 assert.doesNotMatch(ui, /public_application_token/);
 
-const api = fs.readFileSync('src/api.js', 'utf8');
-const auth = fs.readFileSync('src/auth.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
+const auth = fs.readFileSync('src/core/auth.js', 'utf8');
 assert.match(api, /config\.applicationToken \? config\.applicationToken\(\)/);
 assert.match(auth, /function applicationToken\(\)/);
 assert.doesNotMatch(auth, /'X-Application': LampaYaniConfig\.applicationHeader/);

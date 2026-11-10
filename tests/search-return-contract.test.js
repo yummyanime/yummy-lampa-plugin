@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const moduleSource = fs.readFileSync('src/ui-search.js', 'utf8');
+const moduleSource = fs.readFileSync('src/screens/ui-search.js', 'utf8');
 const start = ui.indexOf('function openSearch()');
 const end = ui.indexOf('function openAccount()', start);
 const search = ui.slice(start, end);

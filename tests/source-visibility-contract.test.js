@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(ui, /var PLAYBACK_SOURCE_IDS = \['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'\]/);
 assert.match(ui, /function isPlaybackSourceEnabled\(sourceId\)/);

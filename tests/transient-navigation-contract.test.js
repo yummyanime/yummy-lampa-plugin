@@ -2,9 +2,9 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const trailers = fs.readFileSync('src/ui-trailers.js', 'utf8');
-const detail = fs.readFileSync('src/ui-detail.js', 'utf8');
-const menu = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
+const trailers = fs.readFileSync('src/playback/ui-trailers.js', 'utf8');
+const detail = fs.readFileSync('src/screens/ui-detail.js', 'utf8');
+const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const sources = ui + '\n' + trailers + '\n' + detail + '\n' + menu;
 
 assert.match(ui, /function transientNavigationSnapshot\(\)[\s\S]{0,500}LampaYaniNavigation\.captureSnapshot\(\)[\s\S]{0,200}currentControllerName\(\) \|\| 'content'/);

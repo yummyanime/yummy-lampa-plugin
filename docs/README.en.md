@@ -94,16 +94,28 @@ Search is passed through the `q` parameter. The public application key is sent i
 
 ## Project structure
 
+Sources are grouped by area and concatenated by `build.js` into `dist/index.js` in a fixed order:
+
+- `src/core/` — configuration, localization, authorization, the API client and catalog data;
+- `src/playback/` — stream resolution, the playback menu, the internal-player watcher, playback history, the embedded player and trailers;
+- `src/cards/` — the card model, rendering and bindings, card rails and native Lampa card integration;
+- `src/home/` — the home screen sections and insights;
+- `src/screens/` — title details, search, schedule, catalog controls, collections, lists, notifications and other screens;
+- `src/ui/` — shared interface helpers: utilities, the sidebar menu, navigation and section state;
+- `src/ui.js` — the main UI module that wires the rest together.
+
+Key files:
+
 - `index.js` — entry point;
-- `src/api.js` — Yani API client;
-- `src/catalog.js` — catalog module;
-- `src/config.js` — configuration;
-- `src/i18n.js` — Russian, English and Ukrainian localization;
-- `src/ui-detail.js` — title details, translations, ratings, lists, recommendations and comments;
+- `src/core/api.js` — Yani API client;
+- `src/core/catalog.js` — catalog module;
+- `src/core/config.js` — configuration;
+- `src/core/i18n.js` — Russian, English and Ukrainian localization;
+- `src/screens/ui-detail.js` — title details, translations, ratings, lists, recommendations and comments;
 - `src/ui.js` — Lampa integration;
-- `src/stream-resolver.js` — direct Kodik, CVH, Aksor, Sibnet, Rutube and VK stream resolution;
-- `src/yani-resolver.js` — client for the self-hosted resolver service in `server/`;
-- `src/lampac-resolver.js` — optional self-hosted Lampac adapter for Alloha;
+- `src/playback/stream-resolver.js` — direct Kodik, CVH, Aksor, Sibnet, Rutube and VK stream resolution;
+- `src/playback/yani-resolver.js` — client for the self-hosted resolver service in `server/`;
+- `src/playback/lampac-resolver.js` — optional self-hosted Lampac adapter for Alloha;
 - `server/` — service that turns an Alloha player page into a plain HLS stream;
 - `style.css` — styles;
 - `CHANGELOG.md` — Keep a Changelog categories; `.githooks/pre-commit` folds `###` sections under `[Unreleased]` (`git config core.hooksPath .githooks`).

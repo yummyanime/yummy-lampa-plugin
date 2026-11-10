@@ -2,11 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-menu.js', 'utf8');
+const source = fs.readFileSync('src/ui/ui-menu.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /src\/ui-menu\.js/);
+assert.match(build, /src\/ui\/ui-menu\.js/);
 assert.match(ui, /LampaYaniMenu\.create/);
 assert.match(ui, /sidebar\.start\(Lampa\.Listener\)/);
 assert.match(ui, /Sidebar registration failed/);

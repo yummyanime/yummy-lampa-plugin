@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-card-renderers.js', 'utf8');
+const source = fs.readFileSync('src/cards/ui-card-renderers.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
 assert.match(source, /function cardOverlayPriorityPlan\(state\)/);

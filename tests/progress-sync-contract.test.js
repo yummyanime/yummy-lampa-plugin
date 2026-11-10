@@ -2,9 +2,9 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const watcher = fs.readFileSync('src/ui-playback-watcher.js', 'utf8');
-const history = fs.readFileSync('src/ui-playback-history.js', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
+const history = fs.readFileSync('src/playback/ui-playback-history.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 assert.match(ui, /name: 'yani_auto_sync_progress', type: 'trigger', default: true/);
 assert.match(ui, /name: 'yani_auto_manage_lists', type: 'trigger', default: false/);

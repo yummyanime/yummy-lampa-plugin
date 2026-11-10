@@ -2,11 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
+const source = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const build = fs.readFileSync('build.js', 'utf8');
 
-assert.match(build, /src\/ui-playback-menu\.js/);
+assert.match(build, /src\/playback\/ui-playback-menu\.js/);
 assert.match(ui, /LampaYaniPlaybackMenu\.create/);
 assert.match(ui, /var openVideos = playbackMenu\.openVideos/);
 assert.match(ui, /var showPlaybackSelect = playbackMenu\.showPlaybackSelect/);
@@ -30,7 +30,7 @@ assert.match(ui, /function isAndroidPlatform\(\)/);
 assert.match(ui, /if \(!externalPlayerAvailable\(\)\) return 'internal'/);
 assert.match(ui, /yani_playback_target_locked/);
 assert.match(ui, /external: t\(webOsTarget \? 'playback_target_webos' : 'playback_target_external'\)/);
-assert.match(fs.readFileSync('src/ui-utils.js', 'utf8'), /function isAndroidPlatform\(\)/);
+assert.match(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), /function isAndroidPlatform\(\)/);
 
 const context = {
     window: {

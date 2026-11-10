@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'ui-catalog-filters.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'screens', 'ui-catalog-filters.js'), 'utf8');
 const context = {window: {}, Date};
 vm.runInNewContext(source, context);
 

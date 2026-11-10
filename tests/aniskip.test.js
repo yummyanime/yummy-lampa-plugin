@@ -17,7 +17,7 @@ const context = {
     }
 };
 context.LampaYaniConfig = context.window.LampaYaniConfig;
-vm.runInNewContext(fs.readFileSync('src/aniskip.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/playback/aniskip.js', 'utf8'), context);
 
 const aniskip = context.window.LampaYaniAniSkip;
 

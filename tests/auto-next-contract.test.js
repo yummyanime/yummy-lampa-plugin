@@ -2,8 +2,8 @@ const assert = require('assert');
 const fs = require('fs');
 
 const source = fs.readFileSync('src/ui.js', 'utf8');
-const watcher = fs.readFileSync('src/ui-playback-watcher.js', 'utf8');
-const menu = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
+const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
+const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 
 const watchStart = watcher.indexOf('function advancePlaybackWatcher');
 const watchEnd = watcher.indexOf('function nextEpisodeVideo', watchStart);

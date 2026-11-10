@@ -2,10 +2,10 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const api = fs.readFileSync('src/api.js', 'utf8');
+const api = fs.readFileSync('src/core/api.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const menu = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
-const i18n = fs.readFileSync('src/i18n.js', 'utf8');
+const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
+const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
 // Filler and recap marks come from the same Tenrai pages as the episode
 // thumbnails, so both must share one cached loader rather than fetch twice.

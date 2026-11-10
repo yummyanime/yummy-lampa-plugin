@@ -1,7 +1,7 @@
 const assert = require('assert');
 const fs = require('fs');
 
-const schedule = fs.readFileSync('src/ui-schedule.js', 'utf8');
+const schedule = fs.readFileSync('src/screens/ui-schedule.js', 'utf8');
 const css = fs.readFileSync('style.css', 'utf8');
 
 assert.match(schedule, /info\.append\(translations\)/);

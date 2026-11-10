@@ -2,11 +2,11 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const apiSource = fs.readFileSync('src/api.js', 'utf8');
-const navigation = fs.readFileSync('src/ui-navigation.js', 'utf8');
+const apiSource = fs.readFileSync('src/core/api.js', 'utf8');
+const navigation = fs.readFileSync('src/ui/ui-navigation.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
-const collections = fs.readFileSync('src/ui-collections.js', 'utf8');
-const schedule = fs.readFileSync('src/ui-schedule.js', 'utf8');
+const collections = fs.readFileSync('src/screens/ui-collections.js', 'utf8');
+const schedule = fs.readFileSync('src/screens/ui-schedule.js', 'utf8');
 
 assert.match(apiSource, /function readCache\(key\)/);
 assert.match(apiSource, /options\.cacheFirst && !options\.forceRefresh/);

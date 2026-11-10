@@ -2,8 +2,8 @@ const assert = require('assert');
 const fs = require('fs');
 
 const source = fs.readFileSync('src/ui.js', 'utf8');
-const menu = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
-const embeddedPlayer = fs.readFileSync('src/ui-player.js', 'utf8');
+const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
+const embeddedPlayer = fs.readFileSync('src/playback/ui-player.js', 'utf8');
 const launchStart = source.indexOf('function launchVideo');
 const launchEnd = source.indexOf('function launchResolvedVideo', launchStart);
 const launchPolicy = source.slice(launchStart, launchEnd);
@@ -85,7 +85,7 @@ assert.strictEqual(buildAutoplayUrl(''), '', 'an empty address must stay empty')
 // arrives with an empty referrer and the viewer is told the content does not
 // exist. Which referrer it is does not matter, so a static page on the plugin's
 // own Pages site stands between them - no server anyone has to run.
-const config = fs.readFileSync('src/config.js', 'utf8');
+const config = fs.readFileSync('src/core/config.js', 'utf8');
 const bridgePage = fs.readFileSync('embed/alloha.html', 'utf8');
 const pagesWorkflow = fs.readFileSync('.github/workflows/pages.yml', 'utf8');
 

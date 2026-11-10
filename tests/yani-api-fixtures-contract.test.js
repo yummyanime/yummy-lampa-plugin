@@ -48,13 +48,13 @@ function createWindowContext() {
 }
 
 const context = createWindowContext();
-vm.runInNewContext(fs.readFileSync('src/config.js', 'utf8'), context);
-vm.runInNewContext(fs.readFileSync('src/episode.js', 'utf8'), context);
-vm.runInNewContext(fs.readFileSync('src/api.js', 'utf8'), context);
-vm.runInNewContext(fs.readFileSync('src/ui-home-sections.js', 'utf8'), context);
-vm.runInNewContext(fs.readFileSync('src/ui-notifications.js', 'utf8'), context);
-vm.runInNewContext(fs.readFileSync('src/ui-account-lists.js', 'utf8'), context);
-vm.runInNewContext(fs.readFileSync('src/ui-utils.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/config.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/episode.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/core/api.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/home/ui-home-sections.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/screens/ui-notifications.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/screens/ui-account-lists.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), context);
 
 const api = context.window.LampaYaniApi;
 const homeSections = context.window.LampaYaniHomeSections;
@@ -215,7 +215,7 @@ history.sync_video_watches_body.videos.forEach((item, index) => {
     assert.ok(item.date, 'sync watches[' + index + '].date');
 });
 
-const apiSource = fs.readFileSync('src/api.js', 'utf8');
+const apiSource = fs.readFileSync('src/core/api.js', 'utf8');
 assert.match(apiSource, /normalize:\s*function\s*\(payload\)/);
 assert.match(apiSource, /normalizeComments:\s*function\s*\(payload\)/);
 assert.match(apiSource, /syncVideoProgress:\s*function\s*\(videoId,\s*time,\s*duration\)/);

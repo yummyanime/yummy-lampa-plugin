@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.49.3] - 2026-11-10
+
+### Changed
+
+- Source files grouped into core, playback, cards, home, screens and ui folders without changing the built plugin
+
 ## [0.49.2] - 2026-11-10
 
 ### Changed

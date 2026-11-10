@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/ui-account-list-controls.js', 'utf8');
+const source = fs.readFileSync('src/screens/ui-account-list-controls.js', 'utf8');
 const context = {window: {}};
 vm.runInNewContext(source, context);
 const controls = context.window.LampaYaniAccountListControls;

@@ -2,8 +2,8 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('src/auth.js', 'utf8');
-const apiSource = fs.readFileSync('src/api.js', 'utf8');
+const source = fs.readFileSync('src/core/auth.js', 'utf8');
+const apiSource = fs.readFileSync('src/core/api.js', 'utf8');
 const storage = {};
 let now = 1_800_000_000_000;
 let fetchCalls = 0;

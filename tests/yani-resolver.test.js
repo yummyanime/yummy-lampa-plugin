@@ -31,7 +31,7 @@ const context = {
 };
 context.Lampa = context.window.Lampa;
 context.LampaYaniConfig = context.window.LampaYaniConfig;
-vm.runInNewContext(fs.readFileSync('src/yani-resolver.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync('src/playback/yani-resolver.js', 'utf8'), context);
 
 const resolver = context.window.LampaYaniResolver;
 
