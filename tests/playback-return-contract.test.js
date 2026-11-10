@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const watcher = fs.readFileSync('src/ui-playback-watcher.js', 'utf8');
 const detail = fs.readFileSync('src/ui-detail.js', 'utf8');
 const menu = fs.readFileSync('src/ui-playback-menu.js', 'utf8');
 const i18n = fs.readFileSync('src/i18n.js', 'utf8');
@@ -39,7 +40,7 @@ assert.match(menu, /function restorePlaybackInteraction\(snapshot, options\)[\s\
 assert.match(menu, /if \(Date\.now\(\) < deadline\) restore\(interval, true\)/);
 assert.match(menu, /activeController === expectedController && activeFocus && focusInCollection/);
 assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,700}restorePlaybackInteraction\(null, \{timeout: 2400, interval: 120\}\)/);
-assert.match(ui, /state\.playerDestroyHandler = function \(event\)[\s\S]{0,700}!state\.advanced && !state\.recovering[\s\S]{0,260}restorePlaybackInteraction\(null, \{timeout: 2400, interval: 120\}\)/,
+assert.match(watcher, /state\.playerDestroyHandler = function \(event\)[\s\S]{0,700}!state\.advanced && !state\.recovering[\s\S]{0,260}restorePlaybackInteraction\(null, \{timeout: 2400, interval: 120\}\)/,
     'the title focus must start restoring on player destroy without waiting for the late callback');
 ['Lampa.Android.openPlayer', 'Android.openPlayer', 'AndroidJS.openPlayer'].forEach((bridge) => {
     const start = ui.indexOf("tryExternalOpen('" + bridge + "'");

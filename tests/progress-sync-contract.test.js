@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const watcher = fs.readFileSync('src/ui-playback-watcher.js', 'utf8');
 const history = fs.readFileSync('src/ui-playback-history.js', 'utf8');
 const i18n = fs.readFileSync('src/i18n.js', 'utf8');
 
@@ -17,8 +18,8 @@ assert.match(history, /function pullRemoteProgress/);
 assert.match(history, /pullRemoteProgress\(300\)/);
 assert.match(ui, /importRemoteEntries\(remoteEntries\)/);
 assert.match(history, /if \(!window\.LampaYaniAuth \|\| !window\.LampaYaniAuth\.token\(\)/, 'automatic server sync must require authorization');
-assert.match(ui, /lastLocalSync >= 10000/, 'local progress writes must be throttled');
-assert.match(ui, /lastServerSync >= 60000/, 'server progress writes must be throttled');
+assert.match(watcher, /lastLocalSync >= 10000/, 'local progress writes must be throttled');
+assert.match(watcher, /lastServerSync >= 60000/, 'server progress writes must be throttled');
 assert.match(ui, /if \(!autoProgressSyncEnabled\(\)\) \{/,
     'manual account synchronization must be shown when automatic sync is disabled');
 assert.match(history, /if \(!autoProgressSyncEnabled\(\) \|\| !window\.LampaYaniApi \|\| !video\) return;/,
@@ -27,7 +28,7 @@ assert.match(history, /if \(!autoProgressSyncEnabled\(\) \|\| !window\.LampaYani
 // account, and saying so beats failing silently — that reads as broken sync.
 assert.match(history, /if \(!video\.video_id\) \{/, 'a missing video id must be handled explicitly');
 assert.match(history, /progress stays on this device only/, 'an unsyncable episode must be reported');
-assert.match(ui, /function flushPlaybackProgress\(remote, expectedContext\)/);
+assert.match(watcher, /function flushPlaybackProgress\(remote, expectedContext\)/);
 assert.match(ui, /Lampa\.Player\.callback\(function \(\) \{[\s\S]{0,120}flushPlaybackProgress\(true, callbackContext\)/,
     'closing the internal player must flush progress');
 assert.match(history, /context\.card\.yani_resume = \{/);

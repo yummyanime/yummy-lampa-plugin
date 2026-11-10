@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.49.2] - 2026-11-10
+
+### Changed
+
+- Moved the internal-player watcher (progress recording, intro skipping, stream recovery, prefetch and auto-next) from ui.js into ui-playback-watcher.js without changing behaviour
+
 ## [0.49.1] - 2026-11-08
 
 ### Added
