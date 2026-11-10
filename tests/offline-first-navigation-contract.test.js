@@ -5,6 +5,8 @@ const vm = require('vm');
 const apiSource = fs.readFileSync('src/core/api.js', 'utf8');
 const navigation = fs.readFileSync('src/ui/ui-navigation.js', 'utf8');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const genresScreen = fs.readFileSync('src/screens/ui-genres.js', 'utf8');
+const catalogScreen = fs.readFileSync('src/screens/ui-catalog.js', 'utf8');
 const collections = fs.readFileSync('src/screens/ui-collections.js', 'utf8');
 const schedule = fs.readFileSync('src/screens/ui-schedule.js', 'utf8');
 
@@ -16,7 +18,7 @@ assert.match(apiSource, /genres: function \(control\)[\s\S]{0,350}cacheFirst: tr
 assert.match(apiSource, /schedule: function \(control\)[\s\S]{0,350}cacheFirst: true/);
 assert.match(apiSource, /collectionCatalog: function[\s\S]{0,450}cacheFirst: true/);
 assert.match(apiSource, /collectionDetail: function[\s\S]{0,500}cacheFirst: true/);
-assert.match(ui, /LampaYaniApi\.catalog\(baseParams, \{[\s\S]{0,220}cacheFirst: true[\s\S]{0,220}backgroundRefresh: true/);
+assert.match(catalogScreen, /LampaYaniApi\.catalog\(baseParams, \{[\s\S]{0,220}cacheFirst: true[\s\S]{0,220}backgroundRefresh: true/);
 assert.match(schedule, /schedule\(\{forceRefresh: forceRefresh === true\}\)/);
 assert.match(schedule, /document\.addEventListener\('yani:cache-updated', cacheUpdateHandler\)/);
 assert.match(schedule, /focusScope\.restore\(fallback, true\)/);
@@ -24,8 +26,8 @@ assert.match(navigation, /SCOPED_ROOT = '\[data-yani-navigation-scope\]'/);
 assert.match(navigation, /root\(\)\.attr\('data-yani-navigation-scope', id\)/);
 assert.match(navigation, /var cardKeys = \['yani_id', 'yani_collection_id', 'yani_genre_id', 'id'\]/);
 assert.match(navigation, /document\.querySelector\(SCOPED_ROOT \+ ' \.selector\.focus'\)/);
-assert.match(ui, /id: 'genres:'[\s\S]{0,7000}focusScope\.bind/);
-assert.match(ui, /detail\.path !== '\/anime\/genres'/);
+assert.match(genresScreen, /id: 'genres:'[\s\S]{0,7000}focusScope\.bind/);
+assert.match(genresScreen, /detail\.path !== '\/anime\/genres'/);
 assert.match(collections, /id: 'collections:'[\s\S]{0,6500}focusScope\.bind/);
 assert.match(collections, /id: 'collection:'[\s\S]{0,2600}focusScope\.bind/);
 assert.match(collections, /function patchVisibleCollections\(self, items\)/);

@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.49.6] - 2026-11-10
+
+### Changed
+
+- Moved the catalog, genres and account screens from ui.js into ui-catalog.js, ui-genres.js and ui-account.js without changing behaviour
+
 ## [0.49.5] - 2026-11-10
 
 ### Changed

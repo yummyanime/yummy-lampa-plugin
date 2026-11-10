@@ -2,6 +2,7 @@ const assert = require('assert');
 const fs = require('fs');
 
 const ui = fs.readFileSync('src/ui.js', 'utf8');
+const accountScreen = fs.readFileSync('src/screens/ui-account.js', 'utf8');
 const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
 const history = fs.readFileSync('src/playback/ui-playback-history.js', 'utf8');
@@ -21,7 +22,7 @@ assert.match(ui, /importRemoteEntries\(remoteEntries\)/);
 assert.match(history, /if \(!window\.LampaYaniAuth \|\| !window\.LampaYaniAuth\.token\(\)/, 'automatic server sync must require authorization');
 assert.match(watcher, /lastLocalSync >= 10000/, 'local progress writes must be throttled');
 assert.match(watcher, /lastServerSync >= 60000/, 'server progress writes must be throttled');
-assert.match(ui, /if \(!autoProgressSyncEnabled\(\)\) \{/,
+assert.match(accountScreen, /if \(!autoProgressSyncEnabled\(\)\) \{/,
     'manual account synchronization must be shown when automatic sync is disabled');
 assert.match(history, /if \(!autoProgressSyncEnabled\(\) \|\| !window\.LampaYaniApi \|\| !video\) return;/,
     'automatic API updates must respect the setting');

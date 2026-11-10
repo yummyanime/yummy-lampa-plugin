@@ -13,7 +13,7 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.49.5',
+        version: '0.49.6',
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -16074,6 +16074,716 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 (function (window) {
     'use strict';
 
+    // The YummyAnime catalog screen: filters, sorting, top lists and paging.
+
+    function create(deps) {
+        deps = deps || {};
+        var t = deps.t || function (name) { return name; };
+        var bindYummyCardRender = deps.bindYummyCardRender;
+        var transientNavigationSnapshot = deps.transientNavigationSnapshot;
+        var showYummySelect = deps.showYummySelect;
+        var genreTitle = deps.genreTitle;
+        var genreDescription = deps.genreDescription;
+        var copyParams = deps.copyParams;
+        var mapUniqueCards = deps.mapUniqueCards;
+
+        function Catalog(object) {
+            var requestedParams = copyParams(object.catalog_params || object.params || {limit: 30, sort: 'top', sort_forward: true});
+            var comp = new Lampa.InteractionCategory(object);
+            var topMode = Boolean(object.topMode);
+            var baseParams = requestedParams;
+            var limit = Number(baseParams.limit || 30);
+            var maxPages = Math.ceil(20000 / limit) + 1;
+            var seen = {};
+            var requestedOffsets = {};
+            var genreHeader;
+            var genreDescriptionRequested = false;
+            var subjectReferenceAnime = null;
+            var destroyed = false;
+
+            object.page = 1;
+            baseParams.limit = limit;
+            baseParams.offset = Number(baseParams.offset || 0);
+            baseParams.sort = baseParams.sort || 'top';
+            var hasSortDirection = Object.prototype.hasOwnProperty.call(baseParams, 'sort_forward');
+            baseParams.sort_forward = hasSortDirection ?
+                baseParams.sort_forward === true || baseParams.sort_forward === 'true' :
+                baseParams.sort === 'top';
+
+            function installGenreHeader() {
+                var context = object.subject_context || object.genre_context;
+                if (!context || genreHeader) return;
+                var view = comp.render && comp.render();
+                if (!view || !view.length) return;
+                var isSubject = Boolean(object.subject_context);
+                var title = isSubject ? String(context.title || context.name || '') : genreTitle(context);
+                if (!title) return;
+                var description = isSubject
+                    ? t(context.kind === 'studio' ? 'studio_catalog_description' : 'creator_catalog_description').replace('{name}', title)
+                    : genreDescription(context) || t('genre_catalog_fallback').replace('{genre}', title);
+                genreHeader = $('<div class="yani-genre-catalog-header"></div>');
+                var orb = $('<span class="yani-genre-catalog-header__orb" aria-hidden="true"><img alt=""><b></b><i></i><i></i><i></i></span>');
+                if (isSubject) {
+                    var initials = title.split(/[\s\-_]+/).filter(Boolean).slice(0, 2).map(function (part) { return part.charAt(0); }).join('').toUpperCase();
+                    orb.addClass('is-subject is-' + (context.kind === 'studio' ? 'studio' : 'director')).find('b').text(initials || title.charAt(0).toUpperCase());
+                }
+                genreHeader.append(orb);
+                var copy = $('<div class="yani-genre-catalog-header__copy"></div>');
+                copy.append($('<span class="yani-genre-catalog-header__eyebrow"></span>').text(t(isSubject ? (context.kind === 'studio' ? 'studio' : 'creator') : 'genre_catalog')));
+                copy.append($('<strong class="yani-genre-catalog-header__title"></strong>').text(title));
+                copy.append($('<p class="yani-genre-catalog-header__description"></p>').text(description));
+                genreHeader.append(copy);
+                view.addClass('yani-genre-catalog-view');
+                if (isSubject) view.addClass('yani-subject-catalog-view');
+                view.prepend(genreHeader);
+                if (comp.scroll && comp.scroll.minus) comp.scroll.minus(genreHeader);
+                if (isSubject) loadSubjectInformation(context);
+                else loadGenreDescription(context);
+            }
+
+            function loadSubjectInformation(context) {
+                if (genreDescriptionRequested) return;
+                var request;
+                if (context.kind === 'studio' && context.url) request = LampaYaniApi.studio(context.url);
+                else if (context.kind === 'director' && context.id !== undefined && context.id !== null) request = LampaYaniApi.director(context.id);
+                if (!request) return;
+                genreDescriptionRequested = true;
+                if (window.LampaYaniMedia && LampaYaniMedia.findSubjectImage) {
+                    LampaYaniMedia.findSubjectImage(context.kind, context, subjectReferenceAnime).then(function (image) {
+                        if (!image || !genreHeader || !genreHeader.closest('body').length) return;
+                        genreHeader.find('.yani-genre-catalog-header__orb').addClass('has-image').find('img').attr('src', image);
+                    });
+                }
+                request.then(function (payload) {
+                    var detailed = payload && payload.response ? payload.response : payload;
+                    if (!detailed || !genreHeader || !genreHeader.closest('body').length) return;
+                    var title = String(detailed.title || context.title || '').trim();
+                    var secondary = String(detailed.title_jp || detailed.japanese_title || '').trim();
+                    if (title) genreHeader.find('.yani-genre-catalog-header__title').text(title);
+                    if (secondary) genreHeader.find('.yani-genre-catalog-header__description').text(t('original_name') + ': ' + secondary);
+                }).catch(function () {});
+            }
+
+            function loadGenreDescription(context) {
+                if (genreDescriptionRequested) return;
+                var genreId = context && (context.id !== undefined ? context.id : context.value);
+                if (!/^\d+$/.test(String(genreId || ''))) return;
+                genreDescriptionRequested = true;
+                LampaYaniApi.genre(genreId).then(function (payload) {
+                    var detailed = payload && payload.response ? payload.response : payload;
+                    var description = genreDescription(detailed);
+                    if (!description || !genreHeader || !genreHeader.length || !genreHeader.closest('body').length) return;
+                    genreHeader.find('.yani-genre-catalog-header__description').text(description);
+                }).catch(function () {
+                    // The localized bundled description remains visible offline.
+                });
+            }
+
+            function annotateGenreTop(items, offset) {
+                if (!object.genre_context || baseParams.sort !== 'top' || !baseParams.sort_forward) return items;
+                var title = genreTitle(object.genre_context);
+                (items || []).forEach(function (item, index) {
+                    var position = Number(offset || 0) + index + 1;
+                    if (item && position <= 100) item.yani_genre_top = {position: position, genre: title};
+                });
+                return items;
+            }
+            var controls = LampaYaniCatalogControls.create({
+                comp: comp,
+                object: object,
+                baseParams: baseParams,
+                topMode: topMode,
+                t: t,
+                copyParams: copyParams,
+                showSelect: showYummySelect,
+                navigationSnapshot: transientNavigationSnapshot,
+                filterModel: LampaYaniCatalogFilters
+            });
+
+            comp.create = function () {
+                var self = this;
+                this.activity.loader(true);
+                LampaYaniApi.catalog(baseParams, {
+                    cacheFirst: true,
+                    staleFallback: true,
+                    cacheTtl: 15 * 60 * 1000,
+                    backgroundRefresh: true
+                })
+                    .then(function (payload) {
+                        if (destroyed) return;
+                        var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
+                        if (object.subject_context && raw.length) subjectReferenceAnime = raw[0];
+                        var results = mapUniqueCards(raw, seen);
+                        requestedOffsets[baseParams.offset] = true;
+                        if (raw.length < limit) object.page = maxPages;
+                        self.build({results: results, total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
+                        if (self.activity && self.activity.loader) self.activity.loader(false);
+                        installGenreHeader();
+                        controls.install();
+                    })
+                    .catch(function (error) {
+                        if (destroyed) return;
+                        console.error('[YummyAnime]', error);
+                        self.activity.loader(false);
+                        Lampa.Noty.show(t('catalog_load_error'));
+                    });
+            };
+            comp.nextPageReuest = function (requestObject, resolve, reject) {
+                var params = copyParams(baseParams);
+                params.offset = baseParams.offset + (requestObject.page - 1) * limit;
+                if (requestedOffsets[params.offset]) {
+                    resolve({results: [], total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
+                    return;
+                }
+                requestedOffsets[params.offset] = true;
+
+                LampaYaniApi.catalog(params, object.genre_context ? {
+                    cacheFirst: true,
+                    staleFallback: true,
+                    cacheTtl: 15 * 60 * 1000
+                } : {}).then(function (payload) {
+                    if (destroyed) return reject(new Error('YummyAnime catalog was closed'));
+                    var raw = annotateGenreTop(LampaYaniApi.normalize(payload), params.offset);
+                    var results = mapUniqueCards(raw, seen);
+                    if (raw.length < limit) requestObject.page = maxPages;
+                    resolve({results: results, total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
+                }).catch(function (error) {
+                    delete requestedOffsets[params.offset];
+                    requestObject.page = Math.max(1, requestObject.page - 1);
+                    console.error('[YummyAnime]', error);
+                    Lampa.Noty.show(t('next_page_error'));
+                    reject(error);
+                });
+            };
+            // Lampa builds use both spellings across releases.
+            comp.nextPageRequest = comp.nextPageReuest;
+            comp.cardRender = bindYummyCardRender;
+            var originalCatalogDestroy = comp.destroy;
+            comp.destroy = function () {
+                destroyed = true;
+                controls.destroy();
+                if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
+            };
+            return comp;
+        }
+
+        return {Component: Catalog};
+    }
+
+    window.LampaYani = window.LampaYani || {};
+    window.LampaYani.CatalogScreen = window.LampaYaniCatalogScreen = {create: create};
+}(window));
+
+(function (window) {
+    'use strict';
+
+    // The genre grid screen and the genre list it is drawn from.
+
+    function create(deps) {
+        deps = deps || {};
+        var t = deps.t || function (name) { return name; };
+        var toCard = deps.toCard;
+        var genreTitle = deps.genreTitle;
+        var genreValue = deps.genreValue;
+        var openGenreCatalog = deps.openGenreCatalog;
+
+        function bindGenreTile(cardApi, card) {
+            if (!card || !card.yani_genre) return;
+            // Legacy InteractionCategory sets cardApi.onEnter to push component:'full'
+            // before cardRender runs. That native listener fires before any jQuery
+            // handler, so the only reliable fix is to replace onEnter itself.
+            if (cardApi) {
+                cardApi.onEnter = function () { openGenreCatalog(card.yani_genre); };
+            }
+            var render = cardApi && typeof cardApi.render === 'function'
+                ? $(cardApi.render(true))
+                : cardApi && (cardApi.jquery || cardApi.nodeType)
+                    ? (cardApi.jquery ? cardApi : $(cardApi))
+                    : $();
+            if (!render.length) return;
+            var node = render[0];
+            if (node) node.card_data = card;
+            render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
+        }
+
+        function bindGenreTiles(self, cards) {
+            var root = self && self.render ? self.render() : null;
+            if (!root) return;
+            $(root).find('.card').each(function (index) {
+                var card = cards[index];
+                if (!card || !card.yani_genre) return;
+                if (this.card_data !== card) this.card_data = card;
+                $(this).addClass('yani-genre-tile-card yani-genre-catalog-tile');
+            });
+        }
+
+        function Genres(object) {
+            object.page = 1;
+            var comp = new Lampa.InteractionCategory(object);
+            var genreCards = [];
+            var destroyed = false;
+            var cacheUpdateHandler = null;
+            var focusScope = LampaYaniNavigation.createScope({
+                id: 'genres:' + String(object && object.url || 'yani/genres'),
+                root: function () { return comp.render ? comp.render() : $(); },
+                collection: function () { return comp.scroll && comp.scroll.render ? comp.scroll.render() : comp.render(); },
+                scroll: comp.scroll,
+                selector: '.card.selector'
+            });
+
+            comp.create = function () {
+                var self = this;
+                this.activity.loader(true);
+                if (!cacheUpdateHandler) {
+                    cacheUpdateHandler = function (event) {
+                        var detail = event && event.detail || {};
+                        if (destroyed || detail.path !== '/anime/genres' || !detail.payload) return;
+                        var genres = LampaYaniApi.normalizeGenres(detail.payload).filter(function (genre) {
+                            return genreTitle(genre) && genreValue(genre) !== null;
+                        });
+                        if (!genres.length) return;
+                        genreList = genres;
+                        genreListAt = Date.now();
+                        genreCards = genreTilesRow(genres).results;
+                        var byId = {};
+                        genreCards.forEach(function (card) { byId[String(genreValue(card.yani_genre))] = card; });
+                        $(self.render()).find('.card').each(function () {
+                            var current = this.card_data;
+                            var fresh = current && current.yani_genre ? byId[String(genreValue(current.yani_genre))] : null;
+                            if (!fresh) return;
+                            this.card_data = fresh;
+                            $(this).find('.card__title').first().text(fresh.title || '');
+                            if (window.LampaYaniMedia) LampaYaniMedia.attachPosterFallback(this, fresh);
+                        });
+                    };
+                    document.addEventListener('yani:cache-updated', cacheUpdateHandler);
+                }
+                loadGenreList().then(function (genres) {
+                    if (destroyed) return;
+                    genreCards = genreTilesRow(genres).results;
+                    self.build({results: genreCards, total_pages: 1, title: t('genres')});
+                    if (self.activity && self.activity.loader) self.activity.loader(false);
+                    if (self.render) self.render().addClass('yani-tile-catalog yani-genres-tile-catalog');
+                    bindGenreTiles(self, genreCards);
+                    focusScope.bind(self.render());
+                    if (!genreCards.length) Lampa.Noty.show(t('genres_empty'));
+                }).catch(function (error) {
+                    if (destroyed) return;
+                    console.error('[YummyAnime Genres]', error);
+                    self.activity.loader(false);
+                    Lampa.Noty.show(t('genres_load_error'));
+                });
+            };
+
+            // Lampa legacy signature: cardRender(object, data, cardInstance)
+            comp.cardRender = function (first, second, third) {
+                var cardApi;
+                var card;
+                var values = [first, second, third];
+                values.forEach(function (value) {
+                    if (!value) return;
+                    if (!cardApi && typeof value.onEnter !== 'undefined' && typeof value.render === 'function') cardApi = value;
+                    if (!card && value.yani_genre_tile) card = value;
+                    var candidate = value.card || value.object || value.data;
+                    if (!card && candidate && candidate.yani_genre_tile) card = candidate;
+                });
+                if (!cardApi && third && typeof third.render === 'function') cardApi = third;
+                if (!card && second && second.yani_genre_tile) card = second;
+                var node = first && (first.jquery || first.nodeType) ? (first.jquery ? first[0] : first) : null;
+                if (!card && node && node.card_data && node.card_data.yani_genre_tile) card = node.card_data;
+                if (!card) return;
+                bindGenreTile(cardApi || node, card);
+            };
+
+            var originalGenresDestroy = comp.destroy;
+            var originalGenresStart = comp.start;
+            comp.start = function () {
+                var result = originalGenresStart && originalGenresStart.apply(this, arguments);
+                focusScope.bind(comp.render());
+                setTimeout(function () { focusScope.restore(comp.last, true); }, 0);
+                return result;
+            };
+            comp.destroy = function () {
+                destroyed = true;
+                if (cacheUpdateHandler) document.removeEventListener('yani:cache-updated', cacheUpdateHandler);
+                cacheUpdateHandler = null;
+                focusScope.destroy();
+                if (originalGenresDestroy) originalGenresDestroy.apply(this, arguments);
+            };
+
+            return comp;
+        }
+
+        var genreHubRows = null;
+        var genreHubRowsAt = 0;
+        var genreHubRequest = null;
+        var genreList = null;
+        var genreListAt = 0;
+        var genreListRequest = null;
+        var GENRE_HUB_TTL = 15 * 60 * 1000;
+        var GENRE_HUB_CONCURRENCY = 8;
+
+        function loadGenreList() {
+            if (genreList && Date.now() - genreListAt < GENRE_HUB_TTL) {
+                LampaYaniApi.genres().catch(function () {});
+                return Promise.resolve(genreList);
+            }
+            if (genreListRequest) return genreListRequest;
+            genreListRequest = LampaYaniApi.genres().then(function (payload) {
+                var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
+                    return genreTitle(genre) && genreValue(genre) !== null;
+                });
+                if (!genres.length) Lampa.Noty.show(t('genres_empty'));
+                genreList = genres;
+                genreListAt = Date.now();
+                genreListRequest = null;
+                return genres;
+            }).catch(function (error) {
+                genreListRequest = null;
+                throw error;
+            });
+            return genreListRequest;
+        }
+
+        function genreTilePoster(title, index) {
+            var colors = [
+                ['#ff6878', '#825ed8'],
+                ['#50c5b7', '#256ca9'],
+                ['#f0a45d', '#d34d74'],
+                ['#8b79ed', '#4c60b8']
+            ][index % 4];
+            var raw = String(title || '');
+            var display = raw.length > 20 ? raw.slice(0, 19) + '…' : raw;
+            var label = display.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            var mark = raw.charAt(0).toUpperCase();
+            var size = display.length > 15 ? 27 : display.length > 11 ? 30 : 34;
+            var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="440" height="200" viewBox="0 0 440 200">' +
+                '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="' + colors[0] + '"/><stop offset="1" stop-color="' + colors[1] + '"/></linearGradient></defs>' +
+                '<rect width="440" height="200" rx="28" fill="url(#g)"/>' +
+                '<circle cx="388" cy="30" r="118" fill="#fff" opacity=".09"/><circle cx="388" cy="30" r="72" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="3"/>' +
+                '<text x="34" y="96" fill="#fff" fill-opacity=".28" font-family="sans-serif" font-size="86" font-weight="800">' + mark + '</text>' +
+                '<text x="34" y="155" fill="#fff" font-family="sans-serif" font-size="' + size + '" font-weight="700">' + label + '</text>' +
+                '<path d="m378 138 20 0m-7-7 7 7-7 7" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        }
+
+        function genreTilesRow(genres) {
+            var cards = (genres || []).map(function (genre, index) {
+                var title = genreTitle(genre);
+                var poster = genreTilePoster(title, index);
+                return {
+                    title: title,
+                    poster: poster,
+                    img: poster,
+                    yani_genre_tile: true,
+                    yani_genre: genre
+                };
+            });
+            return {
+                title: t('genre_tiles') + ' · ' + cards.length,
+                yani_genre_tiles: true,
+                results: cards,
+                nomore: true
+            };
+        }
+
+        function createGenreRowLoader() {
+            function loadGenreRows(page) {
+                if (Number(page || 0) > 0) return Promise.resolve([]);
+                return loadGenreList().then(function (genres) {
+                    var tiles = genreTilesRow(genres);
+                    if (genreHubRows && Date.now() - genreHubRowsAt < GENRE_HUB_TTL) return [tiles].concat(genreHubRows);
+                    if (genreHubRequest) return genreHubRequest.then(function (rows) { return [tiles].concat(rows); });
+                    genreHubRequest = Promise.resolve().then(function () {
+                        return LampaYaniCardRails.mapLimit(genres, GENRE_HUB_CONCURRENCY, function (genre) {
+                            var id = genreValue(genre);
+                            return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}, {
+                                cacheTtl: GENRE_HUB_TTL,
+                                cacheFirst: true,
+                                staleFallback: true
+                            }).then(function (payload) {
+                                var items = LampaYaniApi.normalize(payload).slice(0, 10);
+                                if (!items.length) return null;
+                                return {
+                                    title: genreTitle(genre),
+                                    results: items.map(toCard),
+                                    onMore: function () { openGenreCatalog(genre); },
+                                    visual: {
+                                        from: '#ff6878',
+                                        to: '#825ed8',
+                                        icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
+                                    }
+                                };
+                            }).catch(function () { return null; });
+                        });
+                    }).then(function (rows) {
+                        genreHubRows = (rows || []).filter(Boolean);
+                        genreHubRowsAt = Date.now();
+                        genreHubRequest = null;
+                        return genreHubRows;
+                    }).catch(function (error) {
+                        genreHubRequest = null;
+                        throw error;
+                    });
+                    return genreHubRequest.then(function (rows) { return [tiles].concat(rows); });
+                });
+            }
+
+            return loadGenreRows;
+        }
+
+        return {Component: Genres};
+    }
+
+    window.LampaYani = window.LampaYani || {};
+    window.LampaYani.GenresScreen = window.LampaYaniGenresScreen = {create: create};
+}(window));
+
+(function (window) {
+    'use strict';
+
+    // The account screen: profile, statistics, lists and account actions.
+
+    function create(deps) {
+        deps = deps || {};
+        var t = deps.t || function (name) { return name; };
+        var autoProgressSyncEnabled = deps.autoProgressSyncEnabled;
+        var syncPlaybackHistoryManually = deps.syncPlaybackHistoryManually;
+        var goBack = deps.goBack;
+        var openNotifications = deps.openNotifications;
+        var openSubscriptions = deps.openSubscriptions;
+        var openUserReviews = deps.openUserReviews;
+        var accountListDefinitions = deps.accountListDefinitions;
+        var cacheHomeListCounts = deps.cacheHomeListCounts;
+        var openAccountList = deps.openAccountList;
+        var formatAccountDate = deps.formatAccountDate;
+        var formatWatchTime = deps.formatWatchTime;
+        var localizedAuthText = deps.localizedAuthText;
+        var openAccountLogin = deps.openAccountLogin;
+        var logoutFromAccount = deps.logoutFromAccount;
+
+        function Account(object) {
+            var scroll = new Lampa.Scroll({mask: true, over: true, step: 250});
+            scroll.minus();
+            var html = $('<div class="yani-account"></div>');
+            var content = $('<div class="yani-account__content"></div>');
+            var last;
+
+            this.create = function () {
+                var self = this;
+                this.activity.loader(true);
+
+                if (!LampaYaniAuth.token()) {
+                    addAccountNotice(t('not_logged_in'), localizedAuthText('login_hint'), {title: t('login_name'), handler: openAccountLogin});
+                    finish(self);
+                    return;
+                }
+
+                LampaYaniApi.profile().then(function (payload) {
+                    var profile = payload && payload.response ? payload.response : payload;
+                    return Promise.all([
+                        Promise.resolve(profile),
+                        LampaYaniApi.userListStats(profile.id).then(responseData).catch(function () { return []; }),
+                        LampaYaniApi.userLists(profile.id).then(responseData).catch(function () { return []; }),
+                        LampaYaniApi.userStatsGenres(profile.id).then(responseData).catch(function () { return []; }),
+                        LampaYaniApi.userStatsRatings(profile.id).then(responseData).catch(function () { return []; }),
+                        LampaYaniApi.userStatsTypes(profile.id).then(responseData).catch(function () { return []; })
+                    ]);
+                }).then(function (result) {
+                    renderAccount(result[0], result[1], result[2], result[3], result[4], result[5]);
+                    finish(self);
+                }).catch(function (error) {
+                    console.error('[YummyAnime]', error);
+                    addAccountNotice(t('account_load_error'), t('account_retry'));
+                    finish(self);
+                });
+            };
+
+            function finish(component) {
+                scroll.append(content);
+                html.append(scroll.render(true));
+                component.activity.loader(false);
+                component.activity.toggle();
+            }
+
+            function responseData(payload) {
+                return payload && payload.response ? payload.response : payload || [];
+            }
+
+            function addAccountNotice(title, description, action) {
+                var notice = $('<div class="yani-account__notice"></div>');
+                notice.append($('<div class="yani-account__notice-title"></div>').text(title));
+                notice.append($('<div class="yani-account__notice-text"></div>').text(description));
+                if (action && action.handler) {
+                    var button = $('<div class="yani-account__notification-button yani-account__login-button selector"></div>');
+                    button.append($('<strong></strong>').text(action.title || t('login_name')));
+                    button.append($('<span aria-hidden="true">→</span>'));
+                    bindAccountFocus(button);
+                    button.on('hover:enter click.yaniAccountLogin', action.handler);
+                    notice.append(button);
+                } else {
+                    notice.addClass('selector');
+                    bindAccountFocus(notice);
+                }
+                content.append(notice);
+            }
+
+            function renderAccount(profile, stats, lists, genreStats, ratingStats, typeStats) {
+                stats = Array.isArray(stats) ? stats : [];
+                lists = Array.isArray(lists) ? lists : [];
+                var header = $('<div class="yani-account__profile selector"></div>');
+                var avatar = profile.avatars && (profile.avatars.big || profile.avatars.full || profile.avatars.small);
+                if (avatar && avatar.indexOf('//') === 0) avatar = 'https:' + avatar;
+                if (avatar) header.append($('<img class="yani-account__avatar" alt="">').attr('src', avatar));
+
+                var identity = $('<div class="yani-account__identity"></div>');
+                identity.append($('<div class="yani-account__name"></div>').text(profile.nickname || 'YummyAnime User'));
+                identity.append($('<div class="yani-account__status"></div>').text(t('authorized')));
+                identity.append($('<div class="yani-account__id"></div>').text('ID ' + profile.id));
+                if (profile.about) identity.append($('<div class="yani-account__about"></div>').text(profile.about));
+                if (profile.banned) identity.append($('<div class="yani-account__warning"></div>').text(t('banned')));
+                header.append(identity);
+                bindAccountFocus(header);
+                content.append(header);
+
+                var info = $('<div class="yani-account__grid"></div>');
+                addInfo(info, t('registration'), formatAccountDate(profile.register_date));
+                addInfo(info, t('last_visit'), formatAccountDate(profile.last_online));
+                addInfo(info, t('roles'), profile.roles && profile.roles.length ? profile.roles.join(', ') : t('user'));
+                addInfo(info, t('messages'), String(profile.messages && profile.messages.unread_count || 0) + ' ' + t('unread'));
+                addInfo(info, t('notifications'), String(profile.notifications && profile.notifications.count || 0));
+                addInfo(info, t('total_lists'), String(lists.length || 0));
+                content.append(info);
+
+                var notificationButton = $('<div class="yani-account__notification-button selector"></div>');
+                notificationButton.append($('<strong></strong>').text(t('notifications')));
+                notificationButton.append($('<span></span>').text(String(profile.notifications && (profile.notifications.unread_count || profile.notifications.count) || 0) + ' ' + t('unread')));
+                bindAccountFocus(notificationButton);
+                notificationButton.on('hover:enter click.yaniNotifications', openNotifications);
+                content.append(notificationButton);
+                var subscriptionsButton = $('<div class="yani-account__notification-button selector"></div>');
+                subscriptionsButton.append($('<strong></strong>').text(t('subscriptions')));
+                subscriptionsButton.append($('<span></span>').text(t('subscriptions')));
+                bindAccountFocus(subscriptionsButton);
+                subscriptionsButton.on('hover:enter click.yaniSubscriptions', function () { openSubscriptions(profile.id); });
+                content.append(subscriptionsButton);
+                // Manual synchronization remains available from the account page
+                // when automatic progress synchronization is deliberately off.
+                if (!autoProgressSyncEnabled()) {
+                    var syncButton = $('<div class="yani-account__notification-button selector"></div>');
+                    syncButton.append($('<strong></strong>').text(t('sync_history')));
+                    syncButton.append($('<span></span>').text(t('sync_history_description')));
+                    bindAccountFocus(syncButton);
+                    syncButton.on('hover:enter click.yaniSync', syncPlaybackHistoryManually);
+                    content.append(syncButton);
+                }
+                var reviewsButton = $('<div class="yani-account__notification-button selector"></div>');
+                reviewsButton.append($('<strong></strong>').text(t('my_reviews')));
+                reviewsButton.append($('<span></span>').text(t('my_reviews_description')));
+                bindAccountFocus(reviewsButton);
+                reviewsButton.on('hover:enter click.yaniReviews', function () { openUserReviews(profile.id); });
+                content.append(reviewsButton);
+
+                var counts = {};
+                lists.forEach(function (anime) {
+                    var userList = anime.user && anime.user.list;
+                    if (!userList) return;
+                    if (userList.list && typeof userList.list.id !== 'undefined') counts[userList.list.id] = (counts[userList.list.id] || 0) + 1;
+                    if (userList.is_fav) counts[4] = (counts[4] || 0) + 1;
+                });
+                cacheHomeListCounts(profile.id, counts);
+
+                content.append($('<div class="yani-account__section-title"></div>').text(t('list_stats')));
+                var listGrid = $('<div class="yani-account__lists"></div>');
+                accountListDefinitions().forEach(function (definition) {
+                    var stat = stats.filter(function (item) { return Number(item.list && item.list.id) === definition.id; })[0] || {};
+                    var tile = $('<div class="yani-account__list selector"></div>');
+                    tile.append($('<div class="yani-account__list-title"></div>').text(definition.title));
+                    tile.append($('<div class="yani-account__list-count"></div>').text(String(counts[definition.id] || 0) + ' ' + t('anime_count')));
+                    tile.append($('<div class="yani-account__list-time"></div>').text(t('total_time') + ': ' + formatWatchTime(stat.seconds)));
+                    bindAccountFocus(tile);
+                    tile.on('hover:enter', function () { openAccountList(definition, lists, profile.id); });
+                    listGrid.append(tile);
+                });
+                content.append(listGrid);
+                renderAccountStatistics(genreStats, ratingStats, typeStats);
+
+                var logoutButton = $('<div class="yani-account__notification-button yani-account__logout-button selector"></div>');
+                logoutButton.append($('<strong></strong>').text(t('logout_name')));
+                logoutButton.append($('<span></span>').text(t('logout_description')));
+                bindAccountFocus(logoutButton);
+                logoutButton.on('hover:enter click.yaniAccountLogout', logoutFromAccount);
+                content.append(logoutButton);
+            }
+
+            function renderAccountStatistics(genreStats, ratingStats, typeStats) {
+                var sections = [
+                    {title: t('genres_statistics'), items: genreStats, label: function (item) { return item.title || item.name; }},
+                    {title: t('ratings_statistics'), items: ratingStats, label: function (item) { return String(item.rating || '—'); }},
+                    {title: t('types_statistics'), items: typeStats, label: function (item) { return item.type && (item.type.name || item.type.shortname) || item.name; }}
+                ];
+                var available = sections.filter(function (section) { return Array.isArray(section.items) && section.items.length; });
+                if (!available.length) return;
+                content.append($('<div class="yani-account__section-title"></div>').text(t('account_statistics')));
+                available.forEach(function (section) {
+                    var block = $('<div class="yani-account__stats"></div>');
+                    block.append($('<div class="yani-account__stats-title"></div>').text(section.title));
+                    section.items.slice(0, 12).forEach(function (item) {
+                        var row = $('<div class="yani-account__stats-row selector"></div>');
+                        row.append($('<span></span>').text(section.label(item) || '—'));
+                        row.append($('<strong></strong>').text(String(item.count || 0)));
+                        bindAccountFocus(row);
+                        block.append(row);
+                    });
+                    content.append(block);
+                });
+            }
+
+            function addInfo(grid, title, value) {
+                var tile = $('<div class="yani-account__info selector"></div>');
+                tile.append($('<div class="yani-account__info-title"></div>').text(title));
+                tile.append($('<div class="yani-account__info-value"></div>').text(value || '—'));
+                bindAccountFocus(tile);
+                grid.append(tile);
+            }
+
+            function bindAccountFocus(element) {
+                element.on('hover:focus', function (event) {
+                    var target = event.currentTarget || event.target;
+                    last = target;
+                    scroll.update($(target), true);
+                });
+            }
+
+            this.start = function () {
+                Lampa.Controller.add('content', {
+                    toggle: function () {
+                        Lampa.Controller.collectionSet(scroll.render());
+                        Lampa.Controller.collectionFocus(last || false, scroll.render());
+                    },
+                    left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); },
+                    right: function () { Navigator.move('right'); },
+                    up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); },
+                    down: function () { LampaYaniNavigation.moveDown(scroll); },
+                    back: goBack
+                });
+                Lampa.Controller.toggle('content');
+            };
+
+            this.render = function (js) { return js ? html[0] : html; };
+            this.destroy = function () { scroll.destroy(); html.remove(); };
+        }
+
+        return {Component: Account};
+    }
+
+    window.LampaYani = window.LampaYani || {};
+    window.LampaYani.AccountScreen = window.LampaYaniAccountScreen = {create: create};
+}(window));
+
+(function (window) {
+    'use strict';
+
     function toggleEpisodeSubscription(card, button, deps) {
         var t = deps.t;
         if (!LampaYaniAuth.token()) return Lampa.Noty.show(t('login_required'));
@@ -17592,185 +18302,17 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return Catalog(object);
     }
 
-    function Catalog(object) {
-        var requestedParams = copyParams(object.catalog_params || object.params || {limit: 30, sort: 'top', sort_forward: true});
-        var comp = new Lampa.InteractionCategory(object);
-        var topMode = Boolean(object.topMode);
-        var baseParams = requestedParams;
-        var limit = Number(baseParams.limit || 30);
-        var maxPages = Math.ceil(20000 / limit) + 1;
-        var seen = {};
-        var requestedOffsets = {};
-        var genreHeader;
-        var genreDescriptionRequested = false;
-        var subjectReferenceAnime = null;
-        var destroyed = false;
-
-        object.page = 1;
-        baseParams.limit = limit;
-        baseParams.offset = Number(baseParams.offset || 0);
-        baseParams.sort = baseParams.sort || 'top';
-        var hasSortDirection = Object.prototype.hasOwnProperty.call(baseParams, 'sort_forward');
-        baseParams.sort_forward = hasSortDirection ?
-            baseParams.sort_forward === true || baseParams.sort_forward === 'true' :
-            baseParams.sort === 'top';
-
-        function installGenreHeader() {
-            var context = object.subject_context || object.genre_context;
-            if (!context || genreHeader) return;
-            var view = comp.render && comp.render();
-            if (!view || !view.length) return;
-            var isSubject = Boolean(object.subject_context);
-            var title = isSubject ? String(context.title || context.name || '') : genreTitle(context);
-            if (!title) return;
-            var description = isSubject
-                ? t(context.kind === 'studio' ? 'studio_catalog_description' : 'creator_catalog_description').replace('{name}', title)
-                : genreDescription(context) || t('genre_catalog_fallback').replace('{genre}', title);
-            genreHeader = $('<div class="yani-genre-catalog-header"></div>');
-            var orb = $('<span class="yani-genre-catalog-header__orb" aria-hidden="true"><img alt=""><b></b><i></i><i></i><i></i></span>');
-            if (isSubject) {
-                var initials = title.split(/[\s\-_]+/).filter(Boolean).slice(0, 2).map(function (part) { return part.charAt(0); }).join('').toUpperCase();
-                orb.addClass('is-subject is-' + (context.kind === 'studio' ? 'studio' : 'director')).find('b').text(initials || title.charAt(0).toUpperCase());
-            }
-            genreHeader.append(orb);
-            var copy = $('<div class="yani-genre-catalog-header__copy"></div>');
-            copy.append($('<span class="yani-genre-catalog-header__eyebrow"></span>').text(t(isSubject ? (context.kind === 'studio' ? 'studio' : 'creator') : 'genre_catalog')));
-            copy.append($('<strong class="yani-genre-catalog-header__title"></strong>').text(title));
-            copy.append($('<p class="yani-genre-catalog-header__description"></p>').text(description));
-            genreHeader.append(copy);
-            view.addClass('yani-genre-catalog-view');
-            if (isSubject) view.addClass('yani-subject-catalog-view');
-            view.prepend(genreHeader);
-            if (comp.scroll && comp.scroll.minus) comp.scroll.minus(genreHeader);
-            if (isSubject) loadSubjectInformation(context);
-            else loadGenreDescription(context);
-        }
-
-        function loadSubjectInformation(context) {
-            if (genreDescriptionRequested) return;
-            var request;
-            if (context.kind === 'studio' && context.url) request = LampaYaniApi.studio(context.url);
-            else if (context.kind === 'director' && context.id !== undefined && context.id !== null) request = LampaYaniApi.director(context.id);
-            if (!request) return;
-            genreDescriptionRequested = true;
-            if (window.LampaYaniMedia && LampaYaniMedia.findSubjectImage) {
-                LampaYaniMedia.findSubjectImage(context.kind, context, subjectReferenceAnime).then(function (image) {
-                    if (!image || !genreHeader || !genreHeader.closest('body').length) return;
-                    genreHeader.find('.yani-genre-catalog-header__orb').addClass('has-image').find('img').attr('src', image);
-                });
-            }
-            request.then(function (payload) {
-                var detailed = payload && payload.response ? payload.response : payload;
-                if (!detailed || !genreHeader || !genreHeader.closest('body').length) return;
-                var title = String(detailed.title || context.title || '').trim();
-                var secondary = String(detailed.title_jp || detailed.japanese_title || '').trim();
-                if (title) genreHeader.find('.yani-genre-catalog-header__title').text(title);
-                if (secondary) genreHeader.find('.yani-genre-catalog-header__description').text(t('original_name') + ': ' + secondary);
-            }).catch(function () {});
-        }
-
-        function loadGenreDescription(context) {
-            if (genreDescriptionRequested) return;
-            var genreId = context && (context.id !== undefined ? context.id : context.value);
-            if (!/^\d+$/.test(String(genreId || ''))) return;
-            genreDescriptionRequested = true;
-            LampaYaniApi.genre(genreId).then(function (payload) {
-                var detailed = payload && payload.response ? payload.response : payload;
-                var description = genreDescription(detailed);
-                if (!description || !genreHeader || !genreHeader.length || !genreHeader.closest('body').length) return;
-                genreHeader.find('.yani-genre-catalog-header__description').text(description);
-            }).catch(function () {
-                // The localized bundled description remains visible offline.
-            });
-        }
-
-        function annotateGenreTop(items, offset) {
-            if (!object.genre_context || baseParams.sort !== 'top' || !baseParams.sort_forward) return items;
-            var title = genreTitle(object.genre_context);
-            (items || []).forEach(function (item, index) {
-                var position = Number(offset || 0) + index + 1;
-                if (item && position <= 100) item.yani_genre_top = {position: position, genre: title};
-            });
-            return items;
-        }
-        var controls = LampaYaniCatalogControls.create({
-            comp: comp,
-            object: object,
-            baseParams: baseParams,
-            topMode: topMode,
-            t: t,
-            copyParams: copyParams,
-            showSelect: showYummySelect,
-            navigationSnapshot: transientNavigationSnapshot,
-            filterModel: LampaYaniCatalogFilters
-        });
-
-        comp.create = function () {
-            var self = this;
-            this.activity.loader(true);
-            LampaYaniApi.catalog(baseParams, {
-                cacheFirst: true,
-                staleFallback: true,
-                cacheTtl: 15 * 60 * 1000,
-                backgroundRefresh: true
-            })
-                .then(function (payload) {
-                    if (destroyed) return;
-                    var raw = annotateGenreTop(LampaYaniApi.normalize(payload), baseParams.offset);
-                    if (object.subject_context && raw.length) subjectReferenceAnime = raw[0];
-                    var results = mapUniqueCards(raw, seen);
-                    requestedOffsets[baseParams.offset] = true;
-                    if (raw.length < limit) object.page = maxPages;
-                    self.build({results: results, total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
-                    if (self.activity && self.activity.loader) self.activity.loader(false);
-                    installGenreHeader();
-                    controls.install();
-                })
-                .catch(function (error) {
-                    if (destroyed) return;
-                    console.error('[YummyAnime]', error);
-                    self.activity.loader(false);
-                    Lampa.Noty.show(t('catalog_load_error'));
-                });
-        };
-        comp.nextPageReuest = function (requestObject, resolve, reject) {
-            var params = copyParams(baseParams);
-            params.offset = baseParams.offset + (requestObject.page - 1) * limit;
-            if (requestedOffsets[params.offset]) {
-                resolve({results: [], total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
-                return;
-            }
-            requestedOffsets[params.offset] = true;
-
-            LampaYaniApi.catalog(params, object.genre_context ? {
-                cacheFirst: true,
-                staleFallback: true,
-                cacheTtl: 15 * 60 * 1000
-            } : {}).then(function (payload) {
-                if (destroyed) return reject(new Error('YummyAnime catalog was closed'));
-                var raw = annotateGenreTop(LampaYaniApi.normalize(payload), params.offset);
-                var results = mapUniqueCards(raw, seen);
-                if (raw.length < limit) requestObject.page = maxPages;
-                resolve({results: results, total_pages: maxPages, title: t(topMode ? 'top_rated' : 'anime')});
-            }).catch(function (error) {
-                delete requestedOffsets[params.offset];
-                requestObject.page = Math.max(1, requestObject.page - 1);
-                console.error('[YummyAnime]', error);
-                Lampa.Noty.show(t('next_page_error'));
-                reject(error);
-            });
-        };
-        // Lampa builds use both spellings across releases.
-        comp.nextPageRequest = comp.nextPageReuest;
-        comp.cardRender = bindYummyCardRender;
-        var originalCatalogDestroy = comp.destroy;
-        comp.destroy = function () {
-            destroyed = true;
-            controls.destroy();
-            if (originalCatalogDestroy) originalCatalogDestroy.apply(this, arguments);
-        };
-        return comp;
-    }
+    var catalogScreen = LampaYaniCatalogScreen.create({
+        t: t,
+        bindYummyCardRender: bindYummyCardRender,
+        transientNavigationSnapshot: transientNavigationSnapshot,
+        showYummySelect: showYummySelect,
+        genreTitle: genreTitle,
+        genreDescription: genreDescription,
+        copyParams: copyParams,
+        mapUniqueCards: mapUniqueCards
+    });
+    var Catalog = catalogScreen.Component;
 
     function Home(object) {
         var homeStartedOnce = false;
@@ -19252,132 +19794,14 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         });
     }
 
-    function bindGenreTile(cardApi, card) {
-        if (!card || !card.yani_genre) return;
-        // Legacy InteractionCategory sets cardApi.onEnter to push component:'full'
-        // before cardRender runs. That native listener fires before any jQuery
-        // handler, so the only reliable fix is to replace onEnter itself.
-        if (cardApi) {
-            cardApi.onEnter = function () { openGenreCatalog(card.yani_genre); };
-        }
-        var render = cardApi && typeof cardApi.render === 'function'
-            ? $(cardApi.render(true))
-            : cardApi && (cardApi.jquery || cardApi.nodeType)
-                ? (cardApi.jquery ? cardApi : $(cardApi))
-                : $();
-        if (!render.length) return;
-        var node = render[0];
-        if (node) node.card_data = card;
-        render.addClass('yani-genre-tile-card yani-genre-catalog-tile');
-    }
-
-    function bindGenreTiles(self, cards) {
-        var root = self && self.render ? self.render() : null;
-        if (!root) return;
-        $(root).find('.card').each(function (index) {
-            var card = cards[index];
-            if (!card || !card.yani_genre) return;
-            if (this.card_data !== card) this.card_data = card;
-            $(this).addClass('yani-genre-tile-card yani-genre-catalog-tile');
-        });
-    }
-
-    function Genres(object) {
-        object.page = 1;
-        var comp = new Lampa.InteractionCategory(object);
-        var genreCards = [];
-        var destroyed = false;
-        var cacheUpdateHandler = null;
-        var focusScope = LampaYaniNavigation.createScope({
-            id: 'genres:' + String(object && object.url || 'yani/genres'),
-            root: function () { return comp.render ? comp.render() : $(); },
-            collection: function () { return comp.scroll && comp.scroll.render ? comp.scroll.render() : comp.render(); },
-            scroll: comp.scroll,
-            selector: '.card.selector'
-        });
-
-        comp.create = function () {
-            var self = this;
-            this.activity.loader(true);
-            if (!cacheUpdateHandler) {
-                cacheUpdateHandler = function (event) {
-                    var detail = event && event.detail || {};
-                    if (destroyed || detail.path !== '/anime/genres' || !detail.payload) return;
-                    var genres = LampaYaniApi.normalizeGenres(detail.payload).filter(function (genre) {
-                        return genreTitle(genre) && genreValue(genre) !== null;
-                    });
-                    if (!genres.length) return;
-                    genreList = genres;
-                    genreListAt = Date.now();
-                    genreCards = genreTilesRow(genres).results;
-                    var byId = {};
-                    genreCards.forEach(function (card) { byId[String(genreValue(card.yani_genre))] = card; });
-                    $(self.render()).find('.card').each(function () {
-                        var current = this.card_data;
-                        var fresh = current && current.yani_genre ? byId[String(genreValue(current.yani_genre))] : null;
-                        if (!fresh) return;
-                        this.card_data = fresh;
-                        $(this).find('.card__title').first().text(fresh.title || '');
-                        if (window.LampaYaniMedia) LampaYaniMedia.attachPosterFallback(this, fresh);
-                    });
-                };
-                document.addEventListener('yani:cache-updated', cacheUpdateHandler);
-            }
-            loadGenreList().then(function (genres) {
-                if (destroyed) return;
-                genreCards = genreTilesRow(genres).results;
-                self.build({results: genreCards, total_pages: 1, title: t('genres')});
-                if (self.activity && self.activity.loader) self.activity.loader(false);
-                if (self.render) self.render().addClass('yani-tile-catalog yani-genres-tile-catalog');
-                bindGenreTiles(self, genreCards);
-                focusScope.bind(self.render());
-                if (!genreCards.length) Lampa.Noty.show(t('genres_empty'));
-            }).catch(function (error) {
-                if (destroyed) return;
-                console.error('[YummyAnime Genres]', error);
-                self.activity.loader(false);
-                Lampa.Noty.show(t('genres_load_error'));
-            });
-        };
-
-        // Lampa legacy signature: cardRender(object, data, cardInstance)
-        comp.cardRender = function (first, second, third) {
-            var cardApi;
-            var card;
-            var values = [first, second, third];
-            values.forEach(function (value) {
-                if (!value) return;
-                if (!cardApi && typeof value.onEnter !== 'undefined' && typeof value.render === 'function') cardApi = value;
-                if (!card && value.yani_genre_tile) card = value;
-                var candidate = value.card || value.object || value.data;
-                if (!card && candidate && candidate.yani_genre_tile) card = candidate;
-            });
-            if (!cardApi && third && typeof third.render === 'function') cardApi = third;
-            if (!card && second && second.yani_genre_tile) card = second;
-            var node = first && (first.jquery || first.nodeType) ? (first.jquery ? first[0] : first) : null;
-            if (!card && node && node.card_data && node.card_data.yani_genre_tile) card = node.card_data;
-            if (!card) return;
-            bindGenreTile(cardApi || node, card);
-        };
-
-        var originalGenresDestroy = comp.destroy;
-        var originalGenresStart = comp.start;
-        comp.start = function () {
-            var result = originalGenresStart && originalGenresStart.apply(this, arguments);
-            focusScope.bind(comp.render());
-            setTimeout(function () { focusScope.restore(comp.last, true); }, 0);
-            return result;
-        };
-        comp.destroy = function () {
-            destroyed = true;
-            if (cacheUpdateHandler) document.removeEventListener('yani:cache-updated', cacheUpdateHandler);
-            cacheUpdateHandler = null;
-            focusScope.destroy();
-            if (originalGenresDestroy) originalGenresDestroy.apply(this, arguments);
-        };
-
-        return comp;
-    }
+    var genresScreen = LampaYaniGenresScreen.create({
+        t: t,
+        toCard: toCard,
+        genreTitle: genreTitle,
+        genreValue: genreValue,
+        openGenreCatalog: openGenreCatalog
+    });
+    var Genres = genresScreen.Component;
 
     function CollectionDetail(object) {
         return LampaYaniCollections.detail(object, {
@@ -19438,217 +19862,24 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return Boolean(card) && card.yani_list_id !== null && card.yani_list_id !== undefined && card.yani_list_id !== '' && Number(card.yani_list_id) === listId;
     }
 
-    function Account(object) {
-        var scroll = new Lampa.Scroll({mask: true, over: true, step: 250});
-        scroll.minus();
-        var html = $('<div class="yani-account"></div>');
-        var content = $('<div class="yani-account__content"></div>');
-        var last;
-
-        this.create = function () {
-            var self = this;
-            this.activity.loader(true);
-
-            if (!LampaYaniAuth.token()) {
-                addAccountNotice(t('not_logged_in'), localizedAuthText('login_hint'), {title: t('login_name'), handler: openAccountLogin});
-                finish(self);
-                return;
-            }
-
-            LampaYaniApi.profile().then(function (payload) {
-                var profile = payload && payload.response ? payload.response : payload;
-                return Promise.all([
-                    Promise.resolve(profile),
-                    LampaYaniApi.userListStats(profile.id).then(responseData).catch(function () { return []; }),
-                    LampaYaniApi.userLists(profile.id).then(responseData).catch(function () { return []; }),
-                    LampaYaniApi.userStatsGenres(profile.id).then(responseData).catch(function () { return []; }),
-                    LampaYaniApi.userStatsRatings(profile.id).then(responseData).catch(function () { return []; }),
-                    LampaYaniApi.userStatsTypes(profile.id).then(responseData).catch(function () { return []; })
-                ]);
-            }).then(function (result) {
-                renderAccount(result[0], result[1], result[2], result[3], result[4], result[5]);
-                finish(self);
-            }).catch(function (error) {
-                console.error('[YummyAnime]', error);
-                addAccountNotice(t('account_load_error'), t('account_retry'));
-                finish(self);
-            });
-        };
-
-        function finish(component) {
-            scroll.append(content);
-            html.append(scroll.render(true));
-            component.activity.loader(false);
-            component.activity.toggle();
-        }
-
-        function responseData(payload) {
-            return payload && payload.response ? payload.response : payload || [];
-        }
-
-        function addAccountNotice(title, description, action) {
-            var notice = $('<div class="yani-account__notice"></div>');
-            notice.append($('<div class="yani-account__notice-title"></div>').text(title));
-            notice.append($('<div class="yani-account__notice-text"></div>').text(description));
-            if (action && action.handler) {
-                var button = $('<div class="yani-account__notification-button yani-account__login-button selector"></div>');
-                button.append($('<strong></strong>').text(action.title || t('login_name')));
-                button.append($('<span aria-hidden="true">→</span>'));
-                bindAccountFocus(button);
-                button.on('hover:enter click.yaniAccountLogin', action.handler);
-                notice.append(button);
-            } else {
-                notice.addClass('selector');
-                bindAccountFocus(notice);
-            }
-            content.append(notice);
-        }
-
-        function renderAccount(profile, stats, lists, genreStats, ratingStats, typeStats) {
-            stats = Array.isArray(stats) ? stats : [];
-            lists = Array.isArray(lists) ? lists : [];
-            var header = $('<div class="yani-account__profile selector"></div>');
-            var avatar = profile.avatars && (profile.avatars.big || profile.avatars.full || profile.avatars.small);
-            if (avatar && avatar.indexOf('//') === 0) avatar = 'https:' + avatar;
-            if (avatar) header.append($('<img class="yani-account__avatar" alt="">').attr('src', avatar));
-
-            var identity = $('<div class="yani-account__identity"></div>');
-            identity.append($('<div class="yani-account__name"></div>').text(profile.nickname || 'YummyAnime User'));
-            identity.append($('<div class="yani-account__status"></div>').text(t('authorized')));
-            identity.append($('<div class="yani-account__id"></div>').text('ID ' + profile.id));
-            if (profile.about) identity.append($('<div class="yani-account__about"></div>').text(profile.about));
-            if (profile.banned) identity.append($('<div class="yani-account__warning"></div>').text(t('banned')));
-            header.append(identity);
-            bindAccountFocus(header);
-            content.append(header);
-
-            var info = $('<div class="yani-account__grid"></div>');
-            addInfo(info, t('registration'), formatAccountDate(profile.register_date));
-            addInfo(info, t('last_visit'), formatAccountDate(profile.last_online));
-            addInfo(info, t('roles'), profile.roles && profile.roles.length ? profile.roles.join(', ') : t('user'));
-            addInfo(info, t('messages'), String(profile.messages && profile.messages.unread_count || 0) + ' ' + t('unread'));
-            addInfo(info, t('notifications'), String(profile.notifications && profile.notifications.count || 0));
-            addInfo(info, t('total_lists'), String(lists.length || 0));
-            content.append(info);
-
-            var notificationButton = $('<div class="yani-account__notification-button selector"></div>');
-            notificationButton.append($('<strong></strong>').text(t('notifications')));
-            notificationButton.append($('<span></span>').text(String(profile.notifications && (profile.notifications.unread_count || profile.notifications.count) || 0) + ' ' + t('unread')));
-            bindAccountFocus(notificationButton);
-            notificationButton.on('hover:enter click.yaniNotifications', openNotifications);
-            content.append(notificationButton);
-            var subscriptionsButton = $('<div class="yani-account__notification-button selector"></div>');
-            subscriptionsButton.append($('<strong></strong>').text(t('subscriptions')));
-            subscriptionsButton.append($('<span></span>').text(t('subscriptions')));
-            bindAccountFocus(subscriptionsButton);
-            subscriptionsButton.on('hover:enter click.yaniSubscriptions', function () { openSubscriptions(profile.id); });
-            content.append(subscriptionsButton);
-            // Manual synchronization remains available from the account page
-            // when automatic progress synchronization is deliberately off.
-            if (!autoProgressSyncEnabled()) {
-                var syncButton = $('<div class="yani-account__notification-button selector"></div>');
-                syncButton.append($('<strong></strong>').text(t('sync_history')));
-                syncButton.append($('<span></span>').text(t('sync_history_description')));
-                bindAccountFocus(syncButton);
-                syncButton.on('hover:enter click.yaniSync', syncPlaybackHistoryManually);
-                content.append(syncButton);
-            }
-            var reviewsButton = $('<div class="yani-account__notification-button selector"></div>');
-            reviewsButton.append($('<strong></strong>').text(t('my_reviews')));
-            reviewsButton.append($('<span></span>').text(t('my_reviews_description')));
-            bindAccountFocus(reviewsButton);
-            reviewsButton.on('hover:enter click.yaniReviews', function () { openUserReviews(profile.id); });
-            content.append(reviewsButton);
-
-            var counts = {};
-            lists.forEach(function (anime) {
-                var userList = anime.user && anime.user.list;
-                if (!userList) return;
-                if (userList.list && typeof userList.list.id !== 'undefined') counts[userList.list.id] = (counts[userList.list.id] || 0) + 1;
-                if (userList.is_fav) counts[4] = (counts[4] || 0) + 1;
-            });
-            cacheHomeListCounts(profile.id, counts);
-
-            content.append($('<div class="yani-account__section-title"></div>').text(t('list_stats')));
-            var listGrid = $('<div class="yani-account__lists"></div>');
-            accountListDefinitions().forEach(function (definition) {
-                var stat = stats.filter(function (item) { return Number(item.list && item.list.id) === definition.id; })[0] || {};
-                var tile = $('<div class="yani-account__list selector"></div>');
-                tile.append($('<div class="yani-account__list-title"></div>').text(definition.title));
-                tile.append($('<div class="yani-account__list-count"></div>').text(String(counts[definition.id] || 0) + ' ' + t('anime_count')));
-                tile.append($('<div class="yani-account__list-time"></div>').text(t('total_time') + ': ' + formatWatchTime(stat.seconds)));
-                bindAccountFocus(tile);
-                tile.on('hover:enter', function () { openAccountList(definition, lists, profile.id); });
-                listGrid.append(tile);
-            });
-            content.append(listGrid);
-            renderAccountStatistics(genreStats, ratingStats, typeStats);
-
-            var logoutButton = $('<div class="yani-account__notification-button yani-account__logout-button selector"></div>');
-            logoutButton.append($('<strong></strong>').text(t('logout_name')));
-            logoutButton.append($('<span></span>').text(t('logout_description')));
-            bindAccountFocus(logoutButton);
-            logoutButton.on('hover:enter click.yaniAccountLogout', logoutFromAccount);
-            content.append(logoutButton);
-        }
-
-        function renderAccountStatistics(genreStats, ratingStats, typeStats) {
-            var sections = [
-                {title: t('genres_statistics'), items: genreStats, label: function (item) { return item.title || item.name; }},
-                {title: t('ratings_statistics'), items: ratingStats, label: function (item) { return String(item.rating || '—'); }},
-                {title: t('types_statistics'), items: typeStats, label: function (item) { return item.type && (item.type.name || item.type.shortname) || item.name; }}
-            ];
-            var available = sections.filter(function (section) { return Array.isArray(section.items) && section.items.length; });
-            if (!available.length) return;
-            content.append($('<div class="yani-account__section-title"></div>').text(t('account_statistics')));
-            available.forEach(function (section) {
-                var block = $('<div class="yani-account__stats"></div>');
-                block.append($('<div class="yani-account__stats-title"></div>').text(section.title));
-                section.items.slice(0, 12).forEach(function (item) {
-                    var row = $('<div class="yani-account__stats-row selector"></div>');
-                    row.append($('<span></span>').text(section.label(item) || '—'));
-                    row.append($('<strong></strong>').text(String(item.count || 0)));
-                    bindAccountFocus(row);
-                    block.append(row);
-                });
-                content.append(block);
-            });
-        }
-
-        function addInfo(grid, title, value) {
-            var tile = $('<div class="yani-account__info selector"></div>');
-            tile.append($('<div class="yani-account__info-title"></div>').text(title));
-            tile.append($('<div class="yani-account__info-value"></div>').text(value || '—'));
-            bindAccountFocus(tile);
-            grid.append(tile);
-        }
-
-        function bindAccountFocus(element) {
-            element.on('hover:focus', function (event) {
-                var target = event.currentTarget || event.target;
-                last = target;
-                scroll.update($(target), true);
-            });
-        }
-
-        this.start = function () {
-            Lampa.Controller.add('content', {
-                toggle: function () {
-                    Lampa.Controller.collectionSet(scroll.render());
-                    Lampa.Controller.collectionFocus(last || false, scroll.render());
-                },
-                left: function () { if (Navigator.canmove('left')) Navigator.move('left'); else Lampa.Controller.toggle('menu'); },
-                right: function () { Navigator.move('right'); },
-                up: function () { if (Navigator.canmove('up')) Navigator.move('up'); else Lampa.Controller.toggle('head'); },
-                down: function () { LampaYaniNavigation.moveDown(scroll); },
-                back: goBack
-            });
-            Lampa.Controller.toggle('content');
-        };
-
-        this.render = function (js) { return js ? html[0] : html; };
-        this.destroy = function () { scroll.destroy(); html.remove(); };
-    }
+    var accountScreen = LampaYaniAccountScreen.create({
+        t: t,
+        autoProgressSyncEnabled: autoProgressSyncEnabled,
+        syncPlaybackHistoryManually: syncPlaybackHistoryManually,
+        goBack: goBack,
+        openNotifications: openNotifications,
+        openSubscriptions: openSubscriptions,
+        openUserReviews: openUserReviews,
+        accountListDefinitions: accountListDefinitions,
+        cacheHomeListCounts: cacheHomeListCounts,
+        openAccountList: openAccountList,
+        formatAccountDate: formatAccountDate,
+        formatWatchTime: formatWatchTime,
+        localizedAuthText: function (key) { return localizedAuthText(key); },
+        openAccountLogin: function () { return openAccountLogin(); },
+        logoutFromAccount: function () { return logoutFromAccount(); }
+    });
+    var Account = accountScreen.Component;
 
     function AuthPage(object) {
         return LampaYaniAuthPage.create(object, {
@@ -21273,124 +21504,6 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             title: 'YummyAnime ' + t('genres'),
             component: 'yani_genres'
         });
-    }
-
-    var genreHubRows = null;
-    var genreHubRowsAt = 0;
-    var genreHubRequest = null;
-    var genreList = null;
-    var genreListAt = 0;
-    var genreListRequest = null;
-    var GENRE_HUB_TTL = 15 * 60 * 1000;
-    var GENRE_HUB_CONCURRENCY = 8;
-
-    function loadGenreList() {
-        if (genreList && Date.now() - genreListAt < GENRE_HUB_TTL) {
-            LampaYaniApi.genres().catch(function () {});
-            return Promise.resolve(genreList);
-        }
-        if (genreListRequest) return genreListRequest;
-        genreListRequest = LampaYaniApi.genres().then(function (payload) {
-            var genres = LampaYaniApi.normalizeGenres(payload).filter(function (genre) {
-                return genreTitle(genre) && genreValue(genre) !== null;
-            });
-            if (!genres.length) Lampa.Noty.show(t('genres_empty'));
-            genreList = genres;
-            genreListAt = Date.now();
-            genreListRequest = null;
-            return genres;
-        }).catch(function (error) {
-            genreListRequest = null;
-            throw error;
-        });
-        return genreListRequest;
-    }
-
-    function genreTilePoster(title, index) {
-        var colors = [
-            ['#ff6878', '#825ed8'],
-            ['#50c5b7', '#256ca9'],
-            ['#f0a45d', '#d34d74'],
-            ['#8b79ed', '#4c60b8']
-        ][index % 4];
-        var raw = String(title || '');
-        var display = raw.length > 20 ? raw.slice(0, 19) + '…' : raw;
-        var label = display.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        var mark = raw.charAt(0).toUpperCase();
-        var size = display.length > 15 ? 27 : display.length > 11 ? 30 : 34;
-        var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="440" height="200" viewBox="0 0 440 200">' +
-            '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="' + colors[0] + '"/><stop offset="1" stop-color="' + colors[1] + '"/></linearGradient></defs>' +
-            '<rect width="440" height="200" rx="28" fill="url(#g)"/>' +
-            '<circle cx="388" cy="30" r="118" fill="#fff" opacity=".09"/><circle cx="388" cy="30" r="72" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="3"/>' +
-            '<text x="34" y="96" fill="#fff" fill-opacity=".28" font-family="sans-serif" font-size="86" font-weight="800">' + mark + '</text>' +
-            '<text x="34" y="155" fill="#fff" font-family="sans-serif" font-size="' + size + '" font-weight="700">' + label + '</text>' +
-            '<path d="m378 138 20 0m-7-7 7 7-7 7" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-        return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-    }
-
-    function genreTilesRow(genres) {
-        var cards = (genres || []).map(function (genre, index) {
-            var title = genreTitle(genre);
-            var poster = genreTilePoster(title, index);
-            return {
-                title: title,
-                poster: poster,
-                img: poster,
-                yani_genre_tile: true,
-                yani_genre: genre
-            };
-        });
-        return {
-            title: t('genre_tiles') + ' · ' + cards.length,
-            yani_genre_tiles: true,
-            results: cards,
-            nomore: true
-        };
-    }
-
-    function createGenreRowLoader() {
-        function loadGenreRows(page) {
-            if (Number(page || 0) > 0) return Promise.resolve([]);
-            return loadGenreList().then(function (genres) {
-                var tiles = genreTilesRow(genres);
-                if (genreHubRows && Date.now() - genreHubRowsAt < GENRE_HUB_TTL) return [tiles].concat(genreHubRows);
-                if (genreHubRequest) return genreHubRequest.then(function (rows) { return [tiles].concat(rows); });
-                genreHubRequest = Promise.resolve().then(function () {
-                    return LampaYaniCardRails.mapLimit(genres, GENRE_HUB_CONCURRENCY, function (genre) {
-                        var id = genreValue(genre);
-                        return LampaYaniApi.catalog({limit: 10, genres: id, sort: 'top', sort_forward: true}, {
-                            cacheTtl: GENRE_HUB_TTL,
-                            cacheFirst: true,
-                            staleFallback: true
-                        }).then(function (payload) {
-                            var items = LampaYaniApi.normalize(payload).slice(0, 10);
-                            if (!items.length) return null;
-                            return {
-                                title: genreTitle(genre),
-                                results: items.map(toCard),
-                                onMore: function () { openGenreCatalog(genre); },
-                                visual: {
-                                    from: '#ff6878',
-                                    to: '#825ed8',
-                                    icon: '<path d="M4 6h16M4 12h16M4 18h16"/>'
-                                }
-                            };
-                        }).catch(function () { return null; });
-                    });
-                }).then(function (rows) {
-                    genreHubRows = (rows || []).filter(Boolean);
-                    genreHubRowsAt = Date.now();
-                    genreHubRequest = null;
-                    return genreHubRows;
-                }).catch(function (error) {
-                    genreHubRequest = null;
-                    throw error;
-                });
-                return genreHubRequest.then(function (rows) { return [tiles].concat(rows); });
-            });
-        }
-
-        return loadGenreRows;
     }
 
     function genreTitle(genre) {
