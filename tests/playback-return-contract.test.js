@@ -61,7 +61,7 @@ assert.match(settingsSource, /param: \{name: 'yani_yummytv_enabled', type: 'trig
 assert.match(externalPlayer, /Storage\.get\('yani_yummytv_enabled', false\)/);
 assert.match(sources, /var beginPlaybackNavigation = playbackMenu\.beginPlaybackNavigation|function beginPlaybackNavigation/);
 
-const settingsStart = settingsSource.indexOf("param: {name: 'yani_home_sections_title'");
+const settingsStart = settingsSource.indexOf("settingsSectionParam('yani_home_sections_title'");
 const noticeIndex = settingsSource.indexOf("param: {name: 'yani_repo_notice', type: 'title'}");
 assert.ok(settingsStart >= 0 && noticeIndex > settingsStart, 'repository notice must remain at the bottom of settings');
 assert.ok(!settingsSource.slice(noticeIndex, noticeIndex + 250).includes('onChange'), 'repository notice must not be actionable');

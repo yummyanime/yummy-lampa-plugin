@@ -4,17 +4,19 @@ const fs = require('fs');
 const ui = fs.readFileSync('src/ui.js', 'utf8');
 const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const externalPlayer = fs.readFileSync('src/playback/ui-external-player.js', 'utf8');
+const css = fs.readFileSync('style.css', 'utf8');
 
 const settingsOrder = [
-    "name: 'yani_account_title'",
+    "name: 'yani_settings_entry_guard'",
+    "settingsSectionParam('yani_account_title'",
     "name: 'yani_account_state'",
-    "name: 'yani_interface_title'",
-    "name: 'yani_playback_title'",
-    "name: 'yani_display_sources_title'",
-    "name: 'yani_playback_services_title'",
-    "name: 'yani_lampa_card_title'",
-    "name: 'yani_home_sections_title'",
-    "name: 'yani_about_title'",
+    "settingsSectionParam('yani_interface_title'",
+    "settingsSectionParam('yani_playback_title'",
+    "settingsSectionParam('yani_display_sources_title'",
+    "settingsSectionParam('yani_playback_services_title'",
+    "settingsSectionParam('yani_lampa_card_title'",
+    "settingsSectionParam('yani_home_sections_title'",
+    "settingsSectionParam('yani_about_title'",
     "name: 'yani_about'",
     "name: 'yani_usage_policy'",
     "name: 'yani_repo_notice'"
@@ -37,5 +39,16 @@ assert.match(settingsSource, /if \(isAndroidTvPlatform\(\)\) \{[\s\S]{0,260}name
     'the disabled-by-default YummyTV setting must only be registered on Android TV');
 assert.match(externalPlayer, /function yummyTvEnabled\(\) \{[\s\S]{0,100}if \(!isAndroidTvPlatform\(\)\) return false/,
     'stored YummyTV state must stay inactive outside Android TV');
+assert.match(settingsSource, /function settingsSectionParam\(name, label, tone, first, description\)/,
+    'settings section headers must share one non-interactive decorator');
+assert.match(settingsSource, /name: 'yani_settings_entry_guard', type: 'button'[\s\S]{0,240}onChange: function \(\) \{ return false; \}/,
+    'the first focus target must absorb repeated OK presses without opening another screen');
+assert.match(css, /\.settings-param\.yani-settings-entry-guard\.focus/,
+    'the inert entry guard must still have a clear TV focus state');
+['account', 'interface', 'playback', 'sources', 'integrations', 'lampa', 'home', 'about'].forEach((tone) => {
+    assert.match(css, new RegExp(`yani-settings-section--${tone}`), `${tone} settings group must have a visual tone`);
+});
+assert.match(css, /\.settings-param\.yani-settings-section\s*\{[\s\S]{0,180}margin-top:/,
+    'settings groups must have a visible vertical separator');
 
 console.log('settings structure contract tests passed');

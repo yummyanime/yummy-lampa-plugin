@@ -9,17 +9,33 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.2] - 2026-11-11
+
+### Added
+
+- Add an inert first focus target to absorb repeated TV remote OK presses in settings
+
+## [0.53.1] - 2026-11-11
+
+### Added
+
+- Add color-coded section headers and authorized account state styling
+
+### Changed
+
+- Refactor extension settings into visually separated TV-friendly groups
+
 ## [0.53.0] - 2026-11-11
 
 ### Added
 
-- Add TV-friendly event filters to My Feed 
+- Add TV-friendly event filters to My Feed
 - Add lightweight CSS illustrations for the main dashboard actions
 
 ### Changed
 
 - Refactor For You and Updates into one My Feed backed by the existing personal event and related-title sources
-- Refactor Account and Notifications into one profile card 
+- Refactor Account and Notifications into one profile card
 - Move service status into a focusable dashboard indicator
 
 ### Removed
@@ -28,10 +44,6 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [0.52.2] - 2026-11-11
 
-### Fixed
-
-- Fix GitHub Pages deployment occasionally missing a freshly uploaded artifact
-
 ### Changed
 
 - Refactor GitHub Pages deployment to use GitHub's supported Pages action
@@ -39,6 +51,10 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 ### Removed
 
 - Remove the custom Pages deployment helper
+
+### Fixed
+
+- Fix GitHub Pages deployment occasionally missing a freshly uploaded artifact
 
 ## [0.52.1] - 2026-11-11
 

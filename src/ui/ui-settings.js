@@ -22,6 +22,29 @@
 
         var authSettingsParamDefinition = null;
 
+        function decorateSettingsSection(item, tone, first) {
+            var row = item && item.addClass ? item : $(item || []);
+            if (!row.length) return;
+            row.addClass('yani-settings-section yani-settings-section--' + tone);
+            if (first) row.addClass('yani-settings-section--first');
+        }
+
+        function settingsSectionParam(name, label, tone, first, description) {
+            return {
+                component: 'yani',
+                param: {name: name, type: 'title'},
+                field: {name: label, description: description || ''},
+                onRender: function (item) {
+                    decorateSettingsSection(item, tone, first);
+                }
+            };
+        }
+
+        function decorateSettingsEntryGuard(item) {
+            var row = item && item.addClass ? item : $(item || []);
+            if (row.length) row.addClass('yani-settings-entry-guard');
+        }
+
         function addSettings() {
             if (!Lampa.SettingsApi || !Lampa.SettingsApi.addComponent) return;
             migrateLegacyPlayerPreference();
@@ -32,11 +55,17 @@
                 name: 'YummyAnime'
             });
 
+            // Keep the first focus target deliberately inert. Some TV remotes
+            // emit several OK presses and would otherwise open sign-in at once.
             Lampa.SettingsApi.addParam({
                 component: 'yani',
-                param: {name: 'yani_account_title', type: 'title'},
-                field: {name: t('settings_account_section')}
+                param: {name: 'yani_settings_entry_guard', type: 'button'},
+                field: {name: t('settings_entry_guard'), description: t('settings_entry_guard_description')},
+                onRender: decorateSettingsEntryGuard,
+                onChange: function () { return false; }
             });
+
+            Lampa.SettingsApi.addParam(settingsSectionParam('yani_account_title', t('settings_account_section'), 'account', true));
 
             // Keep this row stable: the account page reads the token on every render,
             // so sign-in and sign-out never leave stale conditional settings behind.
@@ -61,11 +90,7 @@
                 field: {name: t('auto_manage_lists'), description: t('auto_manage_lists_description')}
             });
 
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_interface_title', type: 'title'},
-                field: {name: t('settings_interface_section')}
-            });
+            Lampa.SettingsApi.addParam(settingsSectionParam('yani_interface_title', t('settings_interface_section'), 'interface'));
 
             Lampa.SettingsApi.addParam({
                 component: 'yani',
@@ -84,11 +109,7 @@
                 field: {name: t('episode_flags'), description: t('episode_flags_description')}
             });
 
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_playback_title', type: 'title'},
-                field: {name: t('settings_playback_section')}
-            });
+            Lampa.SettingsApi.addParam(settingsSectionParam('yani_playback_title', t('settings_playback_section'), 'playback'));
 
             if (externalPlayerAvailable()) {
                 var webOsTarget = isWebOsPlatform();
@@ -157,11 +178,7 @@
                 }
             });
 
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_display_sources_title', type: 'title'},
-                field: {name: t('display_sources'), description: t('display_sources_description')}
-            });
+            Lampa.SettingsApi.addParam(settingsSectionParam('yani_display_sources_title', t('display_sources'), 'sources', false, t('display_sources_description')));
             PLAYBACK_SOURCE_IDS.forEach(function (sourceId) {
                 var label = playbackSourceLabel(sourceId);
                 var storageKey = 'yani_source_' + sourceId;
@@ -182,11 +199,7 @@
                 });
             });
 
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_playback_services_title', type: 'title'},
-                field: {name: t('settings_integrations_section')}
-            });
+            Lampa.SettingsApi.addParam(settingsSectionParam('yani_playback_services_title', t('settings_integrations_section'), 'integrations'));
 
             if (isAndroidTvPlatform()) {
                 Lampa.SettingsApi.addParam({
@@ -243,11 +256,7 @@
                 }
             });
 
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_lampa_card_title', type: 'title'},
-                field: {name: t('lampa_card_integration')}
-            });
+            Lampa.SettingsApi.addParam(settingsSectionParam('yani_lampa_card_title', t('lampa_card_integration'), 'lampa'));
 
             Lampa.SettingsApi.addParam({
                 component: 'yani',
@@ -261,11 +270,7 @@
                 field: {name: t('lampa_card_button'), description: t('lampa_card_button_description')}
             });
 
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_home_sections_title', type: 'title'},
-                field: {name: t('home_sections')}
-            });
+            Lampa.SettingsApi.addParam(settingsSectionParam('yani_home_sections_title', t('home_sections'), 'home'));
 
             [
                 ['catalog', 'catalog'],
@@ -288,11 +293,7 @@
                 });
             });
 
-            Lampa.SettingsApi.addParam({
-                component: 'yani',
-                param: {name: 'yani_about_title', type: 'title'},
-                field: {name: t('settings_about_section')}
-            });
+            Lampa.SettingsApi.addParam(settingsSectionParam('yani_about_title', t('settings_about_section'), 'about'));
 
             Lampa.SettingsApi.addParam({
                 component: 'yani',

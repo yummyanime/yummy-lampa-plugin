@@ -3649,3 +3649,163 @@ body.yani-player-open .head--simple {
     .yani-account__content { max-width: 78em; margin-left: auto; margin-right: auto; }
     .yani-detail { max-width: 96em; margin-left: auto; margin-right: auto; }
 }
+
+/* Settings keep Lampa's native controls, but make each feature group easy to scan. */
+.settings-param.yani-settings-entry-guard {
+    position: relative;
+    min-height: 4.1em;
+    margin: .15em 0 .85em;
+    padding: .78em 1em .78em 4.7em;
+    overflow: hidden;
+    box-sizing: border-box;
+    border: .08em solid rgba(255,255,255,.12);
+    border-radius: 1.05em .62em .98em .7em;
+    background: linear-gradient(118deg, rgba(239,100,112,.18), rgba(116,88,211,.12) 54%, rgba(73,155,255,.1));
+    box-shadow: inset 0 .06em 0 rgba(255,255,255,.08), 0 .5em 1.4em rgba(0,0,0,.12);
+}
+
+.settings-param.yani-settings-entry-guard::before {
+    content: 'YA';
+    position: absolute;
+    left: 1em;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75em;
+    height: 2.75em;
+    border-radius: .9em .52em .84em .58em;
+    color: #fff;
+    background: linear-gradient(145deg, #ef6470, #8a4fc0);
+    box-shadow: 0 .35em .8em rgba(139,54,103,.32);
+    font-size: .78em;
+    font-weight: 800;
+    letter-spacing: .04em;
+    transform: translateY(-50%);
+}
+
+.settings-param.yani-settings-entry-guard::after {
+    content: '';
+    position: absolute;
+    right: -2.8em;
+    top: -5.8em;
+    width: 11em;
+    height: 11em;
+    border: .08em solid rgba(255,255,255,.09);
+    border-radius: 50%;
+    box-shadow: 0 0 0 1.5em rgba(255,255,255,.025);
+    pointer-events: none;
+}
+
+.settings-param.yani-settings-entry-guard .settings-param__name,
+.settings-param.yani-settings-entry-guard .settings-param__descr {
+    position: relative;
+    z-index: 1;
+}
+
+.settings-param.yani-settings-entry-guard .settings-param__name {
+    color: #fff;
+    font-weight: 750;
+}
+
+.settings-param.yani-settings-entry-guard .settings-param__descr {
+    color: rgba(255,255,255,.56);
+}
+
+.settings-param.yani-settings-entry-guard.focus {
+    border-color: rgba(255,255,255,.86);
+    background: linear-gradient(118deg, rgba(239,100,112,.28), rgba(116,88,211,.2) 54%, rgba(73,155,255,.17));
+    box-shadow: 0 0 0 .14em rgba(255,255,255,.16), 0 .65em 1.6em rgba(0,0,0,.2);
+}
+
+.settings-param.yani-settings-entry-guard.focus::before {
+    color: #a63863;
+    background: #fff;
+}
+
+.settings-param.yani-settings-section {
+    position: relative;
+    min-height: 0;
+    margin-top: 1.55em !important;
+    margin-bottom: .5em !important;
+    padding: .72em 1em .72em 1.2em !important;
+    overflow: hidden;
+    border: .07em solid rgba(255,255,255,.12);
+    border-radius: .9em .52em .84em .58em;
+    background: linear-gradient(120deg, rgba(255,255,255,.11), rgba(255,255,255,.035));
+    box-shadow: inset 0 .06em 0 rgba(255,255,255,.07), 0 .4em 1.2em rgba(0,0,0,.1);
+}
+
+.settings-param.yani-settings-section--first {
+    margin-top: .25em !important;
+}
+
+.settings-param.yani-settings-section::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: .58em;
+    bottom: .58em;
+    width: .22em;
+    border-radius: 0 1em 1em 0;
+    background: #ef6470;
+    box-shadow: 0 0 .8em rgba(239,100,112,.45);
+}
+
+.settings-param.yani-settings-section::after {
+    content: '';
+    position: absolute;
+    right: -2.2em;
+    top: -3.8em;
+    width: 8em;
+    height: 8em;
+    border: .07em solid rgba(255,255,255,.08);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.settings-param.yani-settings-section .settings-param__name {
+    position: relative;
+    z-index: 1;
+    color: #fff;
+    font-size: 1.03em;
+    font-weight: 750;
+    letter-spacing: .015em;
+}
+
+.settings-param.yani-settings-section .settings-param__descr {
+    position: relative;
+    z-index: 1;
+    max-width: 54em;
+    margin-top: .2em;
+    color: rgba(255,255,255,.52);
+    font-size: .72em;
+}
+
+.settings-param.yani-settings-section--account { background: linear-gradient(120deg, rgba(231,122,179,.16), rgba(94,58,115,.07)); }
+.settings-param.yani-settings-section--account::before { background: #e77ab3; box-shadow: 0 0 .8em rgba(231,122,179,.45); }
+.settings-param.yani-settings-section--interface { background: linear-gradient(120deg, rgba(112,151,255,.15), rgba(74,75,151,.06)); }
+.settings-param.yani-settings-section--interface::before { background: #7097ff; box-shadow: 0 0 .8em rgba(112,151,255,.45); }
+.settings-param.yani-settings-section--playback { background: linear-gradient(120deg, rgba(239,100,112,.16), rgba(146,56,86,.06)); }
+.settings-param.yani-settings-section--sources { background: linear-gradient(120deg, rgba(255,158,84,.14), rgba(151,84,45,.05)); }
+.settings-param.yani-settings-section--sources::before { background: #ff9e54; box-shadow: 0 0 .8em rgba(255,158,84,.42); }
+.settings-param.yani-settings-section--integrations { background: linear-gradient(120deg, rgba(108,213,207,.14), rgba(45,119,130,.05)); }
+.settings-param.yani-settings-section--integrations::before { background: #6cd5cf; box-shadow: 0 0 .8em rgba(108,213,207,.42); }
+.settings-param.yani-settings-section--lampa { background: linear-gradient(120deg, rgba(191,114,233,.14), rgba(104,65,151,.05)); }
+.settings-param.yani-settings-section--lampa::before { background: #bf72e9; box-shadow: 0 0 .8em rgba(191,114,233,.42); }
+.settings-param.yani-settings-section--home { background: linear-gradient(120deg, rgba(85,215,149,.14), rgba(39,126,108,.05)); }
+.settings-param.yani-settings-section--home::before { background: #55d795; box-shadow: 0 0 .8em rgba(85,215,149,.42); }
+.settings-param.yani-settings-section--about { background: linear-gradient(120deg, rgba(245,201,94,.13), rgba(137,99,43,.05)); }
+.settings-param.yani-settings-section--about::before { background: #f5c95e; box-shadow: 0 0 .8em rgba(245,201,94,.4); }
+
+.settings-param.yani-settings-auth--authorized {
+    border-left: .18em solid rgba(85,215,149,.82);
+    background: linear-gradient(90deg, rgba(85,215,149,.08), transparent 38%);
+}
+
+@media (max-width: 700px) {
+    .settings-param.yani-settings-section {
+        margin-top: 1.15em !important;
+        padding: .62em .8em .62em 1em !important;
+    }
+}
