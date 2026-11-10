@@ -13,5 +13,11 @@ dist/smoke.js
 src/ui-detail-sections.js
 
 .history/
+.codex/
+.claude/
+.cursor/
+.aider/
+.aider.chat.history.md
+.aider.input.history
 
 .tmp-video-frames/

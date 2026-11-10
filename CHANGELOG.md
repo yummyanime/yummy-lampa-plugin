@@ -9,6 +9,20 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.52.2] - 2026-11-11
+
+### Fixed
+
+- Fix GitHub Pages deployment occasionally missing a freshly uploaded artifact
+
+### Changed
+
+- Refactor GitHub Pages deployment to use GitHub's supported Pages action
+
+### Removed
+
+- Remove the custom Pages deployment helper
+
 ## [0.52.1] - 2026-11-11
 
 ### Removed

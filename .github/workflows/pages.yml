@@ -7,7 +7,6 @@ on:
 
 permissions:
   contents: read
-  actions: read
   pages: write
   id-token: write
 
@@ -88,15 +87,12 @@ jobs:
           if [ -f stable.json ]; then cp stable.json _pages/; fi
 
       - name: Upload site
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
-          name: github-pages-${{ github.run_attempt }}
           path: _pages
 
       - name: Deploy
         id: deployment
-        run: node scripts/deploy-pages.js
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          PAGES_ARTIFACT_NAME: github-pages-${{ github.run_attempt }}
-          PAGES_DEPLOY_TIMEOUT_MS: '3600000'
+        uses: actions/deploy-pages@v4
+        with:
+          timeout: 3600000
