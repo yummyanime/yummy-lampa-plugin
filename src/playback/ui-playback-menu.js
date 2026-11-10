@@ -30,6 +30,8 @@
         var enrichVoiceOptionQuality = deps.enrichVoiceOptionQuality || function () {};
         var episodeFlags = deps.episodeFlags || function () { return Promise.resolve({}); };
         var EPISODE_FLAGS_WAIT_MS = 1500;
+        var EPISODE_RANGE_SIZE = 24;
+        var EPISODE_RANGE_THRESHOLD = 48;
         var episodeOptionTitle = deps.episodeOptionTitle || function (card, video) {
             return String(video && (video.number || video.index) || '?');
         };
@@ -237,6 +239,8 @@
             var settled = false;
             var originalBack = params.onBack;
             var originalSelect = params.onSelect;
+            var restoreOnBack = params.restoreOnBack !== false;
+            delete params.restoreOnBack;
             // Some Lampa builds close Select by calling onBack even after a
             // choice. That used to restore the title card and kill the next
             // voice / episode / player window.
@@ -247,7 +251,7 @@
             params.onBack = function () {
                 if (settled) return;
                 if (originalBack) originalBack();
-                restorePlaybackInteraction();
+                if (restoreOnBack) restorePlaybackInteraction();
             };
             // Chained voice/episode/player windows own return focus themselves.
             params.yaniRestore = false;
@@ -586,6 +590,10 @@
         }
 
         function showEpisodeList(card, group, videos, allVideos, resetItems, flags) {
+            if (videos.length > EPISODE_RANGE_THRESHOLD) {
+                showEpisodeRanges(card, group, videos, allVideos, resetItems, flags);
+                return;
+            }
             var episodes = videos.map(function (video) {
                 var item = {title: episodeOptionTitle(card, video), video: video};
                 var flagLabel = episodeFlagLabel(flags, video);
@@ -613,6 +621,88 @@
                     launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video));
                 }
             });
+        }
+
+        function showEpisodeRanges(card, group, videos, allVideos, resetItems, flags) {
+            var items = [];
+            var saved = card && (card.yani_resume || getPlayback(card.yani_id));
+            var savedIndex = -1;
+            if (saved && saved.number !== undefined && saved.number !== null && saved.number !== '') {
+                savedIndex = videos.findIndex(function (video) {
+                    return window.LampaYaniEpisode.same(window.LampaYaniEpisode.valueOf(video), saved.number);
+                });
+            }
+            if (savedIndex >= 0) {
+                items.push({
+                    title: t('episode_jump_saved').replace('{episode}', window.LampaYaniEpisode.valueOf(videos[savedIndex])),
+                    subtitle: t('episode_jump_saved_description'),
+                    start: Math.floor(savedIndex / EPISODE_RANGE_SIZE) * EPISODE_RANGE_SIZE,
+                    selectedIndex: savedIndex % EPISODE_RANGE_SIZE
+                });
+            }
+            for (var start = 0; start < videos.length; start += EPISODE_RANGE_SIZE) {
+                var page = videos.slice(start, start + EPISODE_RANGE_SIZE);
+                items.push({
+                    title: episodeRangeTitle(page),
+                    subtitle: t('episode_range_count').replace('{count}', page.length),
+                    start: start
+                });
+            }
+            if (resetItems.length) {
+                items.push({
+                    title: t('reset_episode_progress'),
+                    subtitle: t('reset_episode_progress_description'),
+                    action: 'reset'
+                });
+            }
+            showPlaybackSelect({
+                title: t('choose_episode') + ' · ' + group.title,
+                items: items,
+                selected: 0,
+                onSelect: function (item) {
+                    if (item.action === 'reset') {
+                        return showPlaybackSelect({
+                            title: t('reset_episode_progress'),
+                            items: resetItems,
+                            onSelect: function (resetItem) { resetEpisode(card, allVideos, resetItem); },
+                            onBack: function () { showEpisodeRanges(card, group, videos, allVideos, resetItems, flags); },
+                            restoreOnBack: false
+                        });
+                    }
+                    var startAt = Number(item.start || 0);
+                    showEpisodeRange(card, group, videos.slice(startAt, startAt + EPISODE_RANGE_SIZE), videos, allVideos, resetItems, flags, {
+                        selected: Number(item.selectedIndex || 0),
+                        onBack: function () { showEpisodeRanges(card, group, videos, allVideos, resetItems, flags); }
+                    });
+                }
+            });
+        }
+
+        function showEpisodeRange(card, group, visibleVideos, playlist, allVideos, resetItems, flags, options) {
+            options = options || {};
+            var episodes = visibleVideos.map(function (video) {
+                var item = {title: episodeOptionTitle(card, video), video: video};
+                var flagLabel = episodeFlagLabel(flags, video);
+                if (flagLabel) item.subtitle = flagLabel;
+                return item;
+            });
+            showPlaybackSelect({
+                title: episodeRangeTitle(visibleVideos) + ' · ' + group.title,
+                items: episodes,
+                selected: Number(options.selected || 0),
+                onBack: options.onBack,
+                restoreOnBack: false,
+                onSelect: function (item) {
+                    launchVideo(card, group, playlist, applySavedPlaybackPosition(card, item.video));
+                }
+            });
+        }
+
+        function episodeRangeTitle(videos) {
+            if (!videos || !videos.length) return t('choose_episode');
+            return t('episode_range')
+                .replace('{from}', window.LampaYaniEpisode.valueOf(videos[0]))
+                .replace('{to}', window.LampaYaniEpisode.valueOf(videos[videos.length - 1]));
         }
 
         function showDirectPlaybackOptions(card, current, playlist, options) {

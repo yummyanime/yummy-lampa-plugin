@@ -220,6 +220,10 @@
 
         function restoreExternalFocus() {
             if (!externalRestoreState.pending) return;
+            if (!webViewReadyForFocus()) {
+                waitForWebViewFocus();
+                return;
+            }
             // The active playback-return state is the state we must restore. Only
             // cancel when it was already completed or a newer playback session won.
             if (!playbackReturnState.active || playbackReturnState.session !== externalRestoreState.session) {
@@ -236,6 +240,10 @@
             var delay = Math.max(0, 250 - elapsed);
             setTimeout(function () {
                 if (!externalRestoreState.pending) return;
+                if (!webViewReadyForFocus()) {
+                    waitForWebViewFocus();
+                    return;
+                }
                 if (!playbackReturnState.active || playbackReturnState.session !== externalRestoreState.session) {
                     cancelExternalRestore();
                     return;
@@ -248,6 +256,21 @@
                 cancelExternalRestore();
                 restorePlaybackInteraction(snapshot, {timeout: 2400, interval: 120});
             }, delay);
+        }
+
+        function webViewReadyForFocus() {
+            if (typeof document === 'undefined') return true;
+            if (document.hidden) return false;
+            try {
+                if (typeof document.hasFocus === 'function' && !document.hasFocus()) return false;
+            } catch (ignore) {}
+            return true;
+        }
+
+        function waitForWebViewFocus() {
+            setTimeout(function () {
+                if (externalRestoreState.pending && webViewReadyForFocus()) restoreExternalFocus();
+            }, 180);
         }
 
         function showExternalPlaybackOptions(card, options) {

@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.3] - 2026-11-11
+
+### Added
+
+- Episode ranges for long title lists with a shortcut to the last watched episode
+
+### Fixed
+
+- Title-card focus restoration waiting until Lampa WebView is active after returning from an external player
+
 ## [0.53.2] - 2026-11-11
 
 ### Added
