@@ -242,9 +242,13 @@ Promise.all([
     }).then(function (retriedVk) {
         assert.strictEqual(strippedVkCalls, 2, 'a stripped VK player page must be requested again');
         assert.strictEqual(retriedVk.url, 'https://vkvd.test/stream/720.mp4?token=retry');
-        return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=AniLibria&anime_id=31240&episode=2', {force: true});
+        return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeCVH.html?dubbing_code=AniLibria&anime_id=31240&episode=2', {
+            force: true,
+            preferredQuality: '720p'
+        });
     }).then(function (forcedCvh) {
-        assert.strictEqual(forcedCvh.url, 'https://vd.example.test/?type=5&token=1080', 'forced CVH recovery must switch a named CDN host to failoverHost');
+        assert.strictEqual(forcedCvh.quality, '720p');
+        assert.strictEqual(forcedCvh.url, 'https://vd.example.test/?type=3&token=720', 'forced CVH recovery must switch the selected quality to failoverHost');
         assert.strictEqual(forcedCvh.qualities['720p'], 'https://vd.example.test/?type=3&token=720');
         return LampaYaniStreamResolver.resolve('https://ru.yummyani.me/iframeCVH.html?anime_id=777&episode=1');
     }).then(function () {

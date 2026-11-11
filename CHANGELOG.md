@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.8] - 2026-11-11
+
+### Added
+
+- TV-friendly bulk watched controls for the selected episode and every previous episode
+
+### Fixed
+
+- CVH failover retaining the active quality and resume position while refreshing the signed stream
+
 ## [0.53.7] - 2026-11-11
 
 ### Fixed

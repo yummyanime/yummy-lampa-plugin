@@ -543,7 +543,8 @@
             });
             var labels = Object.keys(qualities);
             if (!labels.length) throw new Error('CVH stream links not found');
-            var label = labels[labels.length - 1];
+            var preferredQuality = String(options.preferredQuality || '').trim();
+            var label = preferredQuality && qualities[preferredQuality] ? preferredQuality : labels[labels.length - 1];
             return cacheResult(fullUrl, {
                 url: qualities[label],
                 quality: label,
@@ -943,7 +944,10 @@
         if (options.force) invalidate(url);
         if (isDirectVideoUrl(url)) return Promise.resolve({url: url, source: 'direct'});
         if (isKodikUrl(url)) return resolveKodik(url);
-        if (isCvhUrl(url)) return resolveCvh(url, {forceFailover: Boolean(options.force)});
+        if (isCvhUrl(url)) return resolveCvh(url, {
+            forceFailover: Boolean(options.force),
+            preferredQuality: options.preferredQuality
+        });
         if (isAksorUrl(url)) return resolveAksor(url);
         if (isSibnetUrl(url)) return resolveSibnet(url);
         if (isRutubeUrl(url)) return resolveRutube(url);

@@ -304,7 +304,14 @@
             videos = Array.isArray(videos) ? videos.filter(Boolean) : [];
             var episode = videos.length ? window.LampaYaniEpisode.valueOf(videos[0]) : '';
             if (!card || !card.yani_id || !episode) return Promise.reject(new Error('Episode progress target is missing'));
+            var clearedKeys = {};
+            var clearedNumbers = [];
             videos.forEach(function (video) {
+                var value = window.LampaYaniEpisode.valueOf(video);
+                var key = window.LampaYaniEpisode.key(value);
+                var number = positiveNumber(value);
+                if (key) clearedKeys[key] = true;
+                if (number) clearedNumbers.push(number);
                 if (!video.watched || typeof video.watched !== 'object') video.watched = {};
                 video.watched.end_time = 0;
                 video.watched.time = 0;
@@ -314,14 +321,22 @@
 
             var history = playbackHistory();
             var saved = history[String(card.yani_id)];
-            if (saved && window.LampaYaniEpisode.same(saved.number, episode)) {
-                saved.time = 0;
-                saved.resume_next = false;
-                if (positiveNumber(saved.max_episode) === positiveNumber(episode)) {
-                    saved.max_episode = Math.max(0, positiveNumber(episode) - 1);
+            if (saved) {
+                if (clearedKeys[window.LampaYaniEpisode.key(saved.number)]) {
+                    saved.time = 0;
+                    saved.resume_next = false;
                 }
-                if (positiveNumber(card.yani_watched_episodes) === positiveNumber(episode)) {
-                    card.yani_watched_episodes = saved.max_episode;
+                Object.keys(clearedKeys).forEach(function (key) {
+                    if (saved.half_watched_episodes) delete saved.half_watched_episodes[key];
+                    if (saved.finished_episodes) delete saved.finished_episodes[key];
+                });
+                var highestCleared = clearedNumbers.length ? Math.max.apply(Math, clearedNumbers) : 0;
+                var lowestCleared = clearedNumbers.length ? Math.min.apply(Math, clearedNumbers) : 0;
+                if (highestCleared && positiveNumber(saved.max_episode) <= highestCleared) {
+                    saved.max_episode = Math.max(0, lowestCleared - 1);
+                }
+                if (highestCleared && positiveNumber(card.yani_watched_episodes) <= highestCleared) {
+                    card.yani_watched_episodes = Math.max(0, lowestCleared - 1);
                 }
                 saved.updated_at = Date.now();
                 persistHistory(history);
@@ -338,6 +353,80 @@
                 return Promise.resolve({local: true, removed: ids.length});
             }
             return window.LampaYaniApi.removeVideoWatches(ids);
+        }
+
+        function markEpisodesWatched(card, videos) {
+            videos = Array.isArray(videos) ? videos.filter(Boolean) : [];
+            if (!card || !card.yani_id || !videos.length) return Promise.reject(new Error('Episode progress target is missing'));
+            var byEpisode = {};
+            videos.forEach(function (video) {
+                var value = window.LampaYaniEpisode.valueOf(video);
+                var key = window.LampaYaniEpisode.key(value);
+                if (!key) return;
+                var duration = positiveNumber(video.duration) || 24 * 60;
+                if (!video.watched || typeof video.watched !== 'object') video.watched = {};
+                video.watched.end_time = duration;
+                video.watched.time = duration;
+                video.watched.completed = true;
+                video.watched.finished = true;
+                var current = byEpisode[key];
+                if (!current || !current.video_id && (video.video_id || video.id)) byEpisode[key] = video;
+            });
+            var episodeKeys = Object.keys(byEpisode);
+            if (!episodeKeys.length) return Promise.reject(new Error('Episode progress target is missing'));
+            var representative = episodeKeys.map(function (key) { return byEpisode[key]; }).sort(function (left, right) {
+                return positiveNumber(window.LampaYaniEpisode.valueOf(left)) - positiveNumber(window.LampaYaniEpisode.valueOf(right));
+            }).pop();
+            var reached = positiveNumber(window.LampaYaniEpisode.valueOf(representative));
+            var duration = positiveNumber(representative.duration) || 24 * 60;
+            var history = playbackHistory();
+            var previous = history[String(card.yani_id)] || {};
+            var saved = history[String(card.yani_id)] = Object.assign({}, previous, {
+                number: window.LampaYaniEpisode.valueOf(representative),
+                max_episode: Math.max(reached, positiveNumber(previous.max_episode)),
+                episodes_aired: Math.max(episodeCeiling(card), reached, positiveNumber(previous.episodes_aired)),
+                video_id: representative.video_id || representative.id || previous.video_id || '',
+                time: duration,
+                duration: duration,
+                title: card.title || previous.title || '',
+                poster: card.poster || card.img || previous.poster || '',
+                updated_at: Date.now(),
+                resume_next: true
+            });
+            saved.half_watched_episodes = Object.assign({}, previous.half_watched_episodes || {});
+            saved.finished_episodes = Object.assign({}, previous.finished_episodes || {});
+            episodeKeys.forEach(function (key) {
+                saved.half_watched_episodes[key] = true;
+                saved.finished_episodes[key] = true;
+            });
+            saved.card = Object.assign({}, previous.card || {}, {
+                title: card.title || '',
+                original_title: card.original_title || '',
+                poster: card.poster || card.img || '',
+                release_date: card.release_date || '',
+                overview: card.overview || '',
+                anime_id: card.yani_id,
+                remote_ids: card.yani_remote_ids || {}
+            });
+            persistHistory(history);
+            card.yani_watched_episodes = Math.max(positiveNumber(card.yani_watched_episodes), reached);
+            card.yani_resume = Object.assign({}, saved, {last_watched_episode: reached});
+            refreshVisiblePlaybackProgress(card);
+
+            var watches = episodeKeys.map(function (key) {
+                var video = byEpisode[key];
+                var id = Number(video.video_id || video.id || 0);
+                return id > 0 ? {
+                    video_id: id,
+                    time: positiveNumber(video.duration) || 24 * 60,
+                    date: Math.floor(Date.now() / 1000)
+                } : null;
+            }).filter(Boolean);
+            if (!watches.length || !window.LampaYaniAuth || !window.LampaYaniAuth.token() ||
+                !window.LampaYaniApi || !window.LampaYaniApi.syncVideoWatches) {
+                return Promise.resolve({local: true, marked: episodeKeys.length});
+            }
+            return window.LampaYaniApi.syncVideoWatches(watches);
         }
 
         function renderHistoryProgress(rendered, playback) {
@@ -546,6 +635,7 @@
             autoManageListsEnabled: autoManageListsEnabled,
             syncServerProgress: syncServerProgress,
             clearEpisodeProgress: clearEpisodeProgress,
+            markEpisodesWatched: markEpisodesWatched,
             renderHistoryProgress: renderHistoryProgress,
             refreshVisiblePlaybackProgress: refreshVisiblePlaybackProgress,
             updatePlaybackProgress: updatePlaybackProgress,

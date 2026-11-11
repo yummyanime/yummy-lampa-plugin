@@ -47,6 +47,7 @@
         var openYummyTv = deps.openYummyTv || function () { return false; };
         var loadVideos = deps.loadVideos || function (id, options) { return LampaYaniApi.videos(id, options); };
         var clearEpisodeProgress = deps.clearEpisodeProgress || function () { return Promise.resolve(); };
+        var markEpisodesWatched = deps.markEpisodesWatched || function () { return Promise.resolve(); };
 
         var cancelExternalRestore = deps.cancelExternalRestore || function () {};
         var playbackSession = 0;
@@ -548,6 +549,60 @@
             });
         }
 
+        function episodesThrough(videos, targetEpisode) {
+            var target = window.LampaYaniEpisode.number(targetEpisode);
+            return (videos || []).filter(function (video) {
+                var number = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(video));
+                return isFinite(number) && isFinite(target) && number <= target;
+            });
+        }
+
+        function batchEpisodeProgress(card, allVideos, item, watched) {
+            var affected = episodesThrough(allVideos, item.episode);
+            if (!affected.length) return;
+            if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
+            var operation = watched ? markEpisodesWatched(card, affected) : clearEpisodeProgress(card, affected);
+            Promise.resolve(operation).then(function () {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                Lampa.Noty.show(t(watched ? 'episodes_marked_watched' : 'episodes_progress_cleared'));
+                restorePlaybackInteraction();
+            }).catch(function (error) {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                console.warn('[YummyAnime] Batch episode progress update failed', error);
+                Lampa.Noty.show(t('episodes_progress_update_error'));
+                restorePlaybackInteraction();
+            });
+        }
+
+        function showWatchedManagement(card, allVideos) {
+            var targets = uniqueEpisodes((allVideos || []).filter(function (video) {
+                return isFinite(window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(video)));
+            })).sort(function (left, right) {
+                return window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(left)) -
+                    window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(right));
+            }).map(function (video) {
+                var episode = window.LampaYaniEpisode.valueOf(video);
+                return {title: t('through_episode').replace('{episode}', episode), episode: episode};
+            });
+            if (!targets.length) return;
+            showPlaybackSelect({
+                title: t('manage_watched_episodes'),
+                items: [
+                    {title: t('mark_watched_through'), action: 'mark'},
+                    {title: t('clear_watched_through'), action: 'clear'}
+                ],
+                onSelect: function (action) {
+                    showPlaybackSelect({
+                        title: t(action.action === 'mark' ? 'mark_watched_through' : 'clear_watched_through'),
+                        items: targets,
+                        onSelect: function (target) {
+                            batchEpisodeProgress(card, allVideos, target, action.action === 'mark');
+                        }
+                    });
+                }
+            });
+        }
+
         function chooseEpisode(card, group, allVideos) {
             var videos = group.videos.slice().sort(function (a, b) {
                 var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
@@ -607,6 +662,11 @@
                     action: 'reset'
                 });
             }
+            episodes.push({
+                title: t('manage_watched_episodes'),
+                subtitle: t('manage_watched_episodes_description'),
+                action: 'watched'
+            });
             showPlaybackSelect({
                 title: t('choose_episode') + ' · ' + group.title,
                 items: episodes,
@@ -618,6 +678,7 @@
                             onSelect: function (resetItem) { resetEpisode(card, allVideos, resetItem); }
                         });
                     }
+                    if (item.action === 'watched') return showWatchedManagement(card, allVideos);
                     launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video));
                 }
             });
@@ -655,6 +716,11 @@
                     action: 'reset'
                 });
             }
+            items.push({
+                title: t('manage_watched_episodes'),
+                subtitle: t('manage_watched_episodes_description'),
+                action: 'watched'
+            });
             showPlaybackSelect({
                 title: t('choose_episode') + ' · ' + group.title,
                 items: items,
@@ -669,6 +735,7 @@
                             restoreOnBack: false
                         });
                     }
+                    if (item.action === 'watched') return showWatchedManagement(card, allVideos);
                     var startAt = Number(item.start || 0);
                     showEpisodeRange(card, group, videos.slice(startAt, startAt + EPISODE_RANGE_SIZE), videos, allVideos, resetItems, flags, {
                         selected: Number(item.selectedIndex || 0),

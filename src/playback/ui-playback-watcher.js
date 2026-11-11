@@ -485,6 +485,18 @@
             listener.follow('error', state.playerErrorHandler);
         }
 
+        function activeStreamQuality(context, state) {
+            var selected = context && context.selected || {};
+            var qualities = selected.yani_stream_qualities || {};
+            var video = playerVideoElement(state && state.video);
+            var activeUrl = String(video && (video.currentSrc || video.src) || '').split('#')[0];
+            var labels = Object.keys(qualities);
+            for (var index = 0; index < labels.length; index += 1) {
+                if (String(qualities[labels[index]] || '').split('#')[0] === activeUrl) return labels[index];
+            }
+            return String(selected.yani_stream_quality || '');
+        }
+
         function recoverInternalPlayback(generation, context, state, event) {
             if (!event || !event.fatal || generation !== playbackWatcherGeneration || playbackWatcher !== state) return;
             if (state.recovering || state.recoveryAttempts >= INTERNAL_PLAYBACK_RECOVERY_LIMIT || !context || !context.selected) return;
@@ -500,6 +512,7 @@
             storeObservedPlayback(generation, context, state, event, true);
             var position = Math.max(0, Number(state.lastObservedPosition || 0));
             var duration = Math.max(0, Number(state.lastObservedDuration || context.selected.duration || 0));
+            var preferredQuality = activeStreamQuality(context, state);
             context.selected.watched = context.selected.watched || {};
             context.selected.watched.end_time = Math.floor(position);
             // Lampa's internal player resumes only from `timeline.time`; the
@@ -511,7 +524,7 @@
             if (duration > 0) context.selected.duration = Math.floor(duration);
             if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t('internal_player_recovering'));
 
-            LampaYaniStreamResolver.resolve(origin, {force: true}).then(function (result) {
+            LampaYaniStreamResolver.resolve(origin, {force: true, preferredQuality: preferredQuality}).then(function (result) {
                 if (generation !== playbackWatcherGeneration || playbackWatcher !== state || !result || !result.url) return;
                 context.selected.yani_stream_url = result.url;
                 context.selected.yani_stream_quality = result.quality || '';

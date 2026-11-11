@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.7',
-        build: {hash: '38e6a1bf2e', date: '2026-11-11', type: 'production'},
+        version: '0.53.8',
+        build: {hash: 'b2ff7035d0', date: '2026-11-11', type: 'production'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -371,6 +371,14 @@ function pluginYummyAnime() {
     messages.ru.reset_episode_progress_description = 'Выбрать начатую или просмотренную серию';
     messages.ru.episode_progress_cleared = 'Прогресс серии сброшен';
     messages.ru.episode_progress_clear_error = 'Локальный прогресс сброшен, но не удалось синхронизировать аккаунт';
+    messages.ru.manage_watched_episodes = 'Управление просмотренными сериями';
+    messages.ru.manage_watched_episodes_description = 'Отметить или очистить выбранную и все предыдущие серии';
+    messages.ru.mark_watched_through = 'Отметить просмотренными до серии';
+    messages.ru.clear_watched_through = 'Снять отметки до серии';
+    messages.ru.through_episode = 'До серии {episode} включительно';
+    messages.ru.episodes_marked_watched = 'Серии отмечены просмотренными';
+    messages.ru.episodes_progress_cleared = 'Отметки просмотра сняты';
+    messages.ru.episodes_progress_update_error = 'Не удалось изменить отметки серий';
     messages.ru.player = 'Источник';
     messages.ru.player_preference = 'Предпочтительный плеер';
     messages.ru.player_preference_description = 'Где воспроизводить прямые видеопотоки: спрашивать каждый раз, внутренний плеер Lampa или внешний Android-плеер (системный выбор приложений). Доступно только на Android';
@@ -491,6 +499,14 @@ messages.ru.cvh_region_blocked = 'Видео CVH недоступно в ваш�
     messages.en.reset_episode_progress_description = 'Choose a started or watched episode';
     messages.en.episode_progress_cleared = 'Episode progress was reset';
     messages.en.episode_progress_clear_error = 'Local progress was reset, but account sync failed';
+    messages.en.manage_watched_episodes = 'Manage watched episodes';
+    messages.en.manage_watched_episodes_description = 'Mark or clear the selected episode and every previous episode';
+    messages.en.mark_watched_through = 'Mark watched through episode';
+    messages.en.clear_watched_through = 'Clear watched through episode';
+    messages.en.through_episode = 'Through episode {episode}';
+    messages.en.episodes_marked_watched = 'Episodes marked as watched';
+    messages.en.episodes_progress_cleared = 'Watched marks cleared';
+    messages.en.episodes_progress_update_error = 'Could not update episode marks';
     messages.en.player = 'Source';
     messages.en.player_preference = 'Preferred player';
     messages.en.player_preference_description = 'Where to play direct video streams: ask every time, internal Lampa player, or an external Android player (system app chooser). Available on Android only';
@@ -957,6 +973,14 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.reset_episode_progress_description = 'Вибрати розпочату або переглянуту серію';
     messages.uk.episode_progress_cleared = 'Прогрес серії скинуто';
     messages.uk.episode_progress_clear_error = 'Локальний прогрес скинуто, але не вдалося синхронізувати обліковий запис';
+    messages.uk.manage_watched_episodes = 'Керування переглянутими серіями';
+    messages.uk.manage_watched_episodes_description = 'Позначити або очистити вибрану та всі попередні серії';
+    messages.uk.mark_watched_through = 'Позначити переглянутими до серії';
+    messages.uk.clear_watched_through = 'Зняти позначки до серії';
+    messages.uk.through_episode = 'До серії {episode} включно';
+    messages.uk.episodes_marked_watched = 'Серії позначено переглянутими';
+    messages.uk.episodes_progress_cleared = 'Позначки перегляду знято';
+    messages.uk.episodes_progress_update_error = 'Не вдалося змінити позначки серій';
     messages.uk.playback_target = 'Спосіб перегляду';
     messages.uk.playback_target_description = 'Як відкривати прямі відеопотоки YummyAnime';
     messages.uk.playback_target_ask = 'Запитувати';
@@ -2869,7 +2893,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             });
             var labels = Object.keys(qualities);
             if (!labels.length) throw new Error('CVH stream links not found');
-            var label = labels[labels.length - 1];
+            var preferredQuality = String(options.preferredQuality || '').trim();
+            var label = preferredQuality && qualities[preferredQuality] ? preferredQuality : labels[labels.length - 1];
             return cacheResult(fullUrl, {
                 url: qualities[label],
                 quality: label,
@@ -3269,7 +3294,10 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         if (options.force) invalidate(url);
         if (isDirectVideoUrl(url)) return Promise.resolve({url: url, source: 'direct'});
         if (isKodikUrl(url)) return resolveKodik(url);
-        if (isCvhUrl(url)) return resolveCvh(url, {forceFailover: Boolean(options.force)});
+        if (isCvhUrl(url)) return resolveCvh(url, {
+            forceFailover: Boolean(options.force),
+            preferredQuality: options.preferredQuality
+        });
         if (isAksorUrl(url)) return resolveAksor(url);
         if (isSibnetUrl(url)) return resolveSibnet(url);
         if (isRutubeUrl(url)) return resolveRutube(url);
@@ -8842,7 +8870,14 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             videos = Array.isArray(videos) ? videos.filter(Boolean) : [];
             var episode = videos.length ? window.LampaYaniEpisode.valueOf(videos[0]) : '';
             if (!card || !card.yani_id || !episode) return Promise.reject(new Error('Episode progress target is missing'));
+            var clearedKeys = {};
+            var clearedNumbers = [];
             videos.forEach(function (video) {
+                var value = window.LampaYaniEpisode.valueOf(video);
+                var key = window.LampaYaniEpisode.key(value);
+                var number = positiveNumber(value);
+                if (key) clearedKeys[key] = true;
+                if (number) clearedNumbers.push(number);
                 if (!video.watched || typeof video.watched !== 'object') video.watched = {};
                 video.watched.end_time = 0;
                 video.watched.time = 0;
@@ -8852,14 +8887,22 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
             var history = playbackHistory();
             var saved = history[String(card.yani_id)];
-            if (saved && window.LampaYaniEpisode.same(saved.number, episode)) {
-                saved.time = 0;
-                saved.resume_next = false;
-                if (positiveNumber(saved.max_episode) === positiveNumber(episode)) {
-                    saved.max_episode = Math.max(0, positiveNumber(episode) - 1);
+            if (saved) {
+                if (clearedKeys[window.LampaYaniEpisode.key(saved.number)]) {
+                    saved.time = 0;
+                    saved.resume_next = false;
                 }
-                if (positiveNumber(card.yani_watched_episodes) === positiveNumber(episode)) {
-                    card.yani_watched_episodes = saved.max_episode;
+                Object.keys(clearedKeys).forEach(function (key) {
+                    if (saved.half_watched_episodes) delete saved.half_watched_episodes[key];
+                    if (saved.finished_episodes) delete saved.finished_episodes[key];
+                });
+                var highestCleared = clearedNumbers.length ? Math.max.apply(Math, clearedNumbers) : 0;
+                var lowestCleared = clearedNumbers.length ? Math.min.apply(Math, clearedNumbers) : 0;
+                if (highestCleared && positiveNumber(saved.max_episode) <= highestCleared) {
+                    saved.max_episode = Math.max(0, lowestCleared - 1);
+                }
+                if (highestCleared && positiveNumber(card.yani_watched_episodes) <= highestCleared) {
+                    card.yani_watched_episodes = Math.max(0, lowestCleared - 1);
                 }
                 saved.updated_at = Date.now();
                 persistHistory(history);
@@ -8876,6 +8919,80 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return Promise.resolve({local: true, removed: ids.length});
             }
             return window.LampaYaniApi.removeVideoWatches(ids);
+        }
+
+        function markEpisodesWatched(card, videos) {
+            videos = Array.isArray(videos) ? videos.filter(Boolean) : [];
+            if (!card || !card.yani_id || !videos.length) return Promise.reject(new Error('Episode progress target is missing'));
+            var byEpisode = {};
+            videos.forEach(function (video) {
+                var value = window.LampaYaniEpisode.valueOf(video);
+                var key = window.LampaYaniEpisode.key(value);
+                if (!key) return;
+                var duration = positiveNumber(video.duration) || 24 * 60;
+                if (!video.watched || typeof video.watched !== 'object') video.watched = {};
+                video.watched.end_time = duration;
+                video.watched.time = duration;
+                video.watched.completed = true;
+                video.watched.finished = true;
+                var current = byEpisode[key];
+                if (!current || !current.video_id && (video.video_id || video.id)) byEpisode[key] = video;
+            });
+            var episodeKeys = Object.keys(byEpisode);
+            if (!episodeKeys.length) return Promise.reject(new Error('Episode progress target is missing'));
+            var representative = episodeKeys.map(function (key) { return byEpisode[key]; }).sort(function (left, right) {
+                return positiveNumber(window.LampaYaniEpisode.valueOf(left)) - positiveNumber(window.LampaYaniEpisode.valueOf(right));
+            }).pop();
+            var reached = positiveNumber(window.LampaYaniEpisode.valueOf(representative));
+            var duration = positiveNumber(representative.duration) || 24 * 60;
+            var history = playbackHistory();
+            var previous = history[String(card.yani_id)] || {};
+            var saved = history[String(card.yani_id)] = Object.assign({}, previous, {
+                number: window.LampaYaniEpisode.valueOf(representative),
+                max_episode: Math.max(reached, positiveNumber(previous.max_episode)),
+                episodes_aired: Math.max(episodeCeiling(card), reached, positiveNumber(previous.episodes_aired)),
+                video_id: representative.video_id || representative.id || previous.video_id || '',
+                time: duration,
+                duration: duration,
+                title: card.title || previous.title || '',
+                poster: card.poster || card.img || previous.poster || '',
+                updated_at: Date.now(),
+                resume_next: true
+            });
+            saved.half_watched_episodes = Object.assign({}, previous.half_watched_episodes || {});
+            saved.finished_episodes = Object.assign({}, previous.finished_episodes || {});
+            episodeKeys.forEach(function (key) {
+                saved.half_watched_episodes[key] = true;
+                saved.finished_episodes[key] = true;
+            });
+            saved.card = Object.assign({}, previous.card || {}, {
+                title: card.title || '',
+                original_title: card.original_title || '',
+                poster: card.poster || card.img || '',
+                release_date: card.release_date || '',
+                overview: card.overview || '',
+                anime_id: card.yani_id,
+                remote_ids: card.yani_remote_ids || {}
+            });
+            persistHistory(history);
+            card.yani_watched_episodes = Math.max(positiveNumber(card.yani_watched_episodes), reached);
+            card.yani_resume = Object.assign({}, saved, {last_watched_episode: reached});
+            refreshVisiblePlaybackProgress(card);
+
+            var watches = episodeKeys.map(function (key) {
+                var video = byEpisode[key];
+                var id = Number(video.video_id || video.id || 0);
+                return id > 0 ? {
+                    video_id: id,
+                    time: positiveNumber(video.duration) || 24 * 60,
+                    date: Math.floor(Date.now() / 1000)
+                } : null;
+            }).filter(Boolean);
+            if (!watches.length || !window.LampaYaniAuth || !window.LampaYaniAuth.token() ||
+                !window.LampaYaniApi || !window.LampaYaniApi.syncVideoWatches) {
+                return Promise.resolve({local: true, marked: episodeKeys.length});
+            }
+            return window.LampaYaniApi.syncVideoWatches(watches);
         }
 
         function renderHistoryProgress(rendered, playback) {
@@ -9084,6 +9201,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             autoManageListsEnabled: autoManageListsEnabled,
             syncServerProgress: syncServerProgress,
             clearEpisodeProgress: clearEpisodeProgress,
+            markEpisodesWatched: markEpisodesWatched,
             renderHistoryProgress: renderHistoryProgress,
             refreshVisiblePlaybackProgress: refreshVisiblePlaybackProgress,
             updatePlaybackProgress: updatePlaybackProgress,
@@ -9148,6 +9266,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var openYummyTv = deps.openYummyTv || function () { return false; };
         var loadVideos = deps.loadVideos || function (id, options) { return LampaYaniApi.videos(id, options); };
         var clearEpisodeProgress = deps.clearEpisodeProgress || function () { return Promise.resolve(); };
+        var markEpisodesWatched = deps.markEpisodesWatched || function () { return Promise.resolve(); };
 
         var cancelExternalRestore = deps.cancelExternalRestore || function () {};
         var playbackSession = 0;
@@ -9649,6 +9768,60 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             });
         }
 
+        function episodesThrough(videos, targetEpisode) {
+            var target = window.LampaYaniEpisode.number(targetEpisode);
+            return (videos || []).filter(function (video) {
+                var number = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(video));
+                return isFinite(number) && isFinite(target) && number <= target;
+            });
+        }
+
+        function batchEpisodeProgress(card, allVideos, item, watched) {
+            var affected = episodesThrough(allVideos, item.episode);
+            if (!affected.length) return;
+            if (Lampa.Loading && Lampa.Loading.start) Lampa.Loading.start();
+            var operation = watched ? markEpisodesWatched(card, affected) : clearEpisodeProgress(card, affected);
+            Promise.resolve(operation).then(function () {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                Lampa.Noty.show(t(watched ? 'episodes_marked_watched' : 'episodes_progress_cleared'));
+                restorePlaybackInteraction();
+            }).catch(function (error) {
+                if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
+                console.warn('[YummyAnime] Batch episode progress update failed', error);
+                Lampa.Noty.show(t('episodes_progress_update_error'));
+                restorePlaybackInteraction();
+            });
+        }
+
+        function showWatchedManagement(card, allVideos) {
+            var targets = uniqueEpisodes((allVideos || []).filter(function (video) {
+                return isFinite(window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(video)));
+            })).sort(function (left, right) {
+                return window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(left)) -
+                    window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(right));
+            }).map(function (video) {
+                var episode = window.LampaYaniEpisode.valueOf(video);
+                return {title: t('through_episode').replace('{episode}', episode), episode: episode};
+            });
+            if (!targets.length) return;
+            showPlaybackSelect({
+                title: t('manage_watched_episodes'),
+                items: [
+                    {title: t('mark_watched_through'), action: 'mark'},
+                    {title: t('clear_watched_through'), action: 'clear'}
+                ],
+                onSelect: function (action) {
+                    showPlaybackSelect({
+                        title: t(action.action === 'mark' ? 'mark_watched_through' : 'clear_watched_through'),
+                        items: targets,
+                        onSelect: function (target) {
+                            batchEpisodeProgress(card, allVideos, target, action.action === 'mark');
+                        }
+                    });
+                }
+            });
+        }
+
         function chooseEpisode(card, group, allVideos) {
             var videos = group.videos.slice().sort(function (a, b) {
                 var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
@@ -9708,6 +9881,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     action: 'reset'
                 });
             }
+            episodes.push({
+                title: t('manage_watched_episodes'),
+                subtitle: t('manage_watched_episodes_description'),
+                action: 'watched'
+            });
             showPlaybackSelect({
                 title: t('choose_episode') + ' · ' + group.title,
                 items: episodes,
@@ -9719,6 +9897,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                             onSelect: function (resetItem) { resetEpisode(card, allVideos, resetItem); }
                         });
                     }
+                    if (item.action === 'watched') return showWatchedManagement(card, allVideos);
                     launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video));
                 }
             });
@@ -9756,6 +9935,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     action: 'reset'
                 });
             }
+            items.push({
+                title: t('manage_watched_episodes'),
+                subtitle: t('manage_watched_episodes_description'),
+                action: 'watched'
+            });
             showPlaybackSelect({
                 title: t('choose_episode') + ' · ' + group.title,
                 items: items,
@@ -9770,6 +9954,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                             restoreOnBack: false
                         });
                     }
+                    if (item.action === 'watched') return showWatchedManagement(card, allVideos);
                     var startAt = Number(item.start || 0);
                     showEpisodeRange(card, group, videos.slice(startAt, startAt + EPISODE_RANGE_SIZE), videos, allVideos, resetItems, flags, {
                         selected: Number(item.selectedIndex || 0),
@@ -10389,6 +10574,18 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             listener.follow('error', state.playerErrorHandler);
         }
 
+        function activeStreamQuality(context, state) {
+            var selected = context && context.selected || {};
+            var qualities = selected.yani_stream_qualities || {};
+            var video = playerVideoElement(state && state.video);
+            var activeUrl = String(video && (video.currentSrc || video.src) || '').split('#')[0];
+            var labels = Object.keys(qualities);
+            for (var index = 0; index < labels.length; index += 1) {
+                if (String(qualities[labels[index]] || '').split('#')[0] === activeUrl) return labels[index];
+            }
+            return String(selected.yani_stream_quality || '');
+        }
+
         function recoverInternalPlayback(generation, context, state, event) {
             if (!event || !event.fatal || generation !== playbackWatcherGeneration || playbackWatcher !== state) return;
             if (state.recovering || state.recoveryAttempts >= INTERNAL_PLAYBACK_RECOVERY_LIMIT || !context || !context.selected) return;
@@ -10404,6 +10601,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             storeObservedPlayback(generation, context, state, event, true);
             var position = Math.max(0, Number(state.lastObservedPosition || 0));
             var duration = Math.max(0, Number(state.lastObservedDuration || context.selected.duration || 0));
+            var preferredQuality = activeStreamQuality(context, state);
             context.selected.watched = context.selected.watched || {};
             context.selected.watched.end_time = Math.floor(position);
             // Lampa's internal player resumes only from `timeline.time`; the
@@ -10415,7 +10613,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             if (duration > 0) context.selected.duration = Math.floor(duration);
             if (Lampa.Noty && Lampa.Noty.show) Lampa.Noty.show(t('internal_player_recovering'));
 
-            LampaYaniStreamResolver.resolve(origin, {force: true}).then(function (result) {
+            LampaYaniStreamResolver.resolve(origin, {force: true, preferredQuality: preferredQuality}).then(function (result) {
                 if (generation !== playbackWatcherGeneration || playbackWatcher !== state || !result || !result.url) return;
                 context.selected.yani_stream_url = result.url;
                 context.selected.yani_stream_quality = result.quality || '';
@@ -20797,7 +20995,17 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         yummyTvAnimeId: function (card) { return yummyTvAnimeId(card); },
         openYummyTv: function (card) { return openYummyTv(card); },
         cancelExternalRestore: function () { return cancelExternalRestore(); },
-        loadVideos: function (id, options) { return videoData.payload(id, options); }
+        loadVideos: function (id, options) { return videoData.payload(id, options); },
+        clearEpisodeProgress: function (card, videos) {
+            var operation = clearEpisodeProgress(card, videos);
+            videoData.invalidate(card && card.yani_id);
+            return operation;
+        },
+        markEpisodesWatched: function (card, videos) {
+            var operation = markEpisodesWatched(card, videos);
+            videoData.invalidate(card && card.yani_id);
+            return operation;
+        }
     });
     var playbackReturnState = playbackMenu.playbackReturnState;
     var videoSourceUrl = playbackMenu.videoSourceUrl;
@@ -20839,6 +21047,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var autoProgressSyncEnabled = playbackHistoryApi.autoProgressSyncEnabled;
     var syncServerProgress = playbackHistoryApi.syncServerProgress;
     var clearEpisodeProgress = playbackHistoryApi.clearEpisodeProgress;
+    var markEpisodesWatched = playbackHistoryApi.markEpisodesWatched;
     var renderHistoryProgress = playbackHistoryApi.renderHistoryProgress;
     var refreshVisiblePlaybackProgress = playbackHistoryApi.refreshVisiblePlaybackProgress;
     var updatePlaybackProgress = playbackHistoryApi.updatePlaybackProgress;

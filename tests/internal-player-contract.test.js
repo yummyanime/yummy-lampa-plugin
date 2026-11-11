@@ -5,6 +5,7 @@ const source = fs.readFileSync('src/ui.js', 'utf8');
 const playbackLaunch = fs.readFileSync('src/playback/ui-playback-launch.js', 'utf8');
 const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const watcher = fs.readFileSync('src/playback/ui-playback-watcher.js', 'utf8');
+const streamResolver = fs.readFileSync('src/playback/stream-resolver.js', 'utf8');
 const menu = fs.readFileSync('src/playback/ui-playback-menu.js', 'utf8');
 const start = playbackLaunch.indexOf('function playInternalDirectVideo');
 const end = playbackLaunch.indexOf('* Plays a stream in the LG system player', start);
@@ -87,8 +88,12 @@ assert.match(watcher, /listener\.follow\('error', state\.playerErrorHandler\)/,
     'the internal player must observe fatal stream errors');
 assert.match(watcher, /function recoverInternalPlayback\(/,
     'an interrupted signed stream must have a recovery path');
-assert.match(watcher, /LampaYaniStreamResolver\.resolve\(origin, \{force: true\}\)/,
+assert.match(watcher, /LampaYaniStreamResolver\.resolve\(origin, \{force: true, preferredQuality: preferredQuality\}\)/,
     'recovery must bypass a stale signed-stream cache');
+assert.match(watcher, /function activeStreamQuality\(context, state\)/,
+    'recovery must detect the quality that is actually playing');
+assert.match(streamResolver, /preferredQuality && qualities\[preferredQuality\]/,
+    'CVH failover must keep the selected quality when it is still available');
 assert.match(watcher, /INTERNAL_PLAYBACK_RECOVERY_LIMIT = 3/,
     'signed streams should receive the same bounded three-attempt recovery budget as YummyTV');
 assert.match(watcher, /state\.recoveryAttempts >= INTERNAL_PLAYBACK_RECOVERY_LIMIT/,

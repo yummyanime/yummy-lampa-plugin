@@ -126,7 +126,17 @@
         yummyTvAnimeId: function (card) { return yummyTvAnimeId(card); },
         openYummyTv: function (card) { return openYummyTv(card); },
         cancelExternalRestore: function () { return cancelExternalRestore(); },
-        loadVideos: function (id, options) { return videoData.payload(id, options); }
+        loadVideos: function (id, options) { return videoData.payload(id, options); },
+        clearEpisodeProgress: function (card, videos) {
+            var operation = clearEpisodeProgress(card, videos);
+            videoData.invalidate(card && card.yani_id);
+            return operation;
+        },
+        markEpisodesWatched: function (card, videos) {
+            var operation = markEpisodesWatched(card, videos);
+            videoData.invalidate(card && card.yani_id);
+            return operation;
+        }
     });
     var playbackReturnState = playbackMenu.playbackReturnState;
     var videoSourceUrl = playbackMenu.videoSourceUrl;
@@ -168,6 +178,7 @@
     var autoProgressSyncEnabled = playbackHistoryApi.autoProgressSyncEnabled;
     var syncServerProgress = playbackHistoryApi.syncServerProgress;
     var clearEpisodeProgress = playbackHistoryApi.clearEpisodeProgress;
+    var markEpisodesWatched = playbackHistoryApi.markEpisodesWatched;
     var renderHistoryProgress = playbackHistoryApi.renderHistoryProgress;
     var refreshVisiblePlaybackProgress = playbackHistoryApi.refreshVisiblePlaybackProgress;
     var updatePlaybackProgress = playbackHistoryApi.updatePlaybackProgress;
