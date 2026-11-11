@@ -27,7 +27,6 @@
         var homeListCountsFresh = deps.homeListCountsFresh;
         var cacheHomeListCounts = deps.cacheHomeListCounts;
         var openYummyDetail = deps.openYummyDetail;
-        var movePageDown = deps.movePageDown;
         var homeSectionEnabled = deps.homeSectionEnabled;
         var openGenres = deps.openGenres;
         var openSearch = deps.openSearch;
@@ -108,6 +107,7 @@
             var isRailFocus = function () { return false; };
             var focusHomeElement = function () { return false; };
             var focusSectionRail = function () { return false; };
+            var moveHomeVertical = function () { return false; };
             var lastHomeSection = 'explore';
             var lastIntroContext = '';
             var lastIntroPoster = '';
@@ -484,6 +484,90 @@
                     if (!target || !target.length) target = sectionRail.find('.yani-home__section-rail-node--active.selector').first();
                     if (!target.length) target = nodes.first();
                     return focusHomeElement(target[0], railCollection());
+                };
+
+                function focusEntries(elements) {
+                    var entries = [];
+                    elements.each(function () {
+                        if (isRailFocus(this) || !this.getBoundingClientRect) return;
+                        var rect = this.getBoundingClientRect();
+                        if (!rect || rect.width <= 0 || rect.height <= 0) return;
+                        entries.push({
+                            element: this,
+                            top: rect.top,
+                            centerX: rect.left + rect.width / 2,
+                            height: rect.height
+                        });
+                    });
+                    return entries;
+                }
+
+                function focusRows(entries, rootRows) {
+                    var rows = [];
+                    entries.slice().sort(function (a, b) {
+                        return a.top === b.top ? a.centerX - b.centerX : a.top - b.top;
+                    }).forEach(function (entry) {
+                        var row = rows[rows.length - 1];
+                        var tolerance = rootRows ? 28 : Math.max(12, Math.min(entry.height, row && row.height || entry.height) * .18);
+                        if (!row || Math.abs(entry.top - row.top) > tolerance) {
+                            rows.push({top: entry.top, height: entry.height, entries: [entry]});
+                            return;
+                        }
+                        row.entries.push(entry);
+                        row.top = row.entries.reduce(function (sum, item) { return sum + item.top; }, 0) / row.entries.length;
+                        row.height = Math.min(row.height, entry.height);
+                    });
+                    rows.forEach(function (row) {
+                        row.entries.sort(function (a, b) { return a.centerX - b.centerX; });
+                    });
+                    return rows;
+                }
+
+                function nearestHorizontal(entries, centerX) {
+                    return entries.slice().sort(function (a, b) {
+                        return Math.abs(a.centerX - centerX) - Math.abs(b.centerX - centerX);
+                    })[0];
+                }
+
+                moveHomeVertical = function (direction) {
+                    if (!last || isRailFocus(last) || !last.getBoundingClientRect) return false;
+                    var rootSelector = '.yani-home__intro, .yani-home__panel';
+                    var currentRoot = $(last).closest(rootSelector)[0];
+                    if (!currentRoot) return false;
+                    var currentRect = last.getBoundingClientRect();
+                    var centerX = currentRect.left + currentRect.width / 2;
+                    var ownRows = focusRows(focusEntries($(currentRoot).find('.selector')), false);
+                    var ownRowIndex = ownRows.findIndex(function (row) {
+                        return row.entries.some(function (entry) { return entry.element === last; });
+                    });
+                    var step = direction === 'up' ? -1 : 1;
+                    var ownTargetRow = ownRows[ownRowIndex + step];
+                    if (ownTargetRow) {
+                        var ownTarget = nearestHorizontal(ownTargetRow.entries, centerX);
+                        return Boolean(ownTarget && focusHomeElement(ownTarget.element, homeCollection()));
+                    }
+
+                    var roots = grid.children('.yani-home__intro, .yani-home__panel');
+                    var rootEntries = [];
+                    roots.each(function () {
+                        var rect = this.getBoundingClientRect && this.getBoundingClientRect();
+                        if (!rect || rect.width <= 0 || rect.height <= 0) return;
+                        rootEntries.push({element: this, top: rect.top, centerX: rect.left + rect.width / 2, height: rect.height});
+                    });
+                    var rootRows = focusRows(rootEntries, true);
+                    var rootRowIndex = rootRows.findIndex(function (row) {
+                        return row.entries.some(function (entry) { return entry.element === currentRoot; });
+                    });
+                    var targetRootRow = rootRows[rootRowIndex + step];
+                    if (!targetRootRow) return false;
+                    var candidates = [];
+                    targetRootRow.entries.forEach(function (rootEntry) {
+                        var rows = focusRows(focusEntries($(rootEntry.element).find('.selector')), false);
+                        var row = direction === 'up' ? rows[rows.length - 1] : rows[0];
+                        if (row) candidates = candidates.concat(row.entries);
+                    });
+                    var target = nearestHorizontal(candidates, centerX);
+                    return Boolean(target && focusHomeElement(target.element, homeCollection()));
                 };
 
                 sectionDefinitions.forEach(function (definition) {
@@ -1167,8 +1251,7 @@
                             else Lampa.Controller.toggle('head');
                             return;
                         }
-                        if (Navigator.canmove('up')) Navigator.move('up');
-                        else Lampa.Controller.toggle('head');
+                        if (!moveHomeVertical('up')) Lampa.Controller.toggle('head');
                     },
                     down: function () {
                         noteHomeNavigation();
@@ -1178,7 +1261,7 @@
                             if (index >= 0 && index + 1 < nodes.length) focusHomeElement(nodes.get(index + 1), railCollection());
                             return;
                         }
-                        movePageDown(scroll);
+                        moveHomeVertical('down');
                     },
                     back: goBack
                 });
@@ -1210,6 +1293,7 @@
                 isRailFocus = function () { return false; };
                 focusHomeElement = function () { return false; };
                 focusSectionRail = function () { return false; };
+                moveHomeVertical = function () { return false; };
                 refreshContinueWatching = function () {};
                 scroll.destroy();
                 html.remove();

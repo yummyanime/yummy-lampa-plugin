@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.7] - 2026-11-11
+
+### Fixed
+
+- Fix dashboard Up and Down moving sideways between uneven tiles instead of following visual rows
+
 ## [0.53.6] - 2026-11-11
 
 ### Fixed
