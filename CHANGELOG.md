@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.6] - 2026-11-11
+
+### Fixed
+
+- Fix repeated builds changing `dist/index.js` only because the build timestamp used the current clock
+
 ## [0.53.5] - 2026-11-11
 
 ### Fixed

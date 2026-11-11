@@ -7,13 +7,22 @@ const root = __dirname;
 function normalizeNewlines(source) {
     return String(source || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
+function releaseDate(source) {
+    const versionMatch = String(source || '').match(/version:\s*'(\d+\.\d+\.\d+)'/);
+    if (!versionMatch) throw new Error('Could not read the plugin version for build metadata');
+    const version = versionMatch[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const changelog = normalizeNewlines(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'));
+    const dateMatch = changelog.match(new RegExp('^## \\[' + version + '\\] - (\\d{4}-\\d{2}-\\d{2})$', 'm'));
+    if (!dateMatch) throw new Error('Could not read the release date for version ' + version);
+    return dateMatch[1];
+}
 const modules = ['src/core/config.js', 'src/core/i18n.js', 'src/core/genre-descriptions.js', 'src/core/auth.js', 'src/core/api.js', 'src/core/catalog.js', 'src/playback/stream-resolver.js', 'src/playback/aniskip.js', 'src/ui/ui-utils.js', 'src/ui/ui-menu.js', 'src/playback/yani-resolver.js', 'src/playback/lampac-resolver.js', 'src/cards/ui-media.js', 'src/ui/ui-navigation.js', 'src/ui/ui-section-state.js', 'src/ui/ui-settings.js', 'src/screens/ui-search.js', 'src/screens/ui-catalog-filters.js', 'src/screens/ui-catalog-controls.js', 'src/playback/ui-video-data.js', 'src/cards/ui-card-model.js', 'src/cards/ui-card-renderers.js', 'src/cards/ui-card-bind.js', 'src/cards/ui-card-rails.js', 'src/playback/ui-playback-history.js', 'src/playback/ui-playback-menu.js', 'src/playback/ui-playback-watcher.js', 'src/playback/ui-external-player.js', 'src/playback/ui-playback-launch.js', 'src/cards/ui-standard-card.js', 'src/playback/ui-trailers.js', 'src/screens/ui-schedule.js', 'src/screens/ui-notifications.js', 'src/screens/ui-auth.js', 'src/screens/ui-status.js', 'src/playback/ui-player.js', 'src/screens/ui-account-list-controls.js', 'src/screens/ui-account-lists.js', 'src/home/ui-home-sections.js', 'src/home/ui-home-insights.js', 'src/home/ui-home.js', 'src/screens/ui-collections.js', 'src/screens/ui-releases.js', 'src/screens/ui-recommendations.js', 'src/screens/ui-updates.js', 'src/screens/ui-translations.js', 'src/screens/ui-catalog.js', 'src/screens/ui-genres.js', 'src/screens/ui-account.js', 'src/screens/ui-detail.js', 'src/ui.js'];
 modules.splice(modules.indexOf('src/playback/stream-resolver.js'), 0, 'src/core/episode.js');
 modules.forEach((file) => execFileSync(process.execPath, ['--check', path.join(root, file)], {stdio: 'inherit'}));
 const sources = modules.map((file) => normalizeNewlines(fs.readFileSync(path.join(root, file), 'utf8')));
 const css = normalizeNewlines(fs.readFileSync(path.join(root, 'style.css'), 'utf8'));
 const buildHash = crypto.createHash('sha256').update(sources.join('\n') + '\n' + css).digest('hex').slice(0, 10);
-const buildDate = new Date().toISOString();
+const buildDate = releaseDate(sources[0]);
 sources[0] = sources[0].replace(
     "build: {hash: 'source', date: '', type: 'source'}",
     "build: {hash: '" + buildHash + "', date: '" + buildDate + "', type: 'test'}"

@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.5',
-        build: {hash: 'db048aade1', date: '2026-11-10T23:40:47.337Z', type: 'test'},
+        version: '0.53.6',
+        build: {hash: '17d9a725d7', date: '2026-11-11', type: 'test'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -6085,7 +6085,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var type = String(build.type || 'source');
             var typeKey = type === 'production' ? 'build_type_production' : type === 'test' ? 'build_type_test' : 'build_type_source';
             var date = String(build.date || '');
-            if (date) {
+            if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
                 try { date = new Date(date).toLocaleString(); } catch (ignoreDate) {}
             }
             return {

@@ -11,6 +11,8 @@ assert.match(settings, /name: 'yani_build_diagnostics'/);
 assert.match(settings, /function showBuildDiagnostics\(\)/);
 assert.match(settings, /build_source_hash/);
 assert.match(build, /createHash\('sha256'\)/);
+assert.match(build, /function releaseDate\(source\)/);
+assert.doesNotMatch(build, /new Date\(\)\.toISOString\(\)/, 'the committed bundle must rebuild deterministically in CI');
 assert.match(build, /type: 'test'/);
 assert.match(release, /productionBundle = bundle\.replace/);
 assert.match(release, /'production'/);
