@@ -225,16 +225,14 @@ class AllohaSession {
         try { payload = JSON.parse(bnsi); } catch (error) { return; }
         const sources = payload && payload.hlsSource;
         if (!Array.isArray(sources)) return;
+        const selected = sources.find((source) => source && source.default === true) || sources[0];
+        if (!selected || !selected.quality) return;
         const found = {};
-        sources.forEach((source) => {
-            const quality = source && source.quality;
-            if (!quality) return;
-            Object.keys(quality).forEach((label) => {
-                const url = String(quality[label] || '').split(' or ')[0].trim();
-                const normalized = normalizeUrl(url);
-                const name = /p$/i.test(label) ? label : `${label}p`;
-                if (normalized && !found[name]) found[name] = normalized;
-            });
+        Object.keys(selected.quality).forEach((label) => {
+            const url = String(selected.quality[label] || '').split(' or ')[0].trim();
+            const normalized = normalizeUrl(url);
+            const name = /p$/i.test(label) ? label : `${label}p`;
+            if (normalized && !found[name]) found[name] = normalized;
         });
         this.qualities = found;
         this.log(`qualities: ${Object.keys(found).join(', ') || 'none'}`);

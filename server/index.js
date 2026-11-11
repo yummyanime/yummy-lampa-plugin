@@ -16,12 +16,13 @@ const {Readable} = require('stream');
 const {URL} = require('url');
 const {AllohaSession, SourceUnavailableError} = require('./alloha-session');
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const PORT = Number(process.env.YANI_RESOLVER_PORT || 8790);
 const HOST = process.env.YANI_RESOLVER_HOST || '0.0.0.0';
 const IDLE_TIMEOUT_MS = Number(process.env.YANI_RESOLVER_IDLE_MS || 5 * 60 * 1000);
 const HEADLESS = process.env.YANI_RESOLVER_HEADLESS !== 'false';
 const VERBOSE = process.env.YANI_RESOLVER_VERBOSE === 'true';
+const CHROMIUM_SANDBOX = process.env.YANI_RESOLVER_SANDBOX === 'true';
 
 // Experimental: hand out the CDN links as they are, with the one static header
 // the CDN asks for, instead of proxying every byte. Measured against a live
@@ -98,6 +99,7 @@ async function browser() {
             log(`launching chromium (headless=${HEADLESS})`);
             return playwright.chromium.launch({
                 headless: HEADLESS,
+                chromiumSandbox: CHROMIUM_SANDBOX,
                 args: ['--autoplay-policy=no-user-gesture-required', '--mute-audio', '--disable-dev-shm-usage']
             });
         })();
@@ -218,6 +220,18 @@ function sendJson(response, status, payload) {
 }
 
 function playbackBase(request) {
+    const configured = String(process.env.YANI_RESOLVER_PUBLIC_BASE || '').trim();
+    if (configured) {
+        let publicUrl;
+        try { publicUrl = new URL(configured); } catch (error) {
+            throw new Error('Resolver public address is not a valid URL');
+        }
+        if (publicUrl.protocol !== 'https:' || publicUrl.username || publicUrl.password ||
+            publicUrl.search || publicUrl.hash) {
+            throw new Error('Resolver public address must be a clean HTTPS URL without a login, query or fragment');
+        }
+        return publicUrl.toString().replace(/\/$/, '');
+    }
     const host = request.headers.host || `127.0.0.1:${PORT}`;
     return `http://${host}`;
 }
@@ -414,5 +428,6 @@ module.exports = {
     decodeTarget,
     signedTarget,
     verifiedTarget,
-    isAllohaUrl
+    isAllohaUrl,
+    playbackBase
 };

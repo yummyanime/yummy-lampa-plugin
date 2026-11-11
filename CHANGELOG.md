@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.9] - 2026-11-11
+
+### Fixed
+
+- Stop Alloha from combining video qualities that belong to different voice tracks
+
+### Security
+
+- Add a protected Docker and HTTPS setup for the optional Alloha resolver, with a private access URL and safe container defaults
+
 ## [0.53.8] - 2026-11-11
 
 ### Added

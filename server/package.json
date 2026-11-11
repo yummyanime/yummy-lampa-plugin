@@ -1,6 +1,6 @@
 {
   "name": "yani-resolver",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Self-hosted resolver that turns YummyAnime Alloha player pages into plain HLS streams",
   "main": "index.js",

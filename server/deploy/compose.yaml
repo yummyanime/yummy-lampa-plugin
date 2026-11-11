@@ -1,0 +1,73 @@
+name: yummy-alloha
+
+services:
+  resolver:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    init: true
+    expose:
+      - "8790"
+    environment:
+      YANI_RESOLVER_PUBLIC_BASE: https://${ALLOHA_PUBLIC_HOST:?Set ALLOHA_PUBLIC_HOST}/${ALLOHA_ACCESS_TOKEN:?Set ALLOHA_ACCESS_TOKEN}
+      YANI_RESOLVER_SANDBOX: "true"
+      YANI_RESOLVER_IDLE_MS: "300000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=384m,mode=1777
+    shm_size: 256m
+    mem_limit: 2g
+    cpus: 1.5
+    pids_limit: 384
+    cap_drop:
+      - ALL
+    cap_add:
+      - SYS_CHROOT
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./seccomp_profile.json
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8790/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+
+  gateway:
+    image: node:24-alpine
+    restart: unless-stopped
+    init: true
+    command: ["node", "/app/gateway.js"]
+    depends_on:
+      resolver:
+        condition: service_healthy
+    environment:
+      ALLOHA_ACCESS_TOKEN: ${ALLOHA_ACCESS_TOKEN:?Set ALLOHA_ACCESS_TOKEN}
+      ALLOHA_GATEWAY_PORT: "18443"
+    ports:
+      - "${ALLOHA_HTTPS_PORT:-18443}:18443"
+    volumes:
+      - ./gateway.js:/app/gateway.js:ro
+      - ${ALLOHA_CERT_DIR:-./certs}:/cert:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    mem_limit: 128m
+    cpus: 0.25
+    pids_limit: 64
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
+
