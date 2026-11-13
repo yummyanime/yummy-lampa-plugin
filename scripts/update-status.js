@@ -139,8 +139,8 @@ async function main() {
     const entries = [];
 
     for (const period of Object.keys(PERIODS)) {
-        const httpRecords = await getJson(`${STATUS_BASE}/http-logs?timeRange=${period}`);
-        const pingRecords = await getJson(`${STATUS_BASE}/ping-logs?timeRange=${period}`);
+        const httpRecords = await getJson(`${STATUS_BASE}/api/http-logs?timeRange=${period}`);
+        const pingRecords = await getJson(`${STATUS_BASE}/api/ping-logs?timeRange=${period}`);
         if (!Array.isArray(httpRecords) || !httpRecords.length) throw new Error(`YummyStatus returned no HTTP measurements for ${period}`);
         entries.push([period, aggregateHttp(httpRecords, Array.isArray(pingRecords) ? pingRecords : [], period)]);
     }
