@@ -3,6 +3,8 @@ name: Deploy YummyAnime plugin to GitHub Pages
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -27,12 +29,14 @@ jobs:
           node-version: '20'
 
       - name: Check JavaScript syntax
+        if: github.event_name != 'schedule'
         shell: bash
         run: |
           set -e
           find . -name '*.js' -not -path '*/node_modules/*' -print0 | xargs -0 -n1 node --check
 
       - name: Run contract tests
+        if: github.event_name != 'schedule'
         shell: bash
         run: |
           set -e
@@ -42,15 +46,19 @@ jobs:
           done
 
       - name: Rebuild bundled plugin
+        if: github.event_name != 'schedule'
         run: node build.js
 
       - name: Check bundled plugin syntax
+        if: github.event_name != 'schedule'
         run: node --check dist/index.js
 
       - name: Check production bundle syntax
+        if: github.event_name != 'schedule'
         run: node --check stable/index.js
 
       - name: Verify dist/index.js matches sources
+        if: github.event_name != 'schedule'
         shell: bash
         run: |
           set -e

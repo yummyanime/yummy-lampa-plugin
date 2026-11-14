@@ -83,7 +83,7 @@ To roll the production channel back to an existing tag:
 node scripts/release.js --promote 0.41.38
 ```
 
-The `YummyAnime → Status` screen shows YummyStatus history for three hours, one day, one week or one month. GitHub Actions refreshes the monitoring snapshot every five minutes.
+The `YummyAnime → Status` screen shows YummyStatus history for three hours, one day, one week or one month. GitHub Actions publishes a fresh monitoring snapshot every hour.
 
 ## Authorization
 

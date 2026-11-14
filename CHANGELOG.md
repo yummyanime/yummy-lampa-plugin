@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.11] - 2026-11-15
+
+### Changed
+
+- Refresh and publish the YummyStatus snapshot every hour without rebuilding the unchanged plugin on scheduled runs
+
 ## [0.53.10] - 2026-11-15
 
 ### Changed
