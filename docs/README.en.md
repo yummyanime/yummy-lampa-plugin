@@ -67,10 +67,19 @@ Test — the latest `main` build, including changes that are not a production re
 
 `https://yummyanime.github.io/yummy-lampa-plugin/dist/index.js`
 
-Verified versions are tagged `vX.Y.Z`. Release and rollback:
+Verified versions are tagged `vX.Y.Z`. Preparing files and tagging the committed release are separate steps, so a tag cannot point to the previous build:
 
 ```
 node scripts/release.js
+git add CHANGELOG.md README.md docs/README.en.md src/core/config.js dist/index.js stable/index.js stable.json
+git commit -m "Release vX.Y.Z"
+node scripts/release.js --tag
+git push origin main --follow-tags
+```
+
+To roll the production channel back to an existing tag:
+
+```
 node scripts/release.js --promote 0.41.38
 ```
 

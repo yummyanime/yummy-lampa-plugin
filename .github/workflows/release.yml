@@ -22,6 +22,11 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Verify release tag and bundled files
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: node -e "const release=require('./scripts/release'); const prepared=release.verifyPreparedRelease({root:process.cwd()}); if(prepared.tag!==process.env.VERSION) throw new Error('Tag '+process.env.VERSION+' does not match '+prepared.tag);"
+
       - name: Check JavaScript syntax
         shell: bash
         run: |

@@ -9,6 +9,17 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.10] - 2026-11-15
+
+### Changed
+
+- Separate release preparation from Git tagging and verify every bundled version before a tag is created or published
+- Track the resolver lockfile required by clean Docker builds
+
+### Security
+
+- Update Playwright to 1.65.1 and keep the resolver Docker image on the same patched runtime
+
 ## [0.53.9] - 2026-11-11
 
 ### Fixed

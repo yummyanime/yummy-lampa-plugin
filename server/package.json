@@ -9,9 +9,9 @@
     "postinstall": "playwright install chromium"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "dependencies": {
-    "playwright": "1.49.1"
+    "playwright": "1.65.1"
   }
 }

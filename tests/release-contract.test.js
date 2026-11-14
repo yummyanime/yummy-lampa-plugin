@@ -16,7 +16,7 @@ assert.strictEqual(release.normalizeVersion('v0.41.38'), '0.41.38');
 assert.match(release.changelogSection('# Changelog\n\n## 0.41.40 — 2026-08-13\n\n- First.\n\n## 0.41.39 — 2026-08-13\n\n- Old.\n', '0.41.40'), /First/);
 assert.doesNotMatch(release.changelogSection('# Changelog\n\n## 0.41.40 — 2026-08-13\n\n- First.\n\n## 0.41.39 — 2026-08-13\n\n- Old.\n', '0.41.40'), /Old/);
 assert.match(source, /--promote/);
-assert.match(source, /\[Unreleased\]/);
+assert.match(source, /finalizeTag/);
 assert.match(pages, /cp -R stable _pages\/stable/);
 assert.match(workflow, /gh release create/);
 assert.match(workflow, /tags:[\s\S]*v\*/);
@@ -31,9 +31,13 @@ fs.writeFileSync(path.join(root, 'dist/index.js'), bundle);
 fs.writeFileSync(path.join(root, 'CHANGELOG.md'), '# Changelog\n\n## 0.41.40 — 2026-08-13\n\n- Current.\n');
 
 const tags = {};
+const tagTargets = {};
 const git = {
     tagExists: function (tag) { return Boolean(tags[tag]); },
-    createTag: function (tag, message) { tags[tag] = message; },
+    createTag: function (tag, message) { tags[tag] = message; tagTargets[tag] = 'release-head'; },
+    isClean: function () { return true; },
+    head: function () { return 'release-head'; },
+    tagTarget: function (tag) { return tagTargets[tag]; },
     show: function (spec) {
         if (spec === 'v0.41.38:dist/index.js') return older;
         throw new Error('missing ' + spec);
@@ -44,11 +48,13 @@ const git = {
 const promoted = release.promote({
     root: root,
     git: git,
-    tag: true,
     releasedAt: '2026-08-13T00:00:00.000Z'
 });
 assert.strictEqual(promoted.version, '0.41.40');
-assert.strictEqual(promoted.tagged, true);
+assert.strictEqual(promoted.tagged, false);
+assert.strictEqual(tags['v0.41.40'], undefined, 'preparing a release must not tag the previous commit');
+const finalized = release.finalizeTag({root: root, git: git});
+assert.strictEqual(finalized.tagged, true);
 assert.strictEqual(tags['v0.41.40'].indexOf('Current') >= 0, true);
 assert.match(fs.readFileSync(path.join(root, 'stable/index.js'), 'utf8'), /0\.41\.40/);
 const meta = JSON.parse(fs.readFileSync(path.join(root, 'stable.json'), 'utf8'));
@@ -56,6 +62,13 @@ assert.strictEqual(meta.channel, 'production');
 assert.strictEqual(meta.version, '0.41.40');
 assert.strictEqual(meta.url, release.STABLE_URL);
 assert.strictEqual(meta.testUrl, release.TEST_URL);
+
+assert.throws(function () {
+    release.finalizeTag({
+        root: root,
+        git: Object.assign({}, git, {isClean: function () { return false; }})
+    });
+}, /Commit the prepared release files/);
 
 const rolled = release.promote({
     root: root,

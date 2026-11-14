@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.9',
-        build: {hash: 'ca29d87eb9', date: '2026-11-11', type: 'test'},
+        version: '0.53.10',
+        build: {hash: '7093db9510', date: '2026-11-15', type: 'test'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site

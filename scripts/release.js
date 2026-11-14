@@ -61,6 +61,15 @@ function defaultGit(root) {
         createTag: function (tag, message) {
             git(['tag', '-a', tag, '-m', message], {stdio: 'inherit', encoding: 'buffer'});
         },
+        isClean: function () {
+            return git(['status', '--porcelain'], {encoding: 'utf8'}).trim() === '';
+        },
+        head: function () {
+            return git(['rev-parse', 'HEAD'], {encoding: 'utf8'}).trim();
+        },
+        tagTarget: function (tag) {
+            return git(['rev-list', '-n', '1', tag], {encoding: 'utf8'}).trim();
+        },
         show: function (spec) {
             return git(['show', spec], {encoding: 'utf8'});
         },
@@ -105,8 +114,52 @@ function readTaggedBundle(version, git) {
     try {
         return git.show(tag + ':' + TEST_PATH);
     } catch (error) {
-        throw new Error('Cannot read ' + TEST_PATH + ' from git tag ' + tag + '. Create the tag with node scripts/release.js first.');
+        throw new Error('Cannot read ' + TEST_PATH + ' from git tag ' + tag + '. Create the tag with node scripts/release.js --tag first.');
     }
+}
+
+function verifyPreparedRelease(options) {
+    options = options || {};
+    const root = options.root || path.join(__dirname, '..');
+    const current = readCurrentBundle(root);
+    const stableBundle = fs.readFileSync(path.join(root, STABLE_PATH), 'utf8');
+    const stableVersion = bundleVersion(stableBundle);
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, STABLE_META), 'utf8'));
+    const expectedTag = tagName(current.version);
+    if (stableVersion !== current.version) {
+        throw new Error('stable/index.js version ' + stableVersion + ' does not match dist/index.js ' + current.version);
+    }
+    if (normalizeVersion(manifest.version) !== current.version) {
+        throw new Error('stable.json version ' + manifest.version + ' does not match dist/index.js ' + current.version);
+    }
+    if (manifest.tag !== expectedTag) {
+        throw new Error('stable.json tag ' + manifest.tag + ' does not match expected tag ' + expectedTag);
+    }
+    return {version: current.version, tag: expectedTag, manifest: manifest};
+}
+
+function finalizeTag(options) {
+    options = options || {};
+    const root = options.root || path.join(__dirname, '..');
+    const git = options.git || defaultGit(root);
+    if (!git.isClean || !git.isClean()) {
+        throw new Error('Commit the prepared release files before creating its tag');
+    }
+    const prepared = verifyPreparedRelease({root: root});
+    const head = git.head();
+    let tagged = false;
+    if (git.tagExists(prepared.tag)) {
+        const target = git.tagTarget(prepared.tag);
+        if (target !== head) {
+            throw new Error('Git tag ' + prepared.tag + ' already points to another commit');
+        }
+    } else {
+        const notes = changelogSection(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'), prepared.version);
+        git.createTag(prepared.tag, notes);
+        tagged = true;
+    }
+    if (options.push && git.pushTag) git.pushTag(prepared.tag);
+    return {version: prepared.version, tag: prepared.tag, tagged: tagged, pushed: Boolean(options.push)};
 }
 
 function cutUnreleased(options) {
@@ -138,18 +191,10 @@ function promote(options) {
         bundle: bundle,
         releasedAt: options.releasedAt
     });
-    const tag = manifest.tag;
-    let tagged = false;
-    if (!rollback && options.tag && git.tagExists && !git.tagExists(tag)) {
-        const notes = changelogSection(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'), version);
-        git.createTag(tag, notes);
-        tagged = true;
-        if (options.push && git.pushTag) git.pushTag(tag);
-    }
     return {
         version: version,
-        tag: tag,
-        tagged: tagged,
+        tag: manifest.tag,
+        tagged: false,
         rollback: rollback,
         bumped: bumped,
         from: bumped ? bumped.from : version,
@@ -171,20 +216,24 @@ function parseArgs(argv) {
         else if (arg === '--help' || arg === '-h') result.help = true;
         else throw new Error('Unknown argument: ' + arg);
     }
+    if (result.push && !result.tag) throw new Error('--push requires --tag');
+    if (result.promote && result.tag) throw new Error('--promote and --tag are separate operations');
     return result;
 }
 
 function usage() {
     return [
         'Usage:',
-        '  node scripts/release.js [--tag] [--push]',
+        '  node scripts/release.js',
+        '  node scripts/release.js --tag [--push]',
         '  node scripts/release.js --promote <version>',
         '',
         'Production URL:  ' + STABLE_URL,
         'Test URL:        ' + TEST_URL,
         '',
-        'If CHANGELOG [Unreleased] has entries, patch-bumps the plugin first, then',
-        'copies dist to production. --promote rolls back without bumping.'
+        'The first command prepares and builds a release. Commit those files, then',
+        '--tag verifies the committed release and creates its tag. --promote rolls',
+        'production back without bumping.'
     ].join('\n');
 }
 
@@ -195,18 +244,23 @@ if (require.main === module) {
             console.log(usage());
             process.exit(0);
         }
+        if (args.tag) {
+            const tagged = finalizeTag(args);
+            console.log((tagged.tagged ? 'Created ' : 'Verified ') + 'git tag ' + tagged.tag);
+            if (tagged.pushed) console.log('Pushed git tag ' + tagged.tag);
+            process.exit(0);
+        }
         const result = promote(args);
         if (result.bumped) console.log('Version ' + result.bumped.from + ' → ' + result.bumped.version);
         console.log((result.rollback ? 'Rolled production back to ' : 'Promoted production to ') + result.version);
         console.log('Production: ' + result.stableUrl);
         console.log('Test:       ' + result.testUrl);
-        if (result.tagged) console.log('Created git tag ' + result.tag);
-        else if (!result.rollback) {
+        if (!result.rollback) {
             console.log('Next:');
-            console.log('  git add stable/index.js stable.json');
+            console.log('  git add CHANGELOG.md README.md docs/README.en.md src/core/config.js dist/index.js stable/index.js stable.json');
             console.log('  git commit -m "Release ' + result.tag + '"');
-            console.log('  git tag -a ' + result.tag + ' -m "' + result.tag + '"');
-            console.log('  git push origin HEAD --tags');
+            console.log('  node scripts/release.js --tag');
+            console.log('  git push origin main --follow-tags');
         }
     } catch (error) {
         console.error(error.message || error);
@@ -227,6 +281,8 @@ module.exports = {
     changelogSection: changelogSection,
     stableManifest: stableManifest,
     writeStable: writeStable,
+    verifyPreparedRelease: verifyPreparedRelease,
+    finalizeTag: finalizeTag,
     promote: promote,
     cutUnreleased: cutUnreleased,
     parseArgs: parseArgs

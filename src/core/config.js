@@ -5,7 +5,7 @@
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.9',
+        version: '0.53.10',
         build: {hash: 'source', date: '', type: 'source'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
