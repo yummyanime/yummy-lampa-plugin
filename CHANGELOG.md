@@ -9,6 +9,18 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.15] - 2026-11-15
+
+### Added
+
+- Full-poster artwork to personal news and notifications
+- Fractional episode contracts for schedule and watch history
+
+### Changed
+
+- Temporarily missing playback sources to remain visible as unavailable
+- Title ratings to update optimistically through the mutation queue
+
 ## [0.53.14] - 2026-11-15
 
 ### Added
