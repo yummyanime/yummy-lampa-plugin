@@ -23,6 +23,8 @@ assert.match(homeScreen, /if \(isRailFocus\(last\)\)/);
 assert.doesNotMatch(homeScreen, /function homeCollection\(\)/);
 assert.match(homeScreen, /node\.addClass\('selector'\)/);
 assert.match(homeScreen, /node\.on\('hover:enter click\.yaniHomeRail'/);
+assert.match(homeScreen, /click\.yaniHomeRail'[\s\S]{0,120}focusSection\(definition\.key, target\.key\)/);
+assert.doesNotMatch(homeScreen, /click\.yaniHomeRail'[\s\S]{0,120}target\.action\(\)/);
 assert.match(ui, /Lampa\.Controller\.collectionSet\(collection\)/);
 assert.match(css, /\.yani-home__section-rail\s*\{[^}]+pointer-events: auto/);
 assert.match(css, /\.yani-home__section-rail-node\.focus i/);

@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.11',
-        build: {hash: '119a926400', date: '2026-11-15', type: 'production'},
+        version: '0.53.12',
+        build: {hash: '8afe76ddff', date: '2026-11-15', type: 'production'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -16324,6 +16324,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var focusSectionRail = function () { return false; };
             var moveHomeVertical = function () { return false; };
             var lastHomeSection = 'explore';
+            var lastHomeKey = '';
+            var sectionFocusMemory = {};
             var lastIntroContext = '';
             var lastIntroPoster = '';
             var lastStoredFocusKey = '';
@@ -16682,9 +16684,23 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 isRailFocus = function (element) {
                     return Boolean(element && $(element).hasClass('yani-home__section-rail-node'));
                 };
+                function rememberHomeFocus(element) {
+                    var node = $(element);
+                    var key = String(node.attr('data-yani-home-key') || node.data('yani-home-target-key') || node.data('yani-home-context-key') || '');
+                    var button = key && homeButtons[key];
+                    if (!button || !button.length) return;
+                    var group = String(button.data('yani-home-group') || 'explore');
+                    lastHomeKey = key;
+                    sectionFocusMemory[group] = key;
+                    if (group !== lastHomeSection) setSectionRail(group);
+                }
                 focusHomeElement = function (element, collection) {
                     if (!element) return false;
                     last = element;
+                    // Update the logical route before collectionFocus dispatches
+                    // its deferred focus event, so repeated remote presses never
+                    // operate on the previous section.
+                    rememberHomeFocus(element);
                     collection = collection && collection.length ? collection : (isRailFocus(element) ? railCollection() : homeCollection());
                     Lampa.Controller.collectionSet(collection);
                     if (window.Navigator && Navigator.add) Navigator.add(element);
@@ -16701,88 +16717,47 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     return focusHomeElement(target[0], railCollection());
                 };
 
-                function focusEntries(elements) {
-                    var entries = [];
-                    elements.each(function () {
-                        if (isRailFocus(this) || !this.getBoundingClientRect) return;
-                        var rect = this.getBoundingClientRect();
-                        if (!rect || rect.width <= 0 || rect.height <= 0) return;
-                        entries.push({
-                            element: this,
-                            top: rect.top,
-                            centerX: rect.left + rect.width / 2,
-                            height: rect.height
-                        });
-                    });
-                    return entries;
+                function sectionKeys(group) {
+                    var keys = items.filter(function (item) {
+                        return item.group === group && homeButtons[item.key] && homeButtons[item.key].length;
+                    }).map(function (item) { return item.key; });
+                    if (group === 'service' && homeButtons.status && keys.indexOf('status') < 0) keys.unshift('status');
+                    return keys;
                 }
 
-                function focusRows(entries, rootRows) {
-                    var rows = [];
-                    entries.slice().sort(function (a, b) {
-                        return a.top === b.top ? a.centerX - b.centerX : a.top - b.top;
-                    }).forEach(function (entry) {
-                        var row = rows[rows.length - 1];
-                        var tolerance = rootRows ? 28 : Math.max(12, Math.min(entry.height, row && row.height || entry.height) * .18);
-                        if (!row || Math.abs(entry.top - row.top) > tolerance) {
-                            rows.push({top: entry.top, height: entry.height, entries: [entry]});
-                            return;
-                        }
-                        row.entries.push(entry);
-                        row.top = row.entries.reduce(function (sum, item) { return sum + item.top; }, 0) / row.entries.length;
-                        row.height = Math.min(row.height, entry.height);
-                    });
-                    rows.forEach(function (row) {
-                        row.entries.sort(function (a, b) { return a.centerX - b.centerX; });
-                    });
-                    return rows;
+                function focusSection(group, preferredKey) {
+                    var keys = sectionKeys(group);
+                    if (!keys.length) return false;
+                    var key = preferredKey && keys.indexOf(preferredKey) >= 0 ? preferredKey : sectionFocusMemory[group];
+                    if (keys.indexOf(key) < 0) key = keys[0];
+                    var button = homeButtons[key];
+                    return Boolean(button && button.length && focusHomeElement(button[0], homeCollection()));
                 }
 
-                function nearestHorizontal(entries, centerX) {
-                    return entries.slice().sort(function (a, b) {
-                        return Math.abs(a.centerX - centerX) - Math.abs(b.centerX - centerX);
-                    })[0];
-                }
-
+                // Vertical movement follows the five semantic dashboard sections.
+                // It does not depend on element coordinates, which change while
+                // account and schedule data are being refreshed in the background.
                 moveHomeVertical = function (direction) {
-                    if (!last || isRailFocus(last) || !last.getBoundingClientRect) return false;
-                    var rootSelector = '.yani-home__intro, .yani-home__panel';
-                    var currentRoot = $(last).closest(rootSelector)[0];
-                    if (!currentRoot) return false;
-                    var currentRect = last.getBoundingClientRect();
-                    var centerX = currentRect.left + currentRect.width / 2;
-                    var ownRows = focusRows(focusEntries($(currentRoot).find('.selector')), false);
-                    var ownRowIndex = ownRows.findIndex(function (row) {
-                        return row.entries.some(function (entry) { return entry.element === last; });
-                    });
-                    var step = direction === 'up' ? -1 : 1;
-                    var ownTargetRow = ownRows[ownRowIndex + step];
-                    if (ownTargetRow) {
-                        var ownTarget = nearestHorizontal(ownTargetRow.entries, centerX);
-                        return Boolean(ownTarget && focusHomeElement(ownTarget.element, homeCollection()));
+                    if (!last || isRailFocus(last)) return false;
+                    var currentGroup = lastHomeSection;
+                    if (lastHomeKey && homeButtons[lastHomeKey]) {
+                        currentGroup = String(homeButtons[lastHomeKey].data('yani-home-group') || currentGroup);
                     }
-
-                    var roots = grid.children('.yani-home__intro, .yani-home__panel');
-                    var rootEntries = [];
-                    roots.each(function () {
-                        var rect = this.getBoundingClientRect && this.getBoundingClientRect();
-                        if (!rect || rect.width <= 0 || rect.height <= 0) return;
-                        rootEntries.push({element: this, top: rect.top, centerX: rect.left + rect.width / 2, height: rect.height});
+                    var groups = sectionDefinitions.map(function (definition) { return definition.key; }).filter(function (group) {
+                        return sectionKeys(group).length > 0;
                     });
-                    var rootRows = focusRows(rootEntries, true);
-                    var rootRowIndex = rootRows.findIndex(function (row) {
-                        return row.entries.some(function (entry) { return entry.element === currentRoot; });
-                    });
-                    var targetRootRow = rootRows[rootRowIndex + step];
-                    if (!targetRootRow) return false;
-                    var candidates = [];
-                    targetRootRow.entries.forEach(function (rootEntry) {
-                        var rows = focusRows(focusEntries($(rootEntry.element).find('.selector')), false);
-                        var row = direction === 'up' ? rows[rows.length - 1] : rows[0];
-                        if (row) candidates = candidates.concat(row.entries);
-                    });
-                    var target = nearestHorizontal(candidates, centerX);
-                    return Boolean(target && focusHomeElement(target.element, homeCollection()));
+                    var groupIndex = groups.indexOf(currentGroup);
+                    if (groupIndex < 0) groupIndex = 0;
+                    var targetGroup = groups[groupIndex + (direction === 'up' ? -1 : 1)];
+                    if (!targetGroup) return false;
+                    var currentKeys = sectionKeys(currentGroup);
+                    var targetKeys = sectionKeys(targetGroup);
+                    var currentIndex = Math.max(0, currentKeys.indexOf(lastHomeKey));
+                    var targetIndex = currentKeys.length > 1 && targetKeys.length > 1 ?
+                        Math.round(currentIndex * (targetKeys.length - 1) / (currentKeys.length - 1)) : 0;
+                    var remembered = sectionFocusMemory[targetGroup];
+                    var targetKey = targetKeys.indexOf(remembered) >= 0 ? remembered : targetKeys[targetIndex];
+                    return focusSection(targetGroup, targetKey);
                 };
 
                 sectionDefinitions.forEach(function (definition) {
@@ -16792,6 +16767,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     if (!node || !target) return;
                     node.addClass('selector').attr({role: 'button', tabindex: '-1', 'aria-label': definition.title});
                     node.data('yani-home-target-key', target.key);
+                    node.data('yani-home-group', definition.key);
                     node.on('hover:focus', function (event) {
                         activateHomeFocus(event.currentTarget || event.target, {
                             storageKey: target.key,
@@ -16800,7 +16776,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                         });
                     });
                     node.on('hover:enter click.yaniHomeRail', function () {
-                        target.action();
+                        focusSection(definition.key, target.key);
                     });
                 });
                 if (!homeButtons.schedule) introMetrics.today.remove();
@@ -16889,6 +16865,14 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                         homeFocusFrame = 0;
                         if (destroyed || last !== element[0]) return;
                         var storageKey = options.storageKey || String(element.attr('data-yani-home-key') || '');
+                        var context = options.context || element;
+                        var group = String(context.data('yani-home-group') || element.data('yani-home-group') || lastHomeSection);
+                        if (storageKey) {
+                            lastHomeKey = storageKey;
+                            if (sectionDefinitions.some(function (definition) { return definition.key === group; })) {
+                                sectionFocusMemory[group] = storageKey;
+                            }
+                        }
                         if (storageKey && storageKey !== lastStoredFocusKey && Lampa.Storage && Lampa.Storage.set) {
                             lastStoredFocusKey = storageKey;
                             Lampa.Storage.set(homeFocusStorageKey, storageKey);
@@ -16898,7 +16882,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                             html.find('.yani-home__panel--active').removeClass('yani-home__panel--active');
                             panel.addClass('yani-home__panel--active');
                         }
-                        renderIntroContext(options.context || element);
+                        renderIntroContext(context);
                         if (options.countdown && currentEpisodeFlow) updateEpisodeCountdown(currentEpisodeFlow.japan);
                         if (options.scroll === false) return;
                         var node = element[0];

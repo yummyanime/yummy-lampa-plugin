@@ -9,6 +9,13 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.12] - 2026-11-15
+
+### Changed
+
+- Dashboard remote navigation to move vertically between semantic sections without coordinate-based focus jumps
+- The side section rail to focus a section before opening an action
+
 ## [0.53.11] - 2026-11-15
 
 ### Changed
