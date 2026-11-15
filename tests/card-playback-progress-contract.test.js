@@ -14,6 +14,8 @@ assert.match(ui, /addCardPlaybackProgress/);
 assert.match(bind, /data-yani-card-id/);
 assert.match(history, /not\('\.yani-history-card'\)/);
 assert.match(history, /syncCardEpisodesMeta\(\$\(this\), card\)/);
+assert.match(history, /\.yani-card-history-progress, ' \+/);
+assert.match(history, /\.yani-card-playback, \.yani-card-playback-progress/);
 assert.match(history, /yani:watch-progress/);
 assert.match(css, /\.yani-card-playback \{/);
 assert.match(css, /\.yani-card-playback-progress span/);

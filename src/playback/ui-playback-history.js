@@ -432,7 +432,11 @@
         function renderHistoryProgress(rendered, playback) {
             var view = $('.card__view', rendered).first();
             if (!view.length) return;
-            view.find('.yani-card-history, .yani-card-history-progress').remove();
+            // History cards have their own live badge. The generic playback
+            // badge is created by the shared card decorator before this hook
+            // runs and otherwise remains frozen at the value from first paint.
+            view.find('.yani-card-history, .yani-card-history-progress, ' +
+                '.yani-card-playback, .yani-card-playback-progress').remove();
             var duration = Math.max(0, Number(playback.duration || 0));
             var position = Math.max(0, Number(playback.time || 0));
             var percent = duration > 0 ? Math.min(100, Math.round(position / duration * 100)) : 0;

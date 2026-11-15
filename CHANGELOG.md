@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.13] - 2026-11-15
+
+### Fixed
+
+- Stale duplicate playback badge on Continue Watching cards after progress changes
+
 ## [0.53.12] - 2026-11-15
 
 ### Changed

@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.12',
-        build: {hash: '8afe76ddff', date: '2026-11-15', type: 'test'},
+        version: '0.53.13',
+        build: {hash: '85d11eddf7', date: '2026-11-15', type: 'test'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -8998,7 +8998,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         function renderHistoryProgress(rendered, playback) {
             var view = $('.card__view', rendered).first();
             if (!view.length) return;
-            view.find('.yani-card-history, .yani-card-history-progress').remove();
+            // History cards have their own live badge. The generic playback
+            // badge is created by the shared card decorator before this hook
+            // runs and otherwise remains frozen at the value from first paint.
+            view.find('.yani-card-history, .yani-card-history-progress, ' +
+                '.yani-card-playback, .yani-card-playback-progress').remove();
             var duration = Math.max(0, Number(playback.duration || 0));
             var position = Math.max(0, Number(playback.time || 0));
             var percent = duration > 0 ? Math.min(100, Math.round(position / duration * 100)) : 0;
