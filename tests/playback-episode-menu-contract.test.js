@@ -24,6 +24,8 @@ assert.match(menu, /t\('reset_episode_progress'\)/);
 assert.match(menu, /function showWatchedManagement\(card, allVideos\)/);
 assert.match(menu, /t\('manage_watched_episodes'\)/);
 assert.match(menu, /markEpisodesWatched\(card, affected\)/);
+assert.match(menu, /source_temporarily_unavailable/);
+assert.match(menu, /if \(item\.unavailable\) return unavailableNotice\(\)/);
 assert.match(menu, /window\.LampaYaniEpisode\.same/);
 assert.doesNotMatch(menu, /LampaYaniApi\.videos\(card\.yani_id\)/);
 assert.match(api, /episodeInfoCache\[key\]/);

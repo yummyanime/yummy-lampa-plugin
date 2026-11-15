@@ -81,6 +81,8 @@
             item.click_uri = source.click_uri || source.clickUri || '';
             item.sub_type = source.sub_type || source.subType || '';
             item.anime_slug = extractAnimeSlug(item.click_uri);
+            item.poster = source.poster || source.image || source.screenshot || source.cover ||
+                source.anime && (source.anime.poster || source.anime.image || source.anime.cover) || '';
             item.kind = notificationKind(item);
             item.unread = !(source.viewed || source.read);
             return item;
@@ -182,7 +184,16 @@
             item.toggleClass('unread', notification.unread).toggleClass('read', !notification.unread);
             item.toggleClass('is-actionable', isOpenable(notification));
 
-            var visual = $('<div class="yani-notification__visual"></div>').html(icon(notification.kind));
+            var visual = $('<div class="yani-notification__visual"></div>');
+            var poster = window.LampaYaniUiUtils && LampaYaniUiUtils.posterUrl
+                ? LampaYaniUiUtils.posterUrl(notification.poster)
+                : String(notification.poster || '');
+            if (poster) {
+                item.addClass('yani-notification--has-poster');
+                visual.addClass('yani-notification__visual--poster')
+                    .css('background-image', 'url("' + poster.replace(/"/g, '%22') + '")')
+                    .append($('<img>').attr({src: poster, alt: '', loading: 'lazy'}));
+            } else visual.html(icon(notification.kind));
             var body = $('<div class="yani-notification__body"></div>');
             var meta = $('<div class="yani-notification__meta"></div>');
             meta.append($('<span class="yani-notification__kind"></span>').text(kindLabel(notification.kind)));

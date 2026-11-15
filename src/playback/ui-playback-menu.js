@@ -72,6 +72,18 @@
                 data.iframe_url || data.url || data.player_url || data.link);
         }
 
+        function videoTemporarilyUnavailable(video) {
+            return Boolean(video && video.yani_unavailable);
+        }
+
+        function groupTemporarilyUnavailable(group) {
+            return Boolean(group && group.videos && group.videos.length && group.videos.every(videoTemporarilyUnavailable));
+        }
+
+        function unavailableNotice() {
+            Lampa.Noty.show(t('source_temporarily_unavailable'));
+        }
+
         function playerKey(group) {
             return String(group && (group.player || group.title) || '').toLowerCase();
         }
@@ -363,10 +375,12 @@
                         episodeKeys: {},
                         latestEpisode: '',
                         latestEpisodeNumber: NaN,
-                        latestEpisodeDate: 0
+                        latestEpisodeDate: 0,
+                        unavailable: true
                     };
                 }
                 groups[key].videos.push(video);
+                if (!videoTemporarilyUnavailable(video)) groups[key].unavailable = false;
                 var Episode = window.LampaYaniEpisode;
                 var episodeKey = Episode && Episode.key && Episode.valueOf
                     ? Episode.key(Episode.valueOf(video))
@@ -429,7 +443,8 @@
                     var sourceName = group.player && group.player !== group.title ? group.player : '';
                     return {
                         title: group.title + (sourceName ? ' · ' + sourceName : ''),
-                        subtitle: voiceOptionSubtitle(group),
+                        subtitle: [voiceOptionSubtitle(group), groupTemporarilyUnavailable(group) ? t('source_temporarily_unavailable') : ''].filter(Boolean).join(' · '),
+                        unavailable: groupTemporarilyUnavailable(group),
                         group: group
                     };
                 }).filter(function (voice) {
@@ -456,6 +471,7 @@
                 if (resume) {
                     var playback = card.yani_resume || getPlayback(card.yani_id);
                     var resumeVoice = playback && voices.filter(function (voice) {
+                        if (voice.unavailable) return false;
                         if (playback.video_id && voice.group.videos.some(function (video) {
                             return String(video.video_id || video.id || '') === String(playback.video_id);
                         })) return true;
@@ -475,7 +491,7 @@
                     }
                 }
 
-                if (voices.length === 1) {
+                if (voices.length === 1 && !voices[0].unavailable) {
                     rememberPlayer(voices[0].group);
                     enrichEpisodeTitles(card, voices[0].group);
                     return chooseEpisode(card, voices[0].group, videos);
@@ -487,6 +503,7 @@
                     selected: selectedVoice >= 0 ? selectedVoice : 0,
                     onFocus: enrichVoiceOptionQuality,
                     onSelect: function (item) {
+                        if (item.unavailable) return unavailableNotice();
                         rememberPlayer(item.group);
                         enrichEpisodeTitles(card, item.group);
                         chooseEpisode(card, item.group, videos);
@@ -605,6 +622,7 @@
 
         function chooseEpisode(card, group, allVideos) {
             var videos = group.videos.slice().sort(function (a, b) {
+                if (videoTemporarilyUnavailable(a) !== videoTemporarilyUnavailable(b)) return videoTemporarilyUnavailable(a) ? 1 : -1;
                 var numberA = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(a));
                 var numberB = window.LampaYaniEpisode.number(window.LampaYaniEpisode.valueOf(b));
                 if (isFinite(numberA) && isFinite(numberB) && numberA !== numberB) return numberA - numberB;
@@ -620,7 +638,7 @@
             videos = uniqueEpisodes(videos);
             allVideos = Array.isArray(allVideos) ? allVideos : group.videos;
             var resetItems = resettableEpisodes(card, allVideos);
-            if (videos.length === 1 && !resetItems.length) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
+            if (videos.length === 1 && !resetItems.length && !videoTemporarilyUnavailable(videos[0])) return launchVideo(card, group, videos, applySavedPlaybackPosition(card, videos[0]));
             // The marks are a hint, not worth holding the list for: a slow or
             // failed request shows the episodes without them.
             var flagsReady = Promise.race([
@@ -653,6 +671,8 @@
                 var item = {title: episodeOptionTitle(card, video), video: video};
                 var flagLabel = episodeFlagLabel(flags, video);
                 if (flagLabel) item.subtitle = flagLabel;
+                if (videoTemporarilyUnavailable(video)) item.subtitle = [item.subtitle, t('source_temporarily_unavailable')].filter(Boolean).join(' · ');
+                item.unavailable = videoTemporarilyUnavailable(video);
                 return item;
             });
             if (resetItems.length) {
@@ -679,6 +699,7 @@
                         });
                     }
                     if (item.action === 'watched') return showWatchedManagement(card, allVideos);
+                    if (item.unavailable) return unavailableNotice();
                     launchVideo(card, group, videos, applySavedPlaybackPosition(card, item.video));
                 }
             });
@@ -751,6 +772,8 @@
                 var item = {title: episodeOptionTitle(card, video), video: video};
                 var flagLabel = episodeFlagLabel(flags, video);
                 if (flagLabel) item.subtitle = flagLabel;
+                if (videoTemporarilyUnavailable(video)) item.subtitle = [item.subtitle, t('source_temporarily_unavailable')].filter(Boolean).join(' · ');
+                item.unavailable = videoTemporarilyUnavailable(video);
                 return item;
             });
             showPlaybackSelect({
@@ -760,6 +783,7 @@
                 onBack: options.onBack,
                 restoreOnBack: false,
                 onSelect: function (item) {
+                    if (item.unavailable) return unavailableNotice();
                     launchVideo(card, group, playlist, applySavedPlaybackPosition(card, item.video));
                 }
             });

@@ -19,6 +19,9 @@ assert.match(navigation, /function captureSnapshot\(\)/);
 assert.match(navigation, /function restoreSnapshot\(snapshot\)/);
 assert.match(navigation, /function attachComponent\(component, options\)/);
 assert.match(navigation, /while \(scopeOrder\.length > MAX_SCOPES\)/);
+assert.match(navigation, /function noteNavigationActivity\(delay\)/);
+assert.match(navigation, /function queueAfterNavigationIdle\(key, callback\)/);
+assert.match(navigation, /hover:focus\.yaniNavigationIdle/);
 
 assert.match(ui, /LampaYaniNavigation\.captureSnapshot\(\)/);
 assert.match(ui, /LampaYaniNavigation\.restoreSnapshot\(snapshot\)/);

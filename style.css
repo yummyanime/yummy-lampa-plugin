@@ -2213,6 +2213,9 @@ body.yani-player-open .head--simple {
 .yani-card-update__freshness { flex: none; padding-left: .38em; border-left: .08em solid rgba(255,255,255,.22); color: #ffc7cd; font-size: .86em; font-weight: 600; }
 .yani-card-update--fresh { border-color: rgba(255,151,166,.5); background: linear-gradient(115deg, rgba(217,67,91,.96), rgba(108,62,145,.94)); }
 .yani-card-update--fresh .yani-card-update__freshness { color: #fff; }
+.yani-card-view--editorial-art { background-position: center; background-size: cover; }
+.yani-card-view--editorial-art:before { content: ''; position: absolute; z-index: 0; inset: -.8em; background: inherit; filter: blur(.55em); transform: scale(1.12); opacity: .78; }
+.yani-card-view--editorial-art > img { position: relative; z-index: 1; object-fit: contain !important; }
 .yani-card--fresh .card__view { box-shadow: inset 0 0 0 .08em rgba(244,112,133,.58); }
 .yani-card--fresh.focus .card__view { box-shadow: inset 0 0 0 .08em rgba(244,112,133,.7), 0 0 0 .12em #fff; }
 .yani-card-recommendation { position: absolute; top: .35em; left: .35em; z-index: 2; max-width: calc(100% - .7em); padding: .22em .42em; border-radius: .3em; background: rgba(81, 61, 143, .94); color: #fff; font-size: .58em; font-weight: 700; line-height: 1.15; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2532,8 +2535,13 @@ body.yani-player-open .head--simple {
 .yani-notification__dot { position: absolute; top: 0; bottom: 0; left: 0; width: .25em; background: var(--notification-accent); opacity: .35; }
 .yani-notification.unread { border-color: var(--notification-accent-border); background: linear-gradient(110deg, rgba(31,48,65,.97), rgba(43,59,77,.88)); }
 .yani-notification.unread .yani-notification__dot { opacity: 1; }
-.yani-notification__visual { display: flex; align-items: center; justify-content: center; width: 3.4em; height: 3.4em; border-radius: .9em; color: var(--notification-accent); background: var(--notification-accent-soft); }
+.yani-notification__visual { position: relative; display: flex; align-items: center; justify-content: center; width: 3.4em; height: 3.4em; overflow: hidden; border-radius: .9em; color: var(--notification-accent); background: var(--notification-accent-soft) center/cover no-repeat; }
 .yani-notification__visual svg { width: 1.75em; height: 1.75em; }
+.yani-notification__visual--poster:before { content: ''; position: absolute; inset: -.35em; background: inherit; filter: blur(.3em); transform: scale(1.15); opacity: .72; }
+.yani-notification__visual--poster:after { content: ''; position: absolute; inset: 0; background: rgba(10,14,22,.18); }
+.yani-notification__visual--poster img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; }
+.yani-notification--has-poster { grid-template-columns: 4.6em minmax(0,1fr) auto; }
+.yani-notification--has-poster .yani-notification__visual { width: 4.6em; height: 4.6em; }
 .yani-notification__body { min-width: 0; }
 .yani-notification__meta { display: flex; align-items: center; gap: .65em; margin-bottom: .28em; }
 .yani-notification__kind { color: var(--notification-accent); font-size: .7em; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }

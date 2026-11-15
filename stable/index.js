@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.53.13',
-        build: {hash: '85d11eddf7', date: '2026-11-15', type: 'production'},
+        version: '0.53.14',
+        build: {hash: '813af269df', date: '2026-11-15', type: 'production'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -203,9 +203,9 @@ function pluginYummyAnime() {
     messages.ru.personal_feed_subtitle = 'Серии, переводы, новости и связанные тайтлы';
     messages.ru.personal_feed_empty = 'Для тайтлов из ваших списков и истории пока нет новых событий';
     messages.ru.personal_feed_error = 'Не удалось загрузить персональные обновления';
-    messages.ru.personal_related_to = 'Связано с';
-    messages.ru.personal_new_episode = 'Новая серия';
-    messages.ru.personal_new_translation = 'Новая озвучка или субтитры';
+    messages.ru.personal_related_to = 'Связанный тайтл ·';
+    messages.ru.personal_new_episode = 'Вышла серия';
+    messages.ru.personal_new_translation = 'Добавилась озвучка или субтитры';
     messages.ru.personal_new_trailer = 'Новый трейлер';
     messages.ru.personal_news = 'Новость';
     messages.ru.updates = 'Обновления';
@@ -326,9 +326,9 @@ function pluginYummyAnime() {
     messages.en.personal_feed_subtitle = 'Episodes, translations, news, and related titles';
     messages.en.personal_feed_empty = 'There are no new events for titles in your lists and watch history';
     messages.en.personal_feed_error = 'Failed to load your personal updates';
-    messages.en.personal_related_to = 'Related to';
-    messages.en.personal_new_episode = 'New episode';
-    messages.en.personal_new_translation = 'New dub or subtitles';
+    messages.en.personal_related_to = 'Related title ·';
+    messages.en.personal_new_episode = 'New episode released';
+    messages.en.personal_new_translation = 'New dub or subtitles added';
     messages.en.personal_new_trailer = 'New trailer';
     messages.en.personal_news = 'News';
     messages.en.updates = 'Updates';
@@ -933,9 +933,9 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.feed_filter_news = 'Новини й трейлери';
     messages.uk.personal_feed_empty = 'Для тайтлів із ваших списків та історії поки немає нових подій';
     messages.uk.personal_feed_error = 'Не вдалося завантажити персональні оновлення';
-    messages.uk.personal_related_to = 'Пов’язано з';
-    messages.uk.personal_new_episode = 'Нова серія';
-    messages.uk.personal_new_translation = 'Нове озвучення або субтитри';
+    messages.uk.personal_related_to = 'Пов’язаний тайтл ·';
+    messages.uk.personal_new_episode = 'Вийшла серія';
+    messages.uk.personal_new_translation = 'Додалося озвучення або субтитри';
     messages.uk.personal_new_trailer = 'Новий трейлер';
     messages.uk.personal_news = 'Новина';
     messages.uk.updates = 'Оновлення';
@@ -5289,6 +5289,58 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var scopeOrder = [];
     var MAX_SCOPES = 32;
     var SCOPED_ROOT = '[data-yani-navigation-scope]';
+    var NAVIGATION_IDLE_DELAY = 320;
+    var idleCallbacks = {};
+    var idleTimer = 0;
+    var navigationUntil = 0;
+    var idleTrackingBound = false;
+
+    function flushIdleCallbacks() {
+        var wait = navigationUntil - Date.now();
+        if (wait > 0) {
+            idleTimer = setTimeout(flushIdleCallbacks, wait + 16);
+            return;
+        }
+        idleTimer = 0;
+        var pending = idleCallbacks;
+        idleCallbacks = {};
+        var run = function () {
+            Object.keys(pending).forEach(function (key) {
+                try { pending[key](); } catch (error) { setTimeout(function () { throw error; }, 0); }
+            });
+        };
+        if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+        else setTimeout(run, 0);
+    }
+
+    function scheduleIdleFlush() {
+        if (idleTimer) clearTimeout(idleTimer);
+        var wait = Math.max(0, navigationUntil - Date.now());
+        idleTimer = setTimeout(flushIdleCallbacks, wait + (wait ? 16 : 0));
+    }
+
+    function noteNavigationActivity(delay) {
+        navigationUntil = Math.max(navigationUntil, Date.now() + Number(delay || NAVIGATION_IDLE_DELAY));
+        if (Object.keys(idleCallbacks).length) scheduleIdleFlush();
+    }
+
+    function bindIdleTracking() {
+        if (idleTrackingBound || typeof document === 'undefined') return;
+        idleTrackingBound = true;
+        $(document).on('hover:focus.yaniNavigationIdle', '.selector', function () { noteNavigationActivity(); });
+        $(document).on('keydown.yaniNavigationIdle', function (event) {
+            var code = event.key || event.keyCode || event.which;
+            if (code === 'ArrowLeft' || code === 'ArrowRight' || code === 'ArrowUp' || code === 'ArrowDown' ||
+                code === 37 || code === 38 || code === 39 || code === 40) noteNavigationActivity();
+        });
+    }
+
+    function queueAfterNavigationIdle(key, callback) {
+        if (typeof callback !== 'function') return;
+        bindIdleTracking();
+        idleCallbacks[String(key || 'default')] = callback;
+        scheduleIdleFlush();
+    }
 
     function live(element) {
         return Boolean(element && document.documentElement.contains(element));
@@ -5360,6 +5412,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     }
 
     function createScope(options) {
+        bindIdleTracking();
         options = options || {};
         var id = String(options.id || 'default');
         var state = scopeStates[id] || (scopeStates[id] = {key: '', last: null, scrollTop: 0});
@@ -5531,6 +5584,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     }
 
     function bindFocus(element, scroll, state) {
+        bindIdleTracking();
         element.on('hover:focus', function (event) {
             // `target` can be an icon or a text node inside a selector.  Lampa
             // Scroll must receive the selector itself, otherwise the focus can
@@ -5551,7 +5605,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         attachComponent: attachComponent,
         captureSnapshot: captureSnapshot,
         restoreSnapshot: restoreSnapshot,
-        elementKey: elementKey
+        elementKey: elementKey,
+        noteNavigationActivity: noteNavigationActivity,
+        queueAfterNavigationIdle: queueAfterNavigationIdle
     };
 }(window));
 
@@ -7563,6 +7619,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var mediaMeta = deps.mediaMeta || function () { return {}; };
         var loadVideos = deps.loadVideos || function () { return Promise.reject(new Error('videos unavailable')); };
 
+        function afterNavigationIdle(key, callback) {
+            var navigation = window.LampaYaniNavigation;
+            if (navigation && navigation.queueAfterNavigationIdle) navigation.queueAfterNavigationIdle(key, callback);
+            else callback();
+        }
+
         function cardRenderElement(element, card) {
             var render = element && element.jquery ? element : element ? $(element) : $();
             if (!render.length && card && card.render) render = $(card.render(true));
@@ -7582,7 +7644,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     var videos = payload && payload.response ? payload.response : payload;
                     card.yani_media = mediaMeta({videos: Array.isArray(videos) ? videos : []});
                     card.yani_media.loaded = true;
-                    renderCardMediaBadges(element, card, card.yani_media);
+                    afterNavigationIdle('card-media:' + String(card.yani_id), function () {
+                        renderCardMediaBadges(element, card, card.yani_media);
+                    });
                 }).catch(function () {});
             });
         }
@@ -9029,17 +9093,22 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
         function refreshVisiblePlaybackProgress(card) {
             if (!card || !card.yani_id) return;
-            $('.yani-history-card').each(function () {
-                var rendered = $(this);
-                if (String(rendered.attr('data-yani-history-id') || '') !== String(card.yani_id)) return;
-                renderHistoryProgress(rendered, card.yani_resume || getPlayback(card.yani_id) || {});
-            });
-            $('[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]').not('.yani-history-card').each(function () {
-                addCardPlaybackProgress($(this), card);
-                syncCardEpisodesMeta($(this), card);
-                syncCardOverlayLayout($(this), card);
-            });
-            publishPlaybackHistoryChange(card);
+            var update = function () {
+                $('.yani-history-card').each(function () {
+                    var rendered = $(this);
+                    if (String(rendered.attr('data-yani-history-id') || '') !== String(card.yani_id)) return;
+                    renderHistoryProgress(rendered, card.yani_resume || getPlayback(card.yani_id) || {});
+                });
+                $('[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]').not('.yani-history-card').each(function () {
+                    addCardPlaybackProgress($(this), card);
+                    syncCardEpisodesMeta($(this), card);
+                    syncCardOverlayLayout($(this), card);
+                });
+                publishPlaybackHistoryChange(card);
+            };
+            var navigation = window.LampaYaniNavigation;
+            if (navigation && navigation.queueAfterNavigationIdle) navigation.queueAfterNavigationIdle('playback-progress:' + String(card.yani_id), update);
+            else update();
         }
 
         function updatePlaybackProgress(context, position, duration, remote) {
@@ -18337,13 +18406,33 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return latest;
     }
 
-    function videoEventLabel(event, t) {
+    function videoEventKind(event) {
         if (!event) return '';
-        return [
-            event.ep_title || event.number && t('episode') + ' ' + event.number,
-            event.dub_title || event.translation_title || event.voice_title,
-            event.subtitle_title
-        ].filter(Boolean).join(' · ');
+        var text = [
+            event.kind, event.type, event.sub_type, event.event, event.ep_title,
+            event.dub_title, event.translation_title, event.voice_title, event.subtitle_title
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (/trailer|трейлер/.test(text)) return 'trailer';
+        if (/subtitle|субтитр|translation|translate|dub|voice|озвуч|перевод|переклад/.test(text) ||
+            event.dub_title || event.translation_title || event.voice_title || event.subtitle_title) return 'translation';
+        return event.number || event.episode ? 'episode' : 'translation';
+    }
+
+    function videoEventLabel(event, t, kind) {
+        if (!event) return '';
+        kind = kind || videoEventKind(event);
+        var labels = {
+            trailer: t('personal_new_trailer'),
+            translation: t('personal_new_translation'),
+            episode: t('personal_new_episode')
+        };
+        var details = [];
+        var number = event.number || event.episode;
+        if (number) details.push(t('episode') + ' ' + number);
+        [event.ep_title, event.dub_title || event.translation_title || event.voice_title, event.subtitle_title].filter(Boolean).forEach(function (value) {
+            if (details.indexOf(value) < 0) details.push(value);
+        });
+        return [labels[kind] || t('recommended_for_you')].concat(details).filter(Boolean).join(' · ');
     }
 
     function notificationEventLabel(event, t) {
@@ -18376,6 +18465,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var trackedSource = tracked[id];
             var scheduled = schedule[id] || {};
             var video = videos[id] || null;
+            var videoKind = videoEventKind(video);
             var notification = notifications[id] || null;
             var episodes = scheduled.episodes || {};
             var videoDate = timestamp(video && (video.date || video.updated_at));
@@ -18390,9 +18480,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 card.yani_update_date = notificationDate;
                 card.yani_personal_event = notification.kind;
             } else if (video) {
-                card.yani_update_label = videoEventLabel(video, deps.t) || deps.t('personal_new_translation');
+                card.yani_update_label = videoEventLabel(video, deps.t, videoKind);
                 card.yani_update_date = videoDate;
-                card.yani_personal_event = 'translation';
+                card.yani_personal_event = videoKind;
             } else if (scheduleDate) {
                 card.yani_update_label = Number(episodes.next_date || 0) && !Number(episodes.prev_date || 0)
                     ? deps.t('upcoming_release')
@@ -18448,6 +18538,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 card.yani_recommendation_label = source.title
                     ? t('personal_related_to') + ' ' + source.title
                     : t('recommended_for_you');
+                card.yani_personal_event = 'related';
                 cards.push(card);
             });
         });
@@ -18622,6 +18713,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         recentSources: recentSources,
         personalSources: personalSources,
         latestVideoEvents: latestVideoEvents,
+        videoEventKind: videoEventKind,
         latestNotificationEvents: latestNotificationEvents,
         notificationEventKind: notificationEventKind,
         eventCards: eventCards,

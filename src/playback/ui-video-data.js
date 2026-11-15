@@ -211,6 +211,7 @@
         }
 
         function start(key, id) {
+            var previous = persistentSnapshot(key, staleTtl);
             var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
             var entry = {
                 inflight: true,
@@ -225,6 +226,7 @@
             Promise.resolve(fetchVideos(id, {signal: controller && controller.signal})).then(function (payload) {
                 if (controller && controller.signal && controller.signal.aborted) throw abortError();
                 payload = retainSelectedVideo(key, payload);
+                payload = retainUnavailableVideos(previous && previous.payload, payload);
                 entry.inflight = false;
                 entry.controller = null;
                 entry.payload = payload;
@@ -243,6 +245,42 @@
 
         function videoId(video) {
             return String(video && (video.video_id || video.id) || '');
+        }
+
+        function videoFingerprint(video) {
+            var id = videoId(video);
+            if (id) return 'id:' + id;
+            var data = window.LampaYaniUiUtils && LampaYaniUiUtils.videoData ? LampaYaniUiUtils.videoData(video) : video || {};
+            var provider = data.player || data.source || data.service || '';
+            var url = video && (video.iframe_url || video.url || video.link) || '';
+            if (!provider && !url) return '';
+            return ['fallback', provider, data.dubbing || data.translation || data.voice || '',
+                video && (video.number || video.episode || video.index) || '', url].join('|').toLowerCase();
+        }
+
+        function retainUnavailableVideos(previousPayload, payload) {
+            var previous = videosFromPayload(previousPayload);
+            if (!previous.length) return payload;
+            var current = videosFromPayload(payload).map(function (video) {
+                if (!video || !video.yani_unavailable) return video;
+                var copy = Object.assign({}, video);
+                delete copy.yani_unavailable;
+                delete copy.yani_unavailable_since;
+                return copy;
+            });
+            var present = {};
+            current.forEach(function (video) { present[videoFingerprint(video)] = true; });
+            previous.forEach(function (video) {
+                var key = videoFingerprint(video);
+                var unavailableSince = Number(video && video.yani_unavailable_since || now());
+                if (!key || present[key] || now() - unavailableSince >= staleTtl) return;
+                current.push(Object.assign({}, video, {yani_unavailable: true, yani_unavailable_since: unavailableSince}));
+                present[key] = true;
+            });
+            if (payload && payload.response && Array.isArray(payload.response)) return Object.assign({}, payload, {response: current});
+            if (payload && Array.isArray(payload.videos)) return Object.assign({}, payload, {videos: current});
+            if (payload && Array.isArray(payload.items)) return Object.assign({}, payload, {items: current});
+            return current;
         }
 
         function retainSelectedVideo(key, payload) {

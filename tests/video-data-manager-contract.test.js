@@ -215,6 +215,20 @@ function deferredFetch() {
     assert.deepStrictEqual(JSON.parse(JSON.stringify(offlineVideos)), [{number: 2, dubbing: 'B'}], 'a refresh failure must keep the saved display snapshot');
     assert.strictEqual(offlineVideos._yaniStaleDisplay, true, 'offline fallback must stay display-only');
 
+    const availabilityStorage = fakeStorage();
+    const availabilityNetwork = deferredFetch();
+    const availabilityManager = createManager({fetch: availabilityNetwork.fetch, storage: availabilityStorage, ttl: 1, staleTtl: 10000, now: function () { return clock.now; }});
+    clock.now = 10000;
+    const initialAvailability = availabilityManager.list(91);
+    availabilityNetwork.calls[0].resolve({response: [{id: 9101, number: '06'}, {id: 9102, number: '7.5'}]});
+    await initialAvailability;
+    clock.now = 10002;
+    const refreshedAvailability = availabilityManager.list(91);
+    availabilityNetwork.calls[1].resolve({response: [{id: 9101, number: '06'}]});
+    const availabilityVideos = await refreshedAvailability;
+    assert.strictEqual(availabilityVideos.length, 2, 'a temporarily missing source remains visible');
+    assert.strictEqual(availabilityVideos[1].yani_unavailable, true, 'the missing source is marked unavailable rather than playable');
+
     console.log('video data manager contract tests passed');
 })().catch(function (error) {
     console.error(error);

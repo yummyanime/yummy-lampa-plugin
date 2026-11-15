@@ -5,6 +5,58 @@
     var scopeOrder = [];
     var MAX_SCOPES = 32;
     var SCOPED_ROOT = '[data-yani-navigation-scope]';
+    var NAVIGATION_IDLE_DELAY = 320;
+    var idleCallbacks = {};
+    var idleTimer = 0;
+    var navigationUntil = 0;
+    var idleTrackingBound = false;
+
+    function flushIdleCallbacks() {
+        var wait = navigationUntil - Date.now();
+        if (wait > 0) {
+            idleTimer = setTimeout(flushIdleCallbacks, wait + 16);
+            return;
+        }
+        idleTimer = 0;
+        var pending = idleCallbacks;
+        idleCallbacks = {};
+        var run = function () {
+            Object.keys(pending).forEach(function (key) {
+                try { pending[key](); } catch (error) { setTimeout(function () { throw error; }, 0); }
+            });
+        };
+        if (window.requestAnimationFrame) window.requestAnimationFrame(run);
+        else setTimeout(run, 0);
+    }
+
+    function scheduleIdleFlush() {
+        if (idleTimer) clearTimeout(idleTimer);
+        var wait = Math.max(0, navigationUntil - Date.now());
+        idleTimer = setTimeout(flushIdleCallbacks, wait + (wait ? 16 : 0));
+    }
+
+    function noteNavigationActivity(delay) {
+        navigationUntil = Math.max(navigationUntil, Date.now() + Number(delay || NAVIGATION_IDLE_DELAY));
+        if (Object.keys(idleCallbacks).length) scheduleIdleFlush();
+    }
+
+    function bindIdleTracking() {
+        if (idleTrackingBound || typeof document === 'undefined') return;
+        idleTrackingBound = true;
+        $(document).on('hover:focus.yaniNavigationIdle', '.selector', function () { noteNavigationActivity(); });
+        $(document).on('keydown.yaniNavigationIdle', function (event) {
+            var code = event.key || event.keyCode || event.which;
+            if (code === 'ArrowLeft' || code === 'ArrowRight' || code === 'ArrowUp' || code === 'ArrowDown' ||
+                code === 37 || code === 38 || code === 39 || code === 40) noteNavigationActivity();
+        });
+    }
+
+    function queueAfterNavigationIdle(key, callback) {
+        if (typeof callback !== 'function') return;
+        bindIdleTracking();
+        idleCallbacks[String(key || 'default')] = callback;
+        scheduleIdleFlush();
+    }
 
     function live(element) {
         return Boolean(element && document.documentElement.contains(element));
@@ -76,6 +128,7 @@
     }
 
     function createScope(options) {
+        bindIdleTracking();
         options = options || {};
         var id = String(options.id || 'default');
         var state = scopeStates[id] || (scopeStates[id] = {key: '', last: null, scrollTop: 0});
@@ -247,6 +300,7 @@
     }
 
     function bindFocus(element, scroll, state) {
+        bindIdleTracking();
         element.on('hover:focus', function (event) {
             // `target` can be an icon or a text node inside a selector.  Lampa
             // Scroll must receive the selector itself, otherwise the focus can
@@ -267,6 +321,8 @@
         attachComponent: attachComponent,
         captureSnapshot: captureSnapshot,
         restoreSnapshot: restoreSnapshot,
-        elementKey: elementKey
+        elementKey: elementKey,
+        noteNavigationActivity: noteNavigationActivity,
+        queueAfterNavigationIdle: queueAfterNavigationIdle
     };
 }(window));

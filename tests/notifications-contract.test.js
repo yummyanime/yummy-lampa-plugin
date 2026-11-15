@@ -52,6 +52,9 @@ assert.match(ui, /fetch: LampaYaniApi\.notifications/);
 assert.match(ui, /onUnreadCount: function \(count\)/);
 assert.match(css, /\.yani-notifications__hero/);
 assert.match(css, /\.yani-notification__visual/);
+assert.match(source, /yani-notification__visual--poster/);
+assert.match(source, /yani-notification--has-poster/);
+assert.match(css, /\.yani-notification__visual--poster img[\s\S]{0,100}object-fit: contain/);
 assert.match(css, /\.yani-notification\.focus/);
 assert.match(css, /\.yani-notifications__actions/);
 

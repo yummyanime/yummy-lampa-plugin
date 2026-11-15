@@ -13,6 +13,12 @@
         var mediaMeta = deps.mediaMeta || function () { return {}; };
         var loadVideos = deps.loadVideos || function () { return Promise.reject(new Error('videos unavailable')); };
 
+        function afterNavigationIdle(key, callback) {
+            var navigation = window.LampaYaniNavigation;
+            if (navigation && navigation.queueAfterNavigationIdle) navigation.queueAfterNavigationIdle(key, callback);
+            else callback();
+        }
+
         function cardRenderElement(element, card) {
             var render = element && element.jquery ? element : element ? $(element) : $();
             if (!render.length && card && card.render) render = $(card.render(true));
@@ -32,7 +38,9 @@
                     var videos = payload && payload.response ? payload.response : payload;
                     card.yani_media = mediaMeta({videos: Array.isArray(videos) ? videos : []});
                     card.yani_media.loaded = true;
-                    renderCardMediaBadges(element, card, card.yani_media);
+                    afterNavigationIdle('card-media:' + String(card.yani_id), function () {
+                        renderCardMediaBadges(element, card, card.yani_media);
+                    });
                 }).catch(function () {});
             });
         }
@@ -217,6 +225,9 @@
             var view = $('.card__view', render).first();
             if (!view.length || view.find('.yani-card-update').length) return;
             var label = card.yani_update_label || t('episode') + ' ' + card.yani_update_episode;
+            if (card.yani_personal_event === 'news' || card.yani_personal_event === 'trailer') {
+                view.addClass('yani-card-view--editorial-art');
+            }
             var badge = $('<span class="yani-card-update"></span>');
             if (label) badge.append($('<span class="yani-card-update__label"></span>').text(label));
             if (freshness) badge.append($('<span class="yani-card-update__freshness"></span>').text(freshness.label));

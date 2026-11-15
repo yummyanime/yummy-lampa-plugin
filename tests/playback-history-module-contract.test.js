@@ -24,6 +24,7 @@ assert.doesNotMatch(ui, /function refreshVisiblePlaybackProgress\(/);
 assert.match(source, /hover:enter\.yaniHistory click\.yaniHistory/);
 assert.match(source, /yani-card-history-progress/);
 assert.match(source, /function refreshVisiblePlaybackProgress/);
+assert.match(source, /queueAfterNavigationIdle\('playback-progress:'/);
 assert.match(source, /function markEpisodesWatched\(card, videos\)/);
 assert.match(source, /syncCardEpisodesMeta/);
 assert.match(source, /yani:watch-progress/);
@@ -126,6 +127,16 @@ assert.strictEqual(api.getPlayback(84).time, 1200);
 assert.strictEqual(markedVideos[0].watched.finished, true);
 assert.strictEqual(markedVideos[2].watched.end_time, 1200);
 
+const fractionalVideos = [
+    {number: '06', video_id: 106, duration: 1200, watched: {}},
+    {number: '7.5', video_id: 175, duration: 1200, watched: {}}
+];
+api.markEpisodesWatched({yani_id: 85, title: 'Fractional title'}, fractionalVideos);
+const fractionalPlayback = api.getPlayback(85);
+assert.strictEqual(fractionalPlayback.finished_episodes['6'], true, '06 is stored as episode 6');
+assert.strictEqual(fractionalPlayback.finished_episodes['7.5'], true, '7.5 keeps its own history key');
+assert.strictEqual(fractionalPlayback.finished_episodes['7'], undefined, '7.5 must not mark episode 7 watched');
+
 vm.runInNewContext(fs.readFileSync('src/home/ui-home-sections.js', 'utf8'), context);
 const imported = api.importRemoteEntries([{
     anime_id: 77,
@@ -158,9 +169,9 @@ assert.strictEqual(api.getPlayback(77).number, '5');
     assert.strictEqual(pulls, 1, 'the account history is pulled');
     assert.strictEqual(sent.length, 1, 'the local history is sent once');
     const ids = sent[0].map((item) => item.video_id).sort((a, b) => a - b).join(',');
-    assert.strictEqual(ids, '99,103,7701', 'every local episode with a video id is sent');
+    assert.strictEqual(ids, '99,103,175,7701', 'every local episode with a video id is sent');
     assert.strictEqual(sent[0].find((item) => item.video_id === 7701).time, 240);
-    assert.strictEqual(result.sent, 3);
+    assert.strictEqual(result.sent, 4);
 
     storage.yani_auto_sync_progress = false;
     const skipped = await api.syncHistoryAfterSignIn();

@@ -165,13 +165,33 @@
         return latest;
     }
 
-    function videoEventLabel(event, t) {
+    function videoEventKind(event) {
         if (!event) return '';
-        return [
-            event.ep_title || event.number && t('episode') + ' ' + event.number,
-            event.dub_title || event.translation_title || event.voice_title,
-            event.subtitle_title
-        ].filter(Boolean).join(' · ');
+        var text = [
+            event.kind, event.type, event.sub_type, event.event, event.ep_title,
+            event.dub_title, event.translation_title, event.voice_title, event.subtitle_title
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (/trailer|трейлер/.test(text)) return 'trailer';
+        if (/subtitle|субтитр|translation|translate|dub|voice|озвуч|перевод|переклад/.test(text) ||
+            event.dub_title || event.translation_title || event.voice_title || event.subtitle_title) return 'translation';
+        return event.number || event.episode ? 'episode' : 'translation';
+    }
+
+    function videoEventLabel(event, t, kind) {
+        if (!event) return '';
+        kind = kind || videoEventKind(event);
+        var labels = {
+            trailer: t('personal_new_trailer'),
+            translation: t('personal_new_translation'),
+            episode: t('personal_new_episode')
+        };
+        var details = [];
+        var number = event.number || event.episode;
+        if (number) details.push(t('episode') + ' ' + number);
+        [event.ep_title, event.dub_title || event.translation_title || event.voice_title, event.subtitle_title].filter(Boolean).forEach(function (value) {
+            if (details.indexOf(value) < 0) details.push(value);
+        });
+        return [labels[kind] || t('recommended_for_you')].concat(details).filter(Boolean).join(' · ');
     }
 
     function notificationEventLabel(event, t) {
@@ -204,6 +224,7 @@
             var trackedSource = tracked[id];
             var scheduled = schedule[id] || {};
             var video = videos[id] || null;
+            var videoKind = videoEventKind(video);
             var notification = notifications[id] || null;
             var episodes = scheduled.episodes || {};
             var videoDate = timestamp(video && (video.date || video.updated_at));
@@ -218,9 +239,9 @@
                 card.yani_update_date = notificationDate;
                 card.yani_personal_event = notification.kind;
             } else if (video) {
-                card.yani_update_label = videoEventLabel(video, deps.t) || deps.t('personal_new_translation');
+                card.yani_update_label = videoEventLabel(video, deps.t, videoKind);
                 card.yani_update_date = videoDate;
-                card.yani_personal_event = 'translation';
+                card.yani_personal_event = videoKind;
             } else if (scheduleDate) {
                 card.yani_update_label = Number(episodes.next_date || 0) && !Number(episodes.prev_date || 0)
                     ? deps.t('upcoming_release')
@@ -276,6 +297,7 @@
                 card.yani_recommendation_label = source.title
                     ? t('personal_related_to') + ' ' + source.title
                     : t('recommended_for_you');
+                card.yani_personal_event = 'related';
                 cards.push(card);
             });
         });
@@ -450,6 +472,7 @@
         recentSources: recentSources,
         personalSources: personalSources,
         latestVideoEvents: latestVideoEvents,
+        videoEventKind: videoEventKind,
         latestNotificationEvents: latestNotificationEvents,
         notificationEventKind: notificationEventKind,
         eventCards: eventCards,

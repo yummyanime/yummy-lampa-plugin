@@ -463,17 +463,22 @@
 
         function refreshVisiblePlaybackProgress(card) {
             if (!card || !card.yani_id) return;
-            $('.yani-history-card').each(function () {
-                var rendered = $(this);
-                if (String(rendered.attr('data-yani-history-id') || '') !== String(card.yani_id)) return;
-                renderHistoryProgress(rendered, card.yani_resume || getPlayback(card.yani_id) || {});
-            });
-            $('[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]').not('.yani-history-card').each(function () {
-                addCardPlaybackProgress($(this), card);
-                syncCardEpisodesMeta($(this), card);
-                syncCardOverlayLayout($(this), card);
-            });
-            publishPlaybackHistoryChange(card);
+            var update = function () {
+                $('.yani-history-card').each(function () {
+                    var rendered = $(this);
+                    if (String(rendered.attr('data-yani-history-id') || '') !== String(card.yani_id)) return;
+                    renderHistoryProgress(rendered, card.yani_resume || getPlayback(card.yani_id) || {});
+                });
+                $('[data-yani-card-id="' + String(card.yani_id).replace(/"/g, '') + '"]').not('.yani-history-card').each(function () {
+                    addCardPlaybackProgress($(this), card);
+                    syncCardEpisodesMeta($(this), card);
+                    syncCardOverlayLayout($(this), card);
+                });
+                publishPlaybackHistoryChange(card);
+            };
+            var navigation = window.LampaYaniNavigation;
+            if (navigation && navigation.queueAfterNavigationIdle) navigation.queueAfterNavigationIdle('playback-progress:' + String(card.yani_id), update);
+            else update();
         }
 
         function updatePlaybackProgress(context, position, duration, remote) {

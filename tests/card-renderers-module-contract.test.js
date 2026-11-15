@@ -12,6 +12,8 @@ assert.match(ui, /cardRenderers\.decorate/);
 assert.match(ui, /LampaYaniCardBind\.create/);
 assert.match(ui, /var addCardMetadata = cardRenderers\.addCardMetadata/);
 assert.match(ui, /var addCardPlaybackProgress = cardRenderers\.addCardPlaybackProgress/);
+assert.match(source, /queueAfterNavigationIdle/);
+assert.match(source, /card-media:/);
 assert.doesNotMatch(ui, /function addCardMetadata\(element, card\)/);
 assert.doesNotMatch(ui, /function cardPlaybackState\(card\)/);
 assert.doesNotMatch(ui, /function addCardRatings\(element, card\)/);

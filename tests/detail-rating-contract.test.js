@@ -13,7 +13,8 @@ assert.match(detail, /function createDetailRatingAction\(cardData\)/);
 assert.match(detail, /for \(var value = 10; value >= 1; value--\)/);
 assert.match(detail, /LampaYaniApi\.removeRate\(cardData\.yani_id\)/);
 assert.match(detail, /LampaYaniApi\.rate\(cardData\.yani_id, selected\.value\)/);
-assert.match(detail, /cardData\.yani_user_rating = selected\.remove \? null : Number\(selected\.value\)/);
+assert.match(detail, /cardData\.yani_user_rating = optimistic;[\s\S]{0,80}update\(\);/);
+assert.match(detail, /if \(revision === ratingRevision\)[\s\S]{0,180}cardData\.yani_user_rating = previous/);
 assert.match(css, /\.yani-detail__rating-action\.focus/);
 ['ru', 'en', 'uk'].forEach((language) => {
     ['set_rating', 'remove_rating', 'rating_removed'].forEach((key) => {

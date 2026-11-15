@@ -17,6 +17,8 @@ assert.match(schedule, /var count = Math\.max\(0, Math\.floor\(Number\(episodes\
     'episode totals must be normalized before formatting');
 assert.match(schedule, /playbackSourceId\(Object\.assign\(\{\}, video \|\| \{\}, data \|\| \{\}\)\)/);
 assert.match(schedule, /if \(!isPlaybackSourceEnabled\(sourceId\)\) return/);
+assert.notStrictEqual(Number('7.5'), Number('7'), 'schedule must keep fractional specials separate');
+assert.strictEqual(Number('06'), Number('6'), 'schedule must match zero-padded episodes');
 assert.match(schedule, /if \(episode && number && Number\(number\) !== Number\(episode\)\) return/);
 assert.match(schedule, /if \(episode && !number\) return/);
 assert.match(schedule, /LampaYaniApi\.videos\(animeId/);

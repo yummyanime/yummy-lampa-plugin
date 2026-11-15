@@ -9,6 +9,16 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.53.14] - 2026-11-15
+
+### Added
+
+- Explicit update reasons to For You cards
+
+### Changed
+
+- Asynchronous card refreshes to wait until remote navigation is idle
+
 ## [0.53.13] - 2026-11-15
 
 ### Fixed

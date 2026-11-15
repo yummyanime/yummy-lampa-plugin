@@ -923,6 +923,7 @@
 
         function createDetailRatingAction(cardData) {
             var action = $('<div class="yani-detail__rating-action selector"></div>');
+            var ratingRevision = 0;
             action.append('<span class="yani-detail__rating-icon" aria-hidden="true">★</span>');
             action.append('<span class="yani-detail__rating-label"></span>');
 
@@ -951,16 +952,24 @@
                     title: t('set_rating'),
                     items: items,
                     onSelect: function (selected) {
+                        var previous = cardData.yani_user_rating;
+                        var optimistic = selected.remove ? null : Number(selected.value);
+                        var revision = ++ratingRevision;
+                        cardData.yani_user_rating = optimistic;
+                        update();
                         var request = selected.remove
                             ? LampaYaniApi.removeRate(cardData.yani_id)
                             : LampaYaniApi.rate(cardData.yani_id, selected.value);
                         request.then(function () {
-                            cardData.yani_user_rating = selected.remove ? null : Number(selected.value);
-                            update();
+                            if (revision !== ratingRevision) return;
                             Lampa.Noty.show(selected.remove ? t('rating_removed') : t('saved'));
                         }).catch(function (error) {
+                            if (revision === ratingRevision) {
+                                cardData.yani_user_rating = previous;
+                                update();
+                                Lampa.Noty.show(t('save_error'));
+                            }
                             console.error('[YummyAnime Rating]', error);
-                            Lampa.Noty.show(t('save_error'));
                         });
                     }
                 });

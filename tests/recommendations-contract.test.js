@@ -66,7 +66,11 @@ const events = recommendations.eventCards(personal, {response: [
 });
 assert.deepEqual(Array.from(events, (card) => String(card.yani_id)), ['11', '10']);
 assert.match(events[0].yani_update_label, /^personal_new_translation/);
-assert.equal(events[1].yani_update_label, 'episode 5 · Studio A');
+assert.equal(events[1].yani_update_label, 'personal_new_translation · episode 5 · Studio A');
+assert.equal(events[1].yani_personal_event, 'translation');
+assert.equal(recommendations.videoEventKind({number: 6}), 'episode');
+assert.equal(recommendations.videoEventKind({number: 6, dub_title: 'Studio B'}), 'translation');
+assert.equal(recommendations.videoEventKind({type: 'trailer'}), 'trailer');
 
 const related = recommendations.relatedCards([
     {response: {viewing_order: [
@@ -76,5 +80,6 @@ const related = recommendations.relatedCards([
 ], [{id: 10, title: 'Watching'}], (item) => ({yani_id: item.anime_id, title: item.title}), (key) => key, {'10': true});
 assert.deepEqual(Array.from(related, (card) => card.yani_id), [20]);
 assert.equal(related[0].yani_recommendation_label, 'personal_related_to Watching');
+assert.equal(related[0].yani_personal_event, 'related');
 
 console.log('personal feed contract checks passed');
