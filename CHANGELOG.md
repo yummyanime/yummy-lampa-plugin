@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.54.0] - 2026-11-18
+
+### Added
+
+- Progress of anime watched in Lampa through other sources or torrents is now taken from Lampa's own history and saved to the YummyAnime history and, with automatic sync on, to the account
+
 ## [0.53.15] - 2026-11-15
 
 ### Added

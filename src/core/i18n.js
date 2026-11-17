@@ -92,6 +92,8 @@
     messages.ru.sync_history_error = 'Не удалось синхронизировать историю';
     messages.ru.auto_sync_progress = 'Автосинхронизация прогресса';
     messages.ru.auto_sync_progress_description = 'Автоматически сохранять в аккаунте YummyAnime прогресс внутреннего плеера Lampa и подтягивать серверный прогресс на главный экран, в историю и карточку тайтла. При отключении доступна ручная синхронизация на странице аккаунта';
+    messages.ru.lampa_timeline_import = 'Учитывать просмотры из Lampa';
+    messages.ru.lampa_timeline_import_description = 'Переносить в историю YummyAnime прогресс аниме, просмотренных в Lampa через другие источники и торренты, а при включённой автосинхронизации сохранять его в аккаунте. Для сериалов учитывается первый сезон';
     messages.ru.subscribe_all_dubbings = 'Подписаться на все озвучки';
     messages.ru.unsubscribe_all_dubbings = 'Отписаться от всех озвучек';
     messages.ru.awaiting_episode = 'Ждём серию {episode}';
@@ -216,6 +218,8 @@
     messages.en.sync_history_error = 'Failed to synchronize history';
     messages.en.auto_sync_progress = 'Automatic progress sync';
     messages.en.auto_sync_progress_description = 'Automatically save internal Lampa player progress to the YummyAnime account and pull server progress onto the home screen, history and title card. When disabled, manual sync is available on the account page';
+    messages.en.lampa_timeline_import = 'Use progress from Lampa';
+    messages.en.lampa_timeline_import_description = 'Copy progress of anime watched in Lampa through other sources and torrents into the YummyAnime history, and save it to the account when automatic sync is on. For series the first season is used';
     messages.en.subscribe_all_dubbings = 'Subscribe to every dubbing';
     messages.en.unsubscribe_all_dubbings = 'Unsubscribe from every dubbing';
     messages.en.awaiting_episode = 'Waiting for episode {episode}';
@@ -842,6 +846,8 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.sync_history_error = 'Не вдалося синхронізувати історію';
     messages.uk.auto_sync_progress = 'Автосинхронізація прогресу';
     messages.uk.auto_sync_progress_description = 'Автоматично зберігати в обліковому записі YummyAnime прогрес внутрішнього плеєра Lampa і підтягувати серверний прогрес на головний екран, в історію та картку тайтла. Після вимкнення доступна ручна синхронізація на сторінці облікового запису';
+    messages.uk.lampa_timeline_import = 'Враховувати перегляди з Lampa';
+    messages.uk.lampa_timeline_import_description = 'Переносити в історію YummyAnime прогрес аніме, переглянутих у Lampa через інші джерела й торенти, а за увімкненої автосинхронізації зберігати його в обліковому записі. Для серіалів враховується перший сезон';
     messages.uk.subscribe_all_dubbings = 'Підписатися на всі озвучки';
     messages.uk.unsubscribe_all_dubbings = 'Відписатися від усіх озвучок';
     messages.uk.awaiting_episode = 'Чекаємо серію {episode}';

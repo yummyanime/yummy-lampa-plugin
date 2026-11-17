@@ -86,6 +86,11 @@
             });
             Lampa.SettingsApi.addParam({
                 component: 'yani',
+                param: {name: 'yani_lampa_timeline_import', type: 'trigger', default: true},
+                field: {name: t('lampa_timeline_import'), description: t('lampa_timeline_import_description')}
+            });
+            Lampa.SettingsApi.addParam({
+                component: 'yani',
                 param: {name: 'yani_auto_manage_lists', type: 'trigger', default: false},
                 field: {name: t('auto_manage_lists'), description: t('auto_manage_lists_description')}
             });

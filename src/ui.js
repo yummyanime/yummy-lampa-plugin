@@ -186,6 +186,15 @@
     var syncHistoryAfterSignIn = playbackHistoryApi.syncHistoryAfterSignIn;
     var bindHistoryCardRender = playbackHistoryApi.bindHistoryCardRender;
 
+    var lampaTimelineImport = LampaYaniLampaTimelineImport.create({
+        findYummyMatches: findYummyMatches,
+        isNativeAnimeCard: isNativeAnimeCard,
+        loadVideos: function (id) { return videoData.list(id); },
+        importExternalProgress: playbackHistoryApi.importExternalProgress,
+        getPlayback: getPlayback,
+        autoProgressSyncEnabled: autoProgressSyncEnabled
+    });
+
     var externalPlayer = LampaYaniExternalPlayer.create({
         t: t,
         playbackReturnState: playbackReturnState,
@@ -359,6 +368,7 @@
                     // copy — otherwise the TV keeps showing what the phone
                     // already finished.
                     ensureRemoteHistory();
+                    lampaTimelineImport.start();
                     registerOnlineSource();
                     registerSearchSource();
                     registerAndroidDirectVideoTube();

@@ -221,6 +221,79 @@
             persistHistory(history);
         }
 
+        // Progress recorded outside the extension (Lampa's own timeline, filled
+        // by other online sources and torrents). Unlike a remote pull it keeps
+        // the entry's flags and only moves the resume point when the outside
+        // view is newer than what this device already has.
+        function importExternalProgress(card, episodes) {
+            if (!window.Lampa || !window.Lampa.Storage || !card || !card.yani_id) return {imported: 0};
+            var entries = (episodes || []).filter(function (entry) {
+                return entry && entry.video && positiveNumber(entry.time) > 0 &&
+                    window.LampaYaniEpisode.key(window.LampaYaniEpisode.valueOf(entry.video));
+            });
+            if (!entries.length) return {imported: 0};
+            var history = playbackHistory();
+            var id = String(card.yani_id);
+            var previous = history[id] || null;
+            var saved = Object.assign({}, previous || {});
+            saved.half_watched_episodes = Object.assign({}, saved.half_watched_episodes || {});
+            saved.finished_episodes = Object.assign({}, saved.finished_episodes || {});
+            var reached = positiveNumber(saved.max_episode);
+            var latest = null;
+            entries.forEach(function (entry) {
+                var number = window.LampaYaniEpisode.valueOf(entry.video);
+                var key = window.LampaYaniEpisode.key(number);
+                var duration = positiveNumber(entry.duration);
+                if (duration > 0 && entry.time / duration >= 0.5) saved.half_watched_episodes[key] = true;
+                if (episodeFinished(entry.time, duration)) {
+                    saved.finished_episodes[key] = true;
+                    reached = Math.max(reached, positiveNumber(number));
+                }
+                var updated = positiveNumber(entry.updated_at);
+                if (!latest || updated > latest.updated ||
+                    updated === latest.updated && positiveNumber(number) > positiveNumber(latest.number)) {
+                    latest = {entry: entry, number: number, updated: updated};
+                }
+            });
+            saved.max_episode = reached;
+            saved.episodes_aired = Math.max(episodeCeiling(card), positiveNumber(saved.episodes_aired));
+            // An outside record without a timestamp (older Lampa builds) can
+            // only fill an empty entry; it never overrides a dated local view.
+            var newer = !previous || latest.updated > positiveNumber(previous.updated_at);
+            if (newer) {
+                var video = latest.entry.video;
+                var videoData = window.LampaYaniUiUtils && window.LampaYaniUiUtils.videoData
+                    ? window.LampaYaniUiUtils.videoData(video)
+                    : {};
+                Object.assign(saved, {
+                    number: latest.number,
+                    video_id: video.video_id || video.id || '',
+                    time: Math.floor(latest.entry.time),
+                    duration: Math.floor(positiveNumber(latest.entry.duration)),
+                    player: String(saved.player || videoData.player || '').toLowerCase(),
+                    voice: String(saved.voice || videoData.dubbing || ''),
+                    episode_url: saved.episode_url || '',
+                    title: card.title || saved.title || '',
+                    poster: card.poster || card.img || saved.poster || '',
+                    updated_at: latest.updated || Date.now(),
+                    resume_next: episodeFinished(latest.entry.time, latest.entry.duration)
+                });
+                saved.card = Object.assign({}, saved.card || {}, {
+                    title: card.title || '',
+                    original_title: card.original_title || '',
+                    poster: card.poster || card.img || '',
+                    release_date: card.release_date || '',
+                    overview: card.overview || '',
+                    anime_id: card.yani_id,
+                    remote_ids: card.yani_remote_ids || {}
+                });
+            }
+            history[id] = saved;
+            persistHistory(history);
+            publishPlaybackHistoryChange(card);
+            return {imported: entries.length, resumed: newer, saved: saved};
+        }
+
         function pullRemoteProgress(limit) {
             if (!window.LampaYaniAuth || !LampaYaniAuth.token() || !window.LampaYaniApi || !LampaYaniApi.watchHistory) {
                 return Promise.resolve({imported: 0});
@@ -638,6 +711,7 @@
             rememberPlayback: rememberPlayback,
             importRemoteEntries: importRemoteEntries,
             importVideosProgress: importVideosProgress,
+            importExternalProgress: importExternalProgress,
             pullRemoteProgress: pullRemoteProgress,
             ensureRemoteHistory: ensureRemoteHistory,
             autoProgressSyncEnabled: autoProgressSyncEnabled,
