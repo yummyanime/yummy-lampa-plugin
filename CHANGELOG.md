@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.55.0] - 2026-11-18
+
+### Added
+
+- Continue Watching now loads more titles when focus reaches the last row instead of stopping at the first 300 history records
+
 ## [0.54.0] - 2026-11-18
 
 ### Added

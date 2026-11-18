@@ -68,8 +68,8 @@ assert.match(fs.readFileSync('src/ui/ui-utils.js', 'utf8'), /value\.huge/, 'larg
 assert.match(ui, /LampaYaniPlaybackHistory\.create/);
 assert.match(ui, /historyCardRender: bindHistoryCardRender/);
 assert.match(sectionsSource, /var limit = 30/);
-assert.match(sectionsSource, /var continueLimit = 300/);
-assert.match(sectionsSource, /fetchHistoryRange\(deps\.fetchRemote, continueLimit, limit\)/);
+assert.match(sectionsSource, /var continueBatch = 300/);
+assert.match(sectionsSource, /fetchHistoryBatch\(deps\.fetchRemote, offset, continueBatch, limit\)/);
 assert.match(sectionsSource, /Math\.min\(30, Number\(pageSize \|\| 30\)\)/);
 assert.match(sectionsSource, /remoteFailed \? 'history_load_error' : 'history_empty'/);
 // The list is drawn from what history already knows - every entry carries a

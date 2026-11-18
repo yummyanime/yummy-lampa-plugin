@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.54.0',
-        build: {hash: '09e6fa90fc', date: '2026-11-18', type: 'production'},
+        version: '0.55.0',
+        build: {hash: '4f36b69871', date: '2026-11-18', type: 'production'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -15734,6 +15734,63 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         });
     }
 
+    /**
+     * Reads one batch of the account history that starts at `start`: up to
+     * `maxItems` records in pages of `pageSize`.
+     *
+     * Continue Watching reads the history in batches like this one, so the
+     * queue is not capped at whatever the first few hundred records happen to
+     * hold. `raw` is how many records the server returned, which is how far
+     * the caller moves its offset; `exhausted` says a short page was seen and
+     * there is nothing more to ask for.
+     *
+     * Only the pages up to the first one that failed are used: skipping a
+     * failed page and moving the offset past it would lose those records for
+     * good, while stopping before it lets the next batch ask for it again.
+     */
+    function fetchHistoryBatch(fetchPage, start, maxItems, pageSize, control) {
+        var size = Math.max(1, Math.min(30, Number(pageSize || 30)));
+        var maximum = Math.max(size, Number(maxItems || size));
+        var first = Math.max(0, Number(start || 0));
+
+        function page(offset) {
+            return Promise.resolve(fetchPage(size, offset, control)).then(function (payload) {
+                var raw = historyPayloadItems(payload).length;
+                if (!raw) warnUnrecognizedHistory(payload, offset);
+                return {raw: raw, entries: normalizeRemoteHistory(payload)};
+            });
+        }
+
+        function collect(pages) {
+            var result = {raw: 0, entries: [], exhausted: false};
+            for (var index = 0; index < pages.length; index += 1) {
+                var item = pages[index];
+                if (item.failed) break;
+                result.raw += item.raw;
+                result.entries = result.entries.concat(item.entries);
+                if (item.raw < size) {
+                    result.exhausted = true;
+                    break;
+                }
+            }
+            return result;
+        }
+
+        return page(first).then(function (head) {
+            if (head.raw < size || head.raw >= maximum) return collect([head]);
+            var offsets = [];
+            for (var offset = first + head.raw; offset < first + maximum; offset += size) offsets.push(offset);
+            return Promise.all(offsets.map(function (value) {
+                return page(value).catch(function (error) {
+                    console.warn('[YummyAnime History] A later history page is unavailable', error);
+                    return {raw: 0, entries: [], failed: true};
+                });
+            })).then(function (rest) {
+                return collect([head].concat(rest));
+            });
+        });
+    }
+
     function normalizeLocalHistory(saved) {
         return Object.keys(saved || {}).map(function (id) {
             var item = saved[id] || {};
@@ -16168,10 +16225,20 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var comp = new Lampa.InteractionCategory(object);
         var continueMode = object.mode === 'continue';
         var limit = 30;
-        var continueLimit = 300;
+        // Continue Watching reads the history in batches of this many records
+        // and asks for the next batch when focus nears the last row. A record
+        // is one episode, so a single fixed read used to stop the queue at
+        // about fifty titles for anyone who watches several episodes in a row.
+        var continueBatch = 300;
+        // How many batches one scroll may read while looking for titles that
+        // are not on screen yet: a stretch of history can hold only titles the
+        // queue already shows or ones that are finished.
+        var continueBatchesPerPage = 3;
         var offset = 0;
         var hasMore = false;
         var seen = {};
+        var remoteEntries = [];
+        var shownTitles = {};
         object.page = 1;
 
         var detailRequests = {};
@@ -16200,8 +16267,10 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return Promise.resolve({entries: [], count: 0});
             }
             if (continueMode) {
-                return fetchHistoryRange(deps.fetchRemote, continueLimit, limit).then(function (entries) {
-                    return {entries: entries, count: entries.length};
+                return fetchHistoryBatch(deps.fetchRemote, offset, continueBatch, limit).then(function (batch) {
+                    offset += batch.raw;
+                    remoteEntries = remoteEntries.concat(batch.entries);
+                    return {entries: batch.entries, count: batch.raw, exhausted: batch.exhausted};
                 });
             }
             return deps.fetchRemote(limit, offset).then(function (payload) {
@@ -16310,6 +16379,44 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             });
         }
 
+        /**
+         * The queue built from everything read so far, minus the titles that
+         * are already on screen.
+         *
+         * Each batch adds older records, so the queue is rebuilt over all of
+         * them rather than over the new batch alone: a title's reach and
+         * episode count are facts gathered across every record of it. Titles
+         * already shown keep their tile; only new ones are appended.
+         */
+        function continueCards(page, local) {
+            var entries = mergeHistory(deps.history() || local, remoteEntries);
+            return resolveCeilings(entries).then(function (known) {
+                var queue = continueWatchingEntries(entries, shownTitles, known.ceilings, known.titles).filter(function (entry) {
+                    // The empty-queue fallback ignores exclusions on purpose,
+                    // so titles already on screen are filtered here as well.
+                    return !shownTitles[animeKey(entry)];
+                });
+                reportContinueStats(page);
+                queue.forEach(function (entry) { shownTitles[animeKey(entry)] = true; });
+                return cardsFor(uniqueEntries(queue));
+            });
+        }
+
+        // The next titles for the queue. A batch that brings none - only
+        // older records of titles on screen, or finished titles - is followed
+        // by the next one, a few at most, so a scroll never ends on nothing
+        // while the history still has more.
+        function nextContinueCards(attempt) {
+            return loadRemotePage().then(function (page) {
+                hasMore = !page.exhausted && page.count > 0;
+                if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
+                return continueCards(page).then(function (cards) {
+                    if (!cards.length && hasMore && attempt < continueBatchesPerPage) return nextContinueCards(attempt + 1);
+                    return cards;
+                });
+            });
+        }
+
         comp.create = function () {
             var self = this;
             var local = deps.history();
@@ -16321,15 +16428,11 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return {entries: [], count: 0, failed: true};
             });
             Promise.resolve(remote).then(function (page) {
-                hasMore = !continueMode && deps.authorized() && !page.failed && page.count >= limit;
+                hasMore = deps.authorized() && !page.failed && (continueMode ? !page.exhausted && page.count > 0 : page.count >= limit);
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
+                if (continueMode) return continueCards(page, local);
                 var entries = mergeHistory(deps.history() || local, page.entries);
-                if (!continueMode) return cardsFor(uniqueEntries(entries));
-                return resolveCeilings(entries).then(function (known) {
-                    var queue = continueWatchingEntries(entries, {}, known.ceilings, known.titles);
-                    reportContinueStats(page);
-                    return cardsFor(uniqueEntries(queue));
-                });
+                return cardsFor(uniqueEntries(entries));
             }).then(function (cards) {
                 var totalPages = hasMore ? 2 : 1;
                 var ready = cards.filter(Boolean);
@@ -16345,19 +16448,22 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
         comp.nextPageReuest = function (requestObject, resolve, reject) {
             if (!hasMore) {
-                resolve({results: [], total_pages: requestObject.page, title: deps.t('watch_history')});
+                resolve({results: [], total_pages: requestObject.page, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
                 return;
             }
-            loadRemotePage().then(function (page) {
+            var next = continueMode ? nextContinueCards(1) : loadRemotePage().then(function (page) {
                 hasMore = page.count >= limit;
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
                 return cardsFor(uniqueEntries(page.entries));
-            }).then(function (cards) {
+            });
+            next.then(function (cards) {
+                var ready = cards.filter(Boolean);
                 resolve({
-                    results: cards.filter(Boolean),
+                    results: ready,
                     total_pages: hasMore ? requestObject.page + 1 : requestObject.page,
                     title: deps.t(continueMode ? 'continue_watching' : 'watch_history')
                 });
+                enrichCards(ready);
             }).catch(function (error) {
                 requestObject.page = Math.max(1, requestObject.page - 1);
                 console.error('[YummyAnime History]', error);
@@ -16374,6 +16480,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     window.LampaYani.HomeSections = window.LampaYaniHomeSections = {
         history: history,
         fetchHistoryRange: fetchHistoryRange,
+        fetchHistoryBatch: fetchHistoryBatch,
         normalizeRemoteHistory: normalizeRemoteHistory,
         normalizeLocalHistory: normalizeLocalHistory,
         lastWatchTokens: lastWatchTokens,
