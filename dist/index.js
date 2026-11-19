@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.57.0',
-        build: {hash: '28069e8857', date: '2026-11-19', type: 'test'},
+        version: '0.57.1',
+        build: {hash: '0de98f95b8', date: '2026-11-19', type: 'test'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -13190,21 +13190,32 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             })).then(function () { return cards; });
         }
 
-        function findYummyMatches(movie) {
-            movie = movie || {};
-            var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
-            var year = String(movie.release_date || movie.first_air_date || movie.year || '').slice(0, 4);
-            if (!title) return Promise.resolve([]);
-            var cacheKey = nativeMatchKey(movie);
-            if (Object.prototype.hasOwnProperty.call(nativeMatchCache, cacheKey)) return Promise.resolve(nativeMatchCache[cacheKey]);
-            if (nativeMatchPending[cacheKey]) return nativeMatchPending[cacheKey];
+        // The catalog filters by Kinopoisk, Shikimori and MyAnimeList ids
+        // (kp_ids, shikimori_ids, mal_ids). A native card that carries one is
+        // found directly; a single hit settles the match without comparing
+        // titles. No id, or no hit, falls back to the title search.
+        function findByIds(movie) {
+            var ids = nativeIds(movie);
+            var params = {limit: 5};
+            if (ids.kp) params.kp_ids = ids.kp;
+            else if (ids.shikimori) params.shikimori_ids = ids.shikimori;
+            else if (ids.mal) params.mal_ids = ids.mal;
+            else return Promise.resolve([]);
+            if (!window.LampaYaniApi || !LampaYaniApi.catalog) return Promise.resolve([]);
+            return LampaYaniApi.catalog(params).then(function (payload) {
+                var cards = LampaYaniApi.normalize(payload).map(toCard);
+                var confirmed = idMatches(movie, cards);
+                return confirmed.length === 1 ? confirmed : [];
+            }).catch(function () { return []; });
+        }
 
+        function findByTitles(movie, title) {
             var queries = LampaYaniUiUtils.titleValues(movie);
             if (queries.indexOf(title) < 0) queries.unshift(title);
             // Native cards usually expose a localized and an original title. Two
             // queries are enough for matching and avoid an eight-request burst on
             // low-memory TVs whenever Lampa emits the full-card event twice.
-            nativeMatchPending[cacheKey] = Promise.all(queries.slice(0, 2).map(function (query) {
+            return Promise.all(queries.slice(0, 2).map(function (query) {
                 return LampaYaniApi.search(query, {limit: 10}).then(function (payload) {
                     return LampaYaniApi.normalize(payload).map(toCard);
                 }).catch(function () { return []; });
@@ -13220,6 +13231,21 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return withAllTitles(movie, cards).then(function (enriched) {
                     return scoreNativeMatches(movie, enriched);
                 });
+            });
+        }
+
+        function findYummyMatches(movie) {
+            movie = movie || {};
+            var title = movie.title || movie.name || movie.original_title || movie.original_name || '';
+            var year = String(movie.release_date || movie.first_air_date || movie.year || '').slice(0, 4);
+            if (!title) return Promise.resolve([]);
+            var cacheKey = nativeMatchKey(movie);
+            if (Object.prototype.hasOwnProperty.call(nativeMatchCache, cacheKey)) return Promise.resolve(nativeMatchCache[cacheKey]);
+            if (nativeMatchPending[cacheKey]) return nativeMatchPending[cacheKey];
+
+            nativeMatchPending[cacheKey] = findByIds(movie).then(function (byId) {
+                if (byId.length) return byId;
+                return findByTitles(movie, title);
             }).then(function (cards) {
                 delete nativeMatchPending[cacheKey];
                 rememberNativeMatch(cacheKey, cards);

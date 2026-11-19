@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.57.1] - 2026-11-19
+
+### Changed
+
+- A native Lampa card with a Kinopoisk, Shikimori or MyAnimeList id now finds its YummyAnime title directly through the catalog id filters instead of a title search
+
 ## [0.57.0] - 2026-11-19
 
 ### Added

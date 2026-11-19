@@ -36,7 +36,7 @@ Screenshots for catalogs and the public README:
 - AniLibria dubbing straight from AniLiberty (HLS up to 1080p with opening marks) when YummyAnime links the release or a search finds it with the same MyAnimeList or Shikimori id; its progress stays on the device;
 - automatic next-episode playback with its stream resolved in advance;
 - optional, disabled-by-default YummyTV app integration;
-- YummyAnime button on standard Lampa cards (a Kinopoisk, Shikimori or MyAnimeList id on the card settles the match) and Online registration when that module is available;
+- YummyAnime button on standard Lampa cards (a Kinopoisk, Shikimori or MyAnimeList id on the card looks the title up directly through the catalog id filters) and Online registration when that module is available;
 - all video sources and dubbings returned by the YummyAnime API (filtered by the Show sources settings);
 - local playback history, one-click resume, episode duration and view counts;
 - optional automatic internal-player progress synchronization for authorized YummyAnime users, with manual account-page sync when disabled;
