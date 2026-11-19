@@ -2,7 +2,7 @@
 
 The official YummyAnime plugin for Lampa. It adds an anime catalog, schedule, ratings, personal lists, and playback from available sources. The interface is designed for TV remotes.
 
-Current version: `0.55.0`
+Current version: `0.56.0`
 
 Official website: [yummyani.me](https://yummyani.me)
 
@@ -52,7 +52,7 @@ Signing in enables your profile, notifications, ratings, favorites, personal lis
 - **Collections** — themed YummyAnime collections.
 - **Top** — overall ranking, series, movies, and ONA.
 - **My Feed** — new episodes, translations, news, trailers, and related titles for anime from your lists and watch history. TV-friendly filters switch between event types without another API request.
-- **Continue Watching** — unfinished titles from local and YummyAnime watch history.
+- **Watch History** — titles in progress and finished ones from local and YummyAnime watch history, newest first; finished titles are marked Watched.
 - **My Lists** — quick access to your library.
 - **Account** — profile, notifications, statistics, and synchronization in one dashboard card.
 - **Service indicator** — a compact focusable status control opens detailed YummyAnime availability history.
@@ -77,7 +77,7 @@ Available lists are **Watching**, **Planned**, **Completed**, **Dropped**, **Pos
 
 A title can have only one main status. **Favorite** is independent and can be enabled or disabled separately. List status can be changed from the title page.
 
-**My Lists** shows recently added titles and opens each full list. **Continue Watching** combines local history with YummyAnime watch progress. Automatic synchronization can be enabled in settings or started manually from the account page.
+**My Lists** shows recently added titles and opens each full list. **Watch History** combines local history with YummyAnime watch progress. Automatic synchronization can be enabled in settings or started manually from the account page.
 
 ## Playback and sources such as Alloha
 

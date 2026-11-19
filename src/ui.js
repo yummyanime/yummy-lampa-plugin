@@ -802,22 +802,19 @@
         });
     }
 
+    // One watch history: titles in progress and finished ones, newest first.
+    // The dashboard tile and the account page both open it.
     function openWatchHistory() {
         Lampa.Activity.push({
             url: 'yani/history',
             title: 'YummyAnime · ' + t('watch_history'),
             component: 'yani_history',
-            mode: 'history'
+            mode: 'continue'
         });
     }
 
     function openContinueWatching() {
-        Lampa.Activity.push({
-            url: 'yani/continue-watching',
-            title: 'YummyAnime · ' + t('continue_watching'),
-            component: 'yani_history',
-            mode: 'continue'
-        });
+        openWatchHistory();
     }
 
     function openSubscriptions(userId) {

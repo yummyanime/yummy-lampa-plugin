@@ -40,7 +40,7 @@ Screenshots for catalogs and the public README:
 - local playback history, one-click resume, episode duration and view counts;
 - optional automatic internal-player progress synchronization for authorized YummyAnime users, with manual account-page sync when disabled;
 - standard Lampa detail cards for matched YummyAnime catalog and schedule entries;
-- a Continue Watching catalog built from local playback history;
+- a Watch History section built from local and account history: titles in progress first by date, finished titles marked Watched;
 - progress of anime watched in Lampa through other sources or torrents is picked up from Lampa's own timeline and added to the YummyAnime history and, with automatic sync on, to the account (first season of a series; `Use progress from Lampa` setting);
 - YummyAnime actions and correctly normalized read-only comments on standard Lampa cards;
 - paginated comments and nested read-only reply threads;

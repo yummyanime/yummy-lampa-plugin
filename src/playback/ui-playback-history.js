@@ -517,7 +517,10 @@
             var label = episode ? t('episode') + ' ' + episode : t('continue_watching');
             if (percent) label += ' · ' + percent + '%';
             var awaiting = Number(playback.awaiting_episode || 0);
-            if (awaiting) {
+            if (playback.title_finished) {
+                label = t('title_watched');
+                percent = 100;
+            } else if (awaiting) {
                 // Caught up with an ongoing title: everything released is
                 // watched, so the bar is full and the label names what is next.
                 var nextDate = Number(playback.next_date || 0);
@@ -528,7 +531,7 @@
                 percent = 100;
             }
             view.append($('<span class="yani-card-history"></span>').text(label));
-            if (duration > 0 || awaiting) {
+            if (duration > 0 || awaiting || playback.title_finished) {
                 view.append($('<span class="yani-card-history-progress"><span></span></span>').find('span').css('width', percent + '%').end());
             }
             syncCardOverlayLayout(rendered);

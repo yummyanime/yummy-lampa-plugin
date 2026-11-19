@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.55.0',
-        build: {hash: '4f36b69871', date: '2026-11-18', type: 'production'},
+        version: '0.56.0',
+        build: {hash: '8ce92310e5', date: '2026-11-19', type: 'production'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -150,6 +150,7 @@ function pluginYummyAnime() {
     messages.ru.user_lists_error = 'Не удалось загрузить ваши списки YummyAnime';
     messages.ru.open_list = 'Открыть список';
     messages.ru.watch_history = 'История просмотра';
+    messages.ru.title_watched = 'Просмотрено';
     messages.ru.favorites = 'Любимое';
     messages.ru.repo_notice = 'Официальный плагин YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.ru.official_plugin = 'Официальный плагин YummyAnime';
@@ -276,6 +277,7 @@ function pluginYummyAnime() {
     messages.en.user_lists_error = 'Failed to load your YummyAnime lists';
     messages.en.open_list = 'Open list';
     messages.en.watch_history = 'Watch history';
+    messages.en.title_watched = 'Watched';
     messages.en.favorites = 'Favorites';
     messages.en.repo_notice = 'Official YummyAnime plugin · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.en.official_plugin = 'Official YummyAnime plugin';
@@ -904,6 +906,7 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.user_lists_error = 'Не вдалося завантажити ваші списки YummyAnime';
     messages.uk.open_list = 'Відкрити список';
     messages.uk.watch_history = 'Історія перегляду';
+    messages.uk.title_watched = 'Переглянуто';
     messages.uk.login_required = 'Для входу в плагін використовуйте логін і пароль YummyAnime. Реєстрація: {site}';
     messages.uk.login_hint = 'Для входу в плагін використовуйте логін і пароль YummyAnime. Зареєструватися можна на сайті: {site}';
     messages.uk.auth_manage_description = 'Вхід за логіном і паролем YummyAnime. Реєстрація: {site}';
@@ -6079,7 +6082,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 ['search', 'search'],
                 ['schedule', 'schedule'],
                 ['new_translations', 'new_translations'],
-                ['continue_watching', 'continue_watching'],
+                ['continue_watching', 'watch_history'],
                 ['user_lists', 'user_lists'],
                 ['new_releases', 'new_releases'],
                 ['top_rated', 'top_rated'],
@@ -9202,7 +9205,10 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             var label = episode ? t('episode') + ' ' + episode : t('continue_watching');
             if (percent) label += ' · ' + percent + '%';
             var awaiting = Number(playback.awaiting_episode || 0);
-            if (awaiting) {
+            if (playback.title_finished) {
+                label = t('title_watched');
+                percent = 100;
+            } else if (awaiting) {
                 // Caught up with an ongoing title: everything released is
                 // watched, so the bar is full and the label names what is next.
                 var nextDate = Number(playback.next_date || 0);
@@ -9213,7 +9219,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 percent = 100;
             }
             view.append($('<span class="yani-card-history"></span>').text(label));
-            if (duration > 0 || awaiting) {
+            if (duration > 0 || awaiting || playback.title_finished) {
                 view.append($('<span class="yani-card-history-progress"><span></span></span>').find('span').css('width', percent + '%').end());
             }
             syncCardOverlayLayout(rendered);
@@ -16043,8 +16049,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return lastContinueStats;
     }
 
-    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings, knownTitles) {
+    // options.includeFinished keeps finished titles in the list, marked
+    // title_finished, for the watch history that shows them alongside the
+    // titles still in progress.
+    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings, knownTitles, options) {
         excludedAnimeIds = excludedAnimeIds || {};
+        options = options || {};
         var reach = maxWatchedEpisodes(entries);
         var ceilings = episodeCeilings(entries);
         // Counts resolved from the title cards win: history entries only carry
@@ -16114,7 +16124,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 });
             }
             stats.finished_title += 1;
-            return null;
+            return options.includeFinished ? Object.assign({}, annotated, {title_finished: true}) : null;
         }).filter(Boolean);
         lastContinueStats = stats;
         queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
@@ -16202,6 +16212,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         card.yani_resume.resume_next = Boolean(entry.resume_next);
         card.yani_resume.awaiting_episode = entry.awaiting_next ? Number(entry.next_episode || 0) : 0;
         card.yani_resume.next_date = entry.awaiting_next ? Number(entry.next_date || 0) : 0;
+        card.yani_resume.title_finished = Boolean(entry.title_finished);
         card.yani_history_entry = entry;
         return card;
     }
@@ -16223,9 +16234,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
     function history(object, deps) {
         var comp = new Lampa.InteractionCategory(object);
-        var continueMode = object.mode === 'continue';
         var limit = 30;
-        // Continue Watching reads the history in batches of this many records
+        // The watch history reads the history in batches of this many records
         // and asks for the next batch when focus nears the last row. A record
         // is one episode, so a single fixed read used to stop the queue at
         // about fifty titles for anyone who watches several episodes in a row.
@@ -16266,17 +16276,10 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 console.info('[YummyAnime History] Not signed in: only this device\'s history is shown');
                 return Promise.resolve({entries: [], count: 0});
             }
-            if (continueMode) {
-                return fetchHistoryBatch(deps.fetchRemote, offset, continueBatch, limit).then(function (batch) {
-                    offset += batch.raw;
-                    remoteEntries = remoteEntries.concat(batch.entries);
-                    return {entries: batch.entries, count: batch.raw, exhausted: batch.exhausted};
-                });
-            }
-            return deps.fetchRemote(limit, offset).then(function (payload) {
-                var raw = historyPayloadItems(payload);
-                offset += raw.length;
-                return {entries: normalizeRemoteHistory(payload), count: raw.length};
+            return fetchHistoryBatch(deps.fetchRemote, offset, continueBatch, limit).then(function (batch) {
+                offset += batch.raw;
+                remoteEntries = remoteEntries.concat(batch.entries);
+                return {entries: batch.entries, count: batch.raw, exhausted: batch.exhausted};
             });
         }
 
@@ -16300,7 +16303,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         // on purpose: a card without badges is a complete card, and nothing
         // here is worth an error in front of the viewer.
         function enrichCards(cards) {
-            if (!continueMode || !deps.detail || !cards || !cards.length) return;
+            if (!deps.detail || !cards || !cards.length) return;
             var rails = window.LampaYaniCardRails;
             var pending = cards.filter(function (card) { return card && card.yani_id; });
             if (!pending.length) return;
@@ -16347,7 +16350,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
          * "this title is over".
          */
         function resolveCeilings(entries) {
-            if (!continueMode || !deps.detail) return Promise.resolve({ceilings: {}, titles: {}});
+            if (!deps.detail) return Promise.resolve({ceilings: {}, titles: {}});
             var wanted = {};
             (entries || []).forEach(function (entry) {
                 if (!isFinishedEpisode(entry)) return;
@@ -16391,7 +16394,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         function continueCards(page, local) {
             var entries = mergeHistory(deps.history() || local, remoteEntries);
             return resolveCeilings(entries).then(function (known) {
-                var queue = continueWatchingEntries(entries, shownTitles, known.ceilings, known.titles).filter(function (entry) {
+                var queue = continueWatchingEntries(entries, shownTitles, known.ceilings, known.titles, {includeFinished: true}).filter(function (entry) {
                     // The empty-queue fallback ignores exclusions on purpose,
                     // so titles already on screen are filtered here as well.
                     return !shownTitles[animeKey(entry)];
@@ -16428,15 +16431,13 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 return {entries: [], count: 0, failed: true};
             });
             Promise.resolve(remote).then(function (page) {
-                hasMore = deps.authorized() && !page.failed && (continueMode ? !page.exhausted && page.count > 0 : page.count >= limit);
+                hasMore = deps.authorized() && !page.failed && !page.exhausted && page.count > 0;
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
-                if (continueMode) return continueCards(page, local);
-                var entries = mergeHistory(deps.history() || local, page.entries);
-                return cardsFor(uniqueEntries(entries));
+                return continueCards(page, local);
             }).then(function (cards) {
                 var totalPages = hasMore ? 2 : 1;
                 var ready = cards.filter(Boolean);
-                self.build({results: ready, total_pages: totalPages, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
+                self.build({results: ready, total_pages: totalPages, title: deps.t('watch_history')});
                 enrichCards(ready);
                 if (!cards.length) Lampa.Noty.show(deps.t(remoteFailed ? 'history_load_error' : 'history_empty'));
             }).catch(function (error) {
@@ -16448,20 +16449,15 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
 
         comp.nextPageReuest = function (requestObject, resolve, reject) {
             if (!hasMore) {
-                resolve({results: [], total_pages: requestObject.page, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
+                resolve({results: [], total_pages: requestObject.page, title: deps.t('watch_history')});
                 return;
             }
-            var next = continueMode ? nextContinueCards(1) : loadRemotePage().then(function (page) {
-                hasMore = page.count >= limit;
-                if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
-                return cardsFor(uniqueEntries(page.entries));
-            });
-            next.then(function (cards) {
+            nextContinueCards(1).then(function (cards) {
                 var ready = cards.filter(Boolean);
                 resolve({
                     results: ready,
                     total_pages: hasMore ? requestObject.page + 1 : requestObject.page,
-                    title: deps.t(continueMode ? 'continue_watching' : 'watch_history')
+                    title: deps.t('watch_history')
                 });
                 enrichCards(ready);
             }).catch(function (error) {
@@ -17138,7 +17134,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 {key: 'new_translations', title: t('new_translations'), subtitle: t('translations_and_dubs'), group: 'episode_flow', action: function () {
                     Lampa.Activity.push({url: 'yani/new-translations', title: 'YummyAnime ' + t('new_translations'), component: 'yani_new_translations'});
                 }},
-                {key: 'continue_watching', title: t('continue_watching'), group: 'library', action: function () {
+                {key: 'continue_watching', title: t('watch_history'), group: 'library', action: function () {
                     openContinueWatching();
                 }},
                 {key: 'user_lists', title: t('user_lists'), group: 'library', authorized: true, action: openUserLists},
@@ -22394,22 +22390,19 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         });
     }
 
+    // One watch history: titles in progress and finished ones, newest first.
+    // The dashboard tile and the account page both open it.
     function openWatchHistory() {
         Lampa.Activity.push({
             url: 'yani/history',
             title: 'YummyAnime · ' + t('watch_history'),
             component: 'yani_history',
-            mode: 'history'
+            mode: 'continue'
         });
     }
 
     function openContinueWatching() {
-        Lampa.Activity.push({
-            url: 'yani/continue-watching',
-            title: 'YummyAnime · ' + t('continue_watching'),
-            component: 'yani_history',
-            mode: 'continue'
-        });
+        openWatchHistory();
     }
 
     function openSubscriptions(userId) {

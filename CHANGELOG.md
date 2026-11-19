@@ -9,6 +9,12 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.56.0] - 2026-11-19
+
+### Changed
+
+- Continue Watching became Watch History, which also lists finished titles marked Watched alongside the titles in progress, newest first; the account page opens the same list
+
 ## [0.55.0] - 2026-11-18
 
 ### Added

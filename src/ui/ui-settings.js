@@ -283,7 +283,7 @@
                 ['search', 'search'],
                 ['schedule', 'schedule'],
                 ['new_translations', 'new_translations'],
-                ['continue_watching', 'continue_watching'],
+                ['continue_watching', 'watch_history'],
                 ['user_lists', 'user_lists'],
                 ['new_releases', 'new_releases'],
                 ['top_rated', 'top_rated'],

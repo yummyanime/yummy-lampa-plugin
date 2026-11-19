@@ -216,7 +216,7 @@
                 {key: 'new_translations', title: t('new_translations'), subtitle: t('translations_and_dubs'), group: 'episode_flow', action: function () {
                     Lampa.Activity.push({url: 'yani/new-translations', title: 'YummyAnime ' + t('new_translations'), component: 'yani_new_translations'});
                 }},
-                {key: 'continue_watching', title: t('continue_watching'), group: 'library', action: function () {
+                {key: 'continue_watching', title: t('watch_history'), group: 'library', action: function () {
                     openContinueWatching();
                 }},
                 {key: 'user_lists', title: t('user_lists'), group: 'library', authorized: true, action: openUserLists},

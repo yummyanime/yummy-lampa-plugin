@@ -437,8 +437,12 @@
         return lastContinueStats;
     }
 
-    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings, knownTitles) {
+    // options.includeFinished keeps finished titles in the list, marked
+    // title_finished, for the watch history that shows them alongside the
+    // titles still in progress.
+    function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings, knownTitles, options) {
         excludedAnimeIds = excludedAnimeIds || {};
+        options = options || {};
         var reach = maxWatchedEpisodes(entries);
         var ceilings = episodeCeilings(entries);
         // Counts resolved from the title cards win: history entries only carry
@@ -508,7 +512,7 @@
                 });
             }
             stats.finished_title += 1;
-            return null;
+            return options.includeFinished ? Object.assign({}, annotated, {title_finished: true}) : null;
         }).filter(Boolean);
         lastContinueStats = stats;
         queue.sort(function (a, b) { return Number(b.updated_at || 0) - Number(a.updated_at || 0); });
@@ -596,6 +600,7 @@
         card.yani_resume.resume_next = Boolean(entry.resume_next);
         card.yani_resume.awaiting_episode = entry.awaiting_next ? Number(entry.next_episode || 0) : 0;
         card.yani_resume.next_date = entry.awaiting_next ? Number(entry.next_date || 0) : 0;
+        card.yani_resume.title_finished = Boolean(entry.title_finished);
         card.yani_history_entry = entry;
         return card;
     }
@@ -617,9 +622,8 @@
 
     function history(object, deps) {
         var comp = new Lampa.InteractionCategory(object);
-        var continueMode = object.mode === 'continue';
         var limit = 30;
-        // Continue Watching reads the history in batches of this many records
+        // The watch history reads the history in batches of this many records
         // and asks for the next batch when focus nears the last row. A record
         // is one episode, so a single fixed read used to stop the queue at
         // about fifty titles for anyone who watches several episodes in a row.
@@ -660,17 +664,10 @@
                 console.info('[YummyAnime History] Not signed in: only this device\'s history is shown');
                 return Promise.resolve({entries: [], count: 0});
             }
-            if (continueMode) {
-                return fetchHistoryBatch(deps.fetchRemote, offset, continueBatch, limit).then(function (batch) {
-                    offset += batch.raw;
-                    remoteEntries = remoteEntries.concat(batch.entries);
-                    return {entries: batch.entries, count: batch.raw, exhausted: batch.exhausted};
-                });
-            }
-            return deps.fetchRemote(limit, offset).then(function (payload) {
-                var raw = historyPayloadItems(payload);
-                offset += raw.length;
-                return {entries: normalizeRemoteHistory(payload), count: raw.length};
+            return fetchHistoryBatch(deps.fetchRemote, offset, continueBatch, limit).then(function (batch) {
+                offset += batch.raw;
+                remoteEntries = remoteEntries.concat(batch.entries);
+                return {entries: batch.entries, count: batch.raw, exhausted: batch.exhausted};
             });
         }
 
@@ -694,7 +691,7 @@
         // on purpose: a card without badges is a complete card, and nothing
         // here is worth an error in front of the viewer.
         function enrichCards(cards) {
-            if (!continueMode || !deps.detail || !cards || !cards.length) return;
+            if (!deps.detail || !cards || !cards.length) return;
             var rails = window.LampaYaniCardRails;
             var pending = cards.filter(function (card) { return card && card.yani_id; });
             if (!pending.length) return;
@@ -741,7 +738,7 @@
          * "this title is over".
          */
         function resolveCeilings(entries) {
-            if (!continueMode || !deps.detail) return Promise.resolve({ceilings: {}, titles: {}});
+            if (!deps.detail) return Promise.resolve({ceilings: {}, titles: {}});
             var wanted = {};
             (entries || []).forEach(function (entry) {
                 if (!isFinishedEpisode(entry)) return;
@@ -785,7 +782,7 @@
         function continueCards(page, local) {
             var entries = mergeHistory(deps.history() || local, remoteEntries);
             return resolveCeilings(entries).then(function (known) {
-                var queue = continueWatchingEntries(entries, shownTitles, known.ceilings, known.titles).filter(function (entry) {
+                var queue = continueWatchingEntries(entries, shownTitles, known.ceilings, known.titles, {includeFinished: true}).filter(function (entry) {
                     // The empty-queue fallback ignores exclusions on purpose,
                     // so titles already on screen are filtered here as well.
                     return !shownTitles[animeKey(entry)];
@@ -822,15 +819,13 @@
                 return {entries: [], count: 0, failed: true};
             });
             Promise.resolve(remote).then(function (page) {
-                hasMore = deps.authorized() && !page.failed && (continueMode ? !page.exhausted && page.count > 0 : page.count >= limit);
+                hasMore = deps.authorized() && !page.failed && !page.exhausted && page.count > 0;
                 if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
-                if (continueMode) return continueCards(page, local);
-                var entries = mergeHistory(deps.history() || local, page.entries);
-                return cardsFor(uniqueEntries(entries));
+                return continueCards(page, local);
             }).then(function (cards) {
                 var totalPages = hasMore ? 2 : 1;
                 var ready = cards.filter(Boolean);
-                self.build({results: ready, total_pages: totalPages, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
+                self.build({results: ready, total_pages: totalPages, title: deps.t('watch_history')});
                 enrichCards(ready);
                 if (!cards.length) Lampa.Noty.show(deps.t(remoteFailed ? 'history_load_error' : 'history_empty'));
             }).catch(function (error) {
@@ -842,20 +837,15 @@
 
         comp.nextPageReuest = function (requestObject, resolve, reject) {
             if (!hasMore) {
-                resolve({results: [], total_pages: requestObject.page, title: deps.t(continueMode ? 'continue_watching' : 'watch_history')});
+                resolve({results: [], total_pages: requestObject.page, title: deps.t('watch_history')});
                 return;
             }
-            var next = continueMode ? nextContinueCards(1) : loadRemotePage().then(function (page) {
-                hasMore = page.count >= limit;
-                if (page.entries && page.entries.length && deps.importRemote) deps.importRemote(page.entries);
-                return cardsFor(uniqueEntries(page.entries));
-            });
-            next.then(function (cards) {
+            nextContinueCards(1).then(function (cards) {
                 var ready = cards.filter(Boolean);
                 resolve({
                     results: ready,
                     total_pages: hasMore ? requestObject.page + 1 : requestObject.page,
-                    title: deps.t(continueMode ? 'continue_watching' : 'watch_history')
+                    title: deps.t('watch_history')
                 });
                 enrichCards(ready);
             }).catch(function (error) {

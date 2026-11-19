@@ -113,6 +113,7 @@
     messages.ru.user_lists_error = 'Не удалось загрузить ваши списки YummyAnime';
     messages.ru.open_list = 'Открыть список';
     messages.ru.watch_history = 'История просмотра';
+    messages.ru.title_watched = 'Просмотрено';
     messages.ru.favorites = 'Любимое';
     messages.ru.repo_notice = 'Официальный плагин YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.ru.official_plugin = 'Официальный плагин YummyAnime';
@@ -239,6 +240,7 @@
     messages.en.user_lists_error = 'Failed to load your YummyAnime lists';
     messages.en.open_list = 'Open list';
     messages.en.watch_history = 'Watch history';
+    messages.en.title_watched = 'Watched';
     messages.en.favorites = 'Favorites';
     messages.en.repo_notice = 'Official YummyAnime plugin · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.en.official_plugin = 'Official YummyAnime plugin';
@@ -867,6 +869,7 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.user_lists_error = 'Не вдалося завантажити ваші списки YummyAnime';
     messages.uk.open_list = 'Відкрити список';
     messages.uk.watch_history = 'Історія перегляду';
+    messages.uk.title_watched = 'Переглянуто';
     messages.uk.login_required = 'Для входу в плагін використовуйте логін і пароль YummyAnime. Реєстрація: {site}';
     messages.uk.login_hint = 'Для входу в плагін використовуйте логін і пароль YummyAnime. Зареєструватися можна на сайті: {site}';
     messages.uk.auth_manage_description = 'Вхід за логіном і паролем YummyAnime. Реєстрація: {site}';

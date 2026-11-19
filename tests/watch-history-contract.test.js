@@ -246,6 +246,26 @@ const finishedRemote = history.continueWatchingEntries(
 );
 assert.strictEqual(finishedRemote.length, 0, 'a fully watched account title stays out of the queue');
 
+// The watch history screen keeps finished titles, marked, in date order with
+// the titles still in progress.
+const fullHistory = history.continueWatchingEntries(
+    history.mergeHistory({}, [
+        {anime_id: 10003, video_id: 1, number: '3', time: 1400, duration: 1440, updated_at: 5},
+        {anime_id: 10004, video_id: 2, number: '2', time: 300, duration: 1440, updated_at: 4}
+    ]),
+    {},
+    {'10003': 3, '10004': 12},
+    {},
+    {includeFinished: true}
+);
+assert.strictEqual(fullHistory.map((entry) => String(entry.anime_id)).join(','), '10003,10004');
+assert.strictEqual(fullHistory[0].title_finished, true, 'the finished title is marked');
+assert.ok(!fullHistory[1].title_finished, 'the title in progress is not');
+assert.match(ui, /function openWatchHistory\(\) \{[\s\S]{0,300}mode: 'continue'/, 'the account page opens the same watch history');
+assert.match(ui, /function openContinueWatching\(\) \{\s*openWatchHistory\(\);/, 'the dashboard tile opens the watch history');
+assert.match(fs.readFileSync('src/home/ui-home-sections.js', 'utf8'), /continueWatchingEntries\(entries, shownTitles, known\.ceilings, known\.titles, \{includeFinished: true\}\)/);
+assert.match(fs.readFileSync('src/playback/ui-playback-history.js', 'utf8'), /if \(playback\.title_finished\) \{\s*label = t\('title_watched'\);/);
+
 // An ongoing title whose newest episode was just watched is not finished: it
 // stays, waiting for the next episode, instead of vanishing until it airs.
 const nextAirs = Date.now() + 7 * 24 * 60 * 60 * 1000;
