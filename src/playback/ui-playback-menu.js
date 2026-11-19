@@ -46,6 +46,9 @@
         var yummyTvAnimeId = deps.yummyTvAnimeId || function () { return ''; };
         var openYummyTv = deps.openYummyTv || function () { return false; };
         var loadVideos = deps.loadVideos || function (id, options) { return LampaYaniApi.videos(id, options); };
+        // Sources outside the YummyAnime API (AniLiberty) add their episodes
+        // to the payload here.
+        var withExtraVideos = deps.withExtraVideos || function (card, payload) { return Promise.resolve(payload); };
         var clearEpisodeProgress = deps.clearEpisodeProgress || function () { return Promise.resolve(); };
         var markEpisodesWatched = deps.markEpisodesWatched || function () { return Promise.resolve(); };
 
@@ -421,6 +424,8 @@
             episodeFlags(card);
 
             loadVideosForPlayback(card.yani_id).then(function (payload) {
+                return withExtraVideos(card, payload).catch(function () { return payload; });
+            }).then(function (payload) {
                 if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
                 var videos = payload && payload.response ? payload.response : payload;
                 videos = (Array.isArray(videos) ? videos : []).filter(function (video) {

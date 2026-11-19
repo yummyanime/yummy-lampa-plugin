@@ -6,7 +6,7 @@ const playbackLaunch = fs.readFileSync('src/playback/ui-playback-launch.js', 'ut
 const settingsSource = fs.readFileSync('src/ui/ui-settings.js', 'utf8');
 const i18n = fs.readFileSync('src/core/i18n.js', 'utf8');
 
-assert.match(ui, /var PLAYBACK_SOURCE_IDS = \['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'\]/);
+assert.match(ui, /var PLAYBACK_SOURCE_IDS = \['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor', 'aniliberty']/);
 assert.match(ui, /function isPlaybackSourceEnabled\(sourceId\)/);
 assert.match(ui, /function playbackSourceId\(group\)/);
 assert.match(settingsSource, /yani_display_sources_title/);

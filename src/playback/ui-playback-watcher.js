@@ -20,6 +20,7 @@
         var isDirectVideoUrl = deps.isDirectVideoUrl;
         var isExternalPlayableUrl = deps.isExternalPlayableUrl;
         var isCvhPlaybackSource = deps.isCvhPlaybackSource;
+        var loadTitleVideos = deps.loadTitleVideos || function () { return Promise.resolve([]); };
 
         // Set right before playback is dispatched so the watcher knows which title
         // and episode started, whichever of the three entry points ran.
@@ -175,20 +176,44 @@
             stopPlaybackWatcher();
         }
 
+        // Skip marks in order of trust: YummyAnime's own marks on this video,
+        // then those of another dubbing laid over the same cut, then AniSkip
+        // for whatever is still missing.
+        function resolveSkipIntervals(context, mode, length) {
+            var skip = window.LampaYaniAniSkip;
+            var types = skipTypesForMode(mode);
+            var selected = context.selected || {};
+            function complete(intervals) {
+                return (!types.op || intervals.op) && (!types.ed || intervals.ed);
+            }
+            var own = skip.fromVideo ? skip.fromVideo(selected, length) : {};
+            var withSiblings = complete(own) || !skip.borrowed ? Promise.resolve(own) : Promise.resolve()
+                .then(function () { return loadTitleVideos(context.card); })
+                .then(function (videos) {
+                    var pool = (context.videos || []).concat(Array.isArray(videos) ? videos : []);
+                    return skip.merge(own, skip.borrowed(selected, pool, length));
+                }, function () { return own; });
+            return withSiblings.then(function (intervals) {
+                if (complete(intervals)) return intervals;
+                var ids = (context.card && context.card.yani_remote_ids) || {};
+                var malId = Number(ids.myanimelist_id || ids.mal_id || 0);
+                var episode = Number(selected.number || selected.index || 0);
+                if (!malId || !episode) return intervals;
+                return skip.times(malId, episode, length).then(function (aniskip) {
+                    return skip.merge ? skip.merge(intervals, aniskip) : aniskip;
+                });
+            });
+        }
+
         function loadSkipSegments(generation, context, state, mode, episodeLength) {
             if (!window.LampaYaniAniSkip) return;
-            var ids = (context.card && context.card.yani_remote_ids) || {};
-            var malId = Number(ids.myanimelist_id || ids.mal_id || 0);
-            var selected = context.selected || {};
-            var episode = Number(selected.number || selected.index || 0);
-            if (!malId || !episode) return;
             var length = Math.max(0, Math.round(Number(episodeLength) || 0));
             state.skipLoading = true;
             state.skipReady = false;
             state.skipLength = length;
             state.skipRequest = (state.skipRequest || 0) + 1;
             var request = state.skipRequest;
-            LampaYaniAniSkip.times(malId, episode, length).then(function (intervals) {
+            resolveSkipIntervals(context, mode, length).catch(function () { return {}; }).then(function (intervals) {
                 if (generation !== playbackWatcherGeneration || request !== state.skipRequest) return;
                 var types = skipTypesForMode(mode);
                 var segments = [];

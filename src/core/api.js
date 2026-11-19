@@ -358,6 +358,24 @@
     var malTitlesCache = {};
     var episodeInfoCache = {};
 
+    // AniLiberty (AniLibria) public API. It answers Lampa origins with CORS
+    // headers, so the browser and TV builds can read it directly.
+    var ANILIBERTY_API = 'https://aniliberty.top/api/v1';
+    var ANILIBERTY_TIMEOUT = 8000;
+
+    function anilibertyRelease(idOrAlias) {
+        var key = String(idOrAlias || '').trim();
+        if (!key) return Promise.reject(new Error('AniLiberty release is missing'));
+        return externalRequest(ANILIBERTY_API, '/anime/releases/' + encodeURIComponent(key), {retry: false, timeout: ANILIBERTY_TIMEOUT});
+    }
+
+    function anilibertySearch(query) {
+        var value = String(query || '').trim();
+        if (!value) return Promise.resolve([]);
+        return externalRequest(ANILIBERTY_API, '/app/search/releases?query=' + encodeURIComponent(value), {retry: false, timeout: ANILIBERTY_TIMEOUT})
+            .then(function (payload) { return Array.isArray(payload) ? payload : payload && payload.data || []; });
+    }
+
     function malTitles(malId) {
         if (!malId) return Promise.resolve([]);
         var key = String(malId);
@@ -531,6 +549,8 @@
             });
         },
         malTitles: malTitles,
+        anilibertyRelease: anilibertyRelease,
+        anilibertySearch: anilibertySearch,
         detail: function (id) {
             return request('/anime/' + encodeURIComponent(id), {auth: true});
         },

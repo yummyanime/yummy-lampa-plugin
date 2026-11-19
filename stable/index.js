@@ -13,8 +13,8 @@ function pluginYummyAnime() {
 
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.Config = window.LampaYaniConfig = {
-        version: '0.56.0',
-        build: {hash: '8ce92310e5', date: '2026-11-19', type: 'production'},
+        version: '0.57.0',
+        build: {hash: '28069e8857', date: '2026-11-19', type: 'production'},
         apiBase: 'https://api.yani.tv',
         statusUrl: 'https://yummyanime.github.io/yummy-lampa-plugin/status/status.json',
         // Referrer bridge for the Alloha player, served from the same Pages site
@@ -151,6 +151,11 @@ function pluginYummyAnime() {
     messages.ru.open_list = 'Открыть список';
     messages.ru.watch_history = 'История просмотра';
     messages.ru.title_watched = 'Просмотрено';
+    messages.ru.aniliberty_source_description = 'Озвучка AniLibria напрямую с AniLiberty, если у тайтла есть их релиз. Качество до 1080p и отметки опенинга. Прогресс этих серий хранится только на этом устройстве: у них нет видео в YummyAnime';
+    messages.ru.history_remove_title = 'Убрать «{title}» из истории просмотра?';
+    messages.ru.history_remove = 'Убрать';
+    messages.ru.history_remove_hint = 'Тайтл вернётся в историю, когда вы снова начнёте его смотреть';
+    messages.ru.history_remove_cancel = 'Отмена';
     messages.ru.favorites = 'Любимое';
     messages.ru.repo_notice = 'Официальный плагин YummyAnime · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.ru.official_plugin = 'Официальный плагин YummyAnime';
@@ -278,6 +283,11 @@ function pluginYummyAnime() {
     messages.en.open_list = 'Open list';
     messages.en.watch_history = 'Watch history';
     messages.en.title_watched = 'Watched';
+    messages.en.aniliberty_source_description = 'AniLibria dubbing straight from AniLiberty when the title has their release. Up to 1080p with opening marks. Progress of these episodes stays on this device only: they have no YummyAnime video';
+    messages.en.history_remove_title = 'Remove "{title}" from the watch history?';
+    messages.en.history_remove = 'Remove';
+    messages.en.history_remove_hint = 'The title comes back once you watch it again';
+    messages.en.history_remove_cancel = 'Cancel';
     messages.en.favorites = 'Favorites';
     messages.en.repo_notice = 'Official YummyAnime plugin · https://github.com/yummyanime/yummy-lampa-plugin';
     messages.en.official_plugin = 'Official YummyAnime plugin';
@@ -441,7 +451,7 @@ messages.ru.cvh_region_blocked = 'Видео CVH недоступно в ваш�
     messages.ru.detail_load_error = 'Не удалось загрузить данные YummyAnime';
     messages.ru.internal_player_headers_warning = 'Этот источник требует внешний плеер. Во внутреннем воспроизведение не гарантируется';
     messages.ru.aniskip = 'Пропуск опенинга и эндинга';
-    messages.ru.aniskip_description = 'Тайминги берутся из AniSkip по идентификатору MyAnimeList. Режим «Предлагать пропуск» показывает кнопку в плеере вместо автоперемотки — так безопаснее, если озвучка другой длительности. Работает только во внутреннем плеере Lampa';
+    messages.ru.aniskip_description = 'Тайминги берутся из меток YummyAnime у самого видео, затем у другой озвучки той же длительности, а недостающие — из AniSkip по идентификатору MyAnimeList. Режим «Предлагать пропуск» показывает кнопку в плеере вместо автоперемотки — так безопаснее, если озвучка другой длительности. Работает только во внутреннем плеере Lampa';
     messages.ru.aniskip_off = 'Выключено';
     messages.ru.aniskip_openings = 'Только опенинги';
     messages.ru.aniskip_endings = 'Только эндинги';
@@ -569,7 +579,7 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.en.detail_load_error = 'Failed to load YummyAnime details';
     messages.en.internal_player_headers_warning = 'This source needs an external player. Playback in the internal one is not guaranteed';
     messages.en.aniskip = 'Skip openings and endings';
-    messages.en.aniskip_description = 'Timestamps come from AniSkip by MyAnimeList id. “Suggest skip” shows a player button instead of auto-seeking — safer when a dub has a different runtime. Works in the internal Lampa player only';
+    messages.en.aniskip_description = 'Timestamps come from YummyAnime marks on the video itself, then from another dubbing of the same runtime, and anything missing from AniSkip by MyAnimeList id. “Suggest skip” shows a player button instead of auto-seeking — safer when a dub has a different runtime. Works in the internal Lampa player only';
     messages.en.aniskip_off = 'Disabled';
     messages.en.aniskip_openings = 'Openings only';
     messages.en.aniskip_endings = 'Endings only';
@@ -907,6 +917,11 @@ messages.en.cvh_region_blocked = 'CVH video is unavailable in your region. Choos
     messages.uk.open_list = 'Відкрити список';
     messages.uk.watch_history = 'Історія перегляду';
     messages.uk.title_watched = 'Переглянуто';
+    messages.uk.aniliberty_source_description = 'Озвучення AniLibria напряму з AniLiberty, якщо в тайтла є їхній реліз. Якість до 1080p і позначки опенінгу. Прогрес цих серій зберігається лише на цьому пристрої: вони не мають відео в YummyAnime';
+    messages.uk.history_remove_title = 'Прибрати «{title}» з історії перегляду?';
+    messages.uk.history_remove = 'Прибрати';
+    messages.uk.history_remove_hint = 'Тайтл повернеться в історію, коли ви знову почнете його дивитися';
+    messages.uk.history_remove_cancel = 'Скасувати';
     messages.uk.login_required = 'Для входу в плагін використовуйте логін і пароль YummyAnime. Реєстрація: {site}';
     messages.uk.login_hint = 'Для входу в плагін використовуйте логін і пароль YummyAnime. Зареєструватися можна на сайті: {site}';
     messages.uk.auth_manage_description = 'Вхід за логіном і паролем YummyAnime. Реєстрація: {site}';
@@ -1019,7 +1034,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     messages.uk.detail_load_error = 'Не вдалося завантажити дані YummyAnime';
     messages.uk.internal_player_headers_warning = 'Це джерело потребує зовнішній плеєр. У внутрішньому відтворення не гарантується';
     messages.uk.aniskip = 'Пропуск опенінга та ендінга';
-    messages.uk.aniskip_description = 'Тайминги беруться з AniSkip за ідентифікатором MyAnimeList. Режим «Пропонувати пропуск» показує кнопку в плеєрі замість автоперемотування — так безпечніше, якщо озвучення іншої тривалості. Працює лише у внутрішньому плеєрі Lampa';
+    messages.uk.aniskip_description = 'Тайминги беруться з міток YummyAnime у самого відео, потім в іншого озвучення тієї ж тривалості, а відсутні — з AniSkip за ідентифікатором MyAnimeList. Режим «Пропонувати пропуск» показує кнопку в плеєрі замість автоперемотування — так безпечніше, якщо озвучення іншої тривалості. Працює лише у внутрішньому плеєрі Lampa';
     messages.uk.aniskip_off = 'Вимкнено';
     messages.uk.aniskip_openings = 'Лише опенінги';
     messages.uk.aniskip_endings = 'Лише ендінги';
@@ -1887,6 +1902,24 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var malTitlesCache = {};
     var episodeInfoCache = {};
 
+    // AniLiberty (AniLibria) public API. It answers Lampa origins with CORS
+    // headers, so the browser and TV builds can read it directly.
+    var ANILIBERTY_API = 'https://aniliberty.top/api/v1';
+    var ANILIBERTY_TIMEOUT = 8000;
+
+    function anilibertyRelease(idOrAlias) {
+        var key = String(idOrAlias || '').trim();
+        if (!key) return Promise.reject(new Error('AniLiberty release is missing'));
+        return externalRequest(ANILIBERTY_API, '/anime/releases/' + encodeURIComponent(key), {retry: false, timeout: ANILIBERTY_TIMEOUT});
+    }
+
+    function anilibertySearch(query) {
+        var value = String(query || '').trim();
+        if (!value) return Promise.resolve([]);
+        return externalRequest(ANILIBERTY_API, '/app/search/releases?query=' + encodeURIComponent(value), {retry: false, timeout: ANILIBERTY_TIMEOUT})
+            .then(function (payload) { return Array.isArray(payload) ? payload : payload && payload.data || []; });
+    }
+
     function malTitles(malId) {
         if (!malId) return Promise.resolve([]);
         var key = String(malId);
@@ -2060,6 +2093,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             });
         },
         malTitles: malTitles,
+        anilibertyRelease: anilibertyRelease,
+        anilibertySearch: anilibertySearch,
         detail: function (id) {
             return request('/anime/' + encodeURIComponent(id), {auth: true});
         },
@@ -3448,10 +3483,249 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         });
     }
 
+    // Durations closer than this belong to the same cut of an episode, so the
+    // opening sits at the same second in both files.
+    var SAME_CUT_SECONDS = 2;
+
+    /**
+     * Skip marks YummyAnime stores on the video itself:
+     * `skips: {opening: {time, length}, ending: {time, length}}`. They are
+     * measured on that very file, so they win over AniSkip, which is matched
+     * to the episode only by its length.
+     */
+    function fromVideo(video, episodeLength) {
+        var skips = video && video.skips;
+        var intervals = {};
+        if (!skips || typeof skips !== 'object') return intervals;
+        var limit = Number(episodeLength) || Number(video.duration) || 0;
+        [['op', skips.opening], ['ed', skips.ending]].forEach(function (pair) {
+            var mark = pair[1];
+            if (!mark || typeof mark !== 'object') return;
+            var start = Number(mark.time);
+            var length = Number(mark.length);
+            if (!isFinite(start) || !isFinite(length) || start < 0 || length <= 0) return;
+            var end = start + length;
+            if (limit > 0 && end > limit + SAME_CUT_SECONDS) return;
+            intervals[pair[0]] = {start: start, end: limit > 0 ? Math.min(end, limit) : end};
+        });
+        return intervals;
+    }
+
+    function sameEpisode(left, right) {
+        var episode = window.LampaYaniEpisode;
+        if (episode && episode.same) return episode.same(episode.valueOf(left), episode.valueOf(right));
+        return String(left && left.number || '') !== '' && String(left.number) === String(right && right.number);
+    }
+
+    /**
+     * Marks of another dubbing of the same episode. Dubbings are often laid
+     * over the same video; when the durations match to the second the
+     * opening is at the same place, otherwise the marks are not borrowed.
+     */
+    function borrowed(video, videos, episodeLength) {
+        var duration = Number(video && video.duration) || Number(episodeLength) || 0;
+        var intervals = {};
+        if (!(duration > 0)) return intervals;
+        (videos || []).forEach(function (other) {
+            if (!other || other === video || !sameEpisode(video, other)) return;
+            if (video.video_id && other.video_id === video.video_id) return;
+            var otherDuration = Number(other.duration) || 0;
+            if (!(otherDuration > 0) || Math.abs(otherDuration - duration) > SAME_CUT_SECONDS) return;
+            var marks = fromVideo(other, duration);
+            if (marks.op && !intervals.op) intervals.op = marks.op;
+            if (marks.ed && !intervals.ed) intervals.ed = marks.ed;
+        });
+        return intervals;
+    }
+
+    // Fills the types missing from `base` with those found in `extra`.
+    function merge(base, extra) {
+        var result = {};
+        ['op', 'ed'].forEach(function (type) {
+            if (base && base[type]) result[type] = base[type];
+            else if (extra && extra[type]) result[type] = extra[type];
+        });
+        return result;
+    }
+
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.AniSkip = window.LampaYaniAniSkip = {
         times: times,
-        parse: parse
+        parse: parse,
+        fromVideo: fromVideo,
+        borrowed: borrowed,
+        merge: merge
+    };
+}(window));
+
+(function (window) {
+    'use strict';
+
+    /*
+     * AniLiberty (AniLibria) episodes as one more dubbing of a YummyAnime
+     * title. YummyAnime itself only lists Kodik, CVH, Alloha, VK and a few
+     * other players; AniLiberty publishes its own HLS streams with CORS, so
+     * they play directly in Lampa.
+     *
+     * The release is found by the AniLibria alias YummyAnime stores in
+     * remote_ids. Without one, a title search is accepted only when the
+     * release carries the same MyAnimeList or Shikimori id: a similar name
+     * alone could put another season's episodes under this title.
+     */
+
+    var PLAYER = 'AniLiberty';
+    var DUBBING = 'AniLibria';
+    var CACHE_TTL = 10 * 60 * 1000;
+    var cache = {};
+
+    function positive(value) {
+        var number = Number(value);
+        return isFinite(number) && number > 0 ? number : 0;
+    }
+
+    function remoteIds(card) {
+        return card && (card.yani_remote_ids || card.remote_ids) || {};
+    }
+
+    function sameIds(card, release) {
+        var ids = remoteIds(card);
+        var mal = positive(ids.myanimelist_id || ids.mal_id);
+        var shikimori = positive(ids.shikimori_id);
+        var releaseMal = positive(release && release.mal && release.mal.id);
+        var releaseShikimori = positive(release && release.shikimori && release.shikimori.id);
+        return Boolean(mal && releaseMal === mal || shikimori && releaseShikimori === shikimori);
+    }
+
+    function searchTitles(card) {
+        var titles = [];
+        [card && card.original_title, card && card.title].concat(card && card.yani_titles || []).forEach(function (title) {
+            var value = String(title || '').trim();
+            if (value && titles.indexOf(value) < 0) titles.push(value);
+        });
+        return titles.slice(0, 2);
+    }
+
+    function findRelease(card, api) {
+        var alias = String(remoteIds(card).anilibria_alias || '').trim();
+        if (alias) {
+            return api.anilibertyRelease(alias).then(function (release) {
+                return release && Array.isArray(release.episodes) ? release : null;
+            });
+        }
+        var titles = searchTitles(card);
+        var ids = remoteIds(card);
+        if (!titles.length || !positive(ids.myanimelist_id || ids.mal_id) && !positive(ids.shikimori_id)) {
+            return Promise.resolve(null);
+        }
+        return titles.reduce(function (chain, title) {
+            return chain.then(function (found) {
+                if (found) return found;
+                return api.anilibertySearch(title).then(function (results) {
+                    var match = (results || []).filter(function (release) { return sameIds(card, release); })[0];
+                    return match ? api.anilibertyRelease(match.alias || match.id) : null;
+                }).catch(function () { return null; });
+            });
+        }, Promise.resolve(null)).then(function (release) {
+            return release && Array.isArray(release.episodes) ? release : null;
+        });
+    }
+
+    // Every published quality, best first; the first one starts playback and
+    // the whole map feeds Lampa's quality switch.
+    function streams(episode) {
+        var result = {};
+        [['1080p', episode.hls_1080], ['720p', episode.hls_720], ['480p', episode.hls_480]].forEach(function (pair) {
+            if (pair[1] && /^https?:\/\//i.test(String(pair[1]))) result[pair[0]] = String(pair[1]);
+        });
+        return result;
+    }
+
+    function mark(range) {
+        var start = Number(range && range.start);
+        var stop = Number(range && range.stop);
+        if (!isFinite(start) || !isFinite(stop) || start < 0 || stop <= start) return null;
+        return {time: start, length: stop - start};
+    }
+
+    /**
+     * Release episodes as YummyAnime-shaped video records. They carry no
+     * YummyAnime video id, so their progress stays on this device.
+     */
+    function toVideos(release) {
+        var videos = [];
+        (release && release.episodes || []).forEach(function (episode) {
+            var number = positive(episode && episode.ordinal);
+            if (!number) return;
+            var qualities = streams(episode);
+            var labels = Object.keys(qualities);
+            if (!labels.length) return;
+            var skips = {};
+            var opening = mark(episode.opening);
+            var ending = mark(episode.ending);
+            if (opening) skips.opening = opening;
+            if (ending) skips.ending = ending;
+            videos.push({
+                video_id: '',
+                number: String(number),
+                index: number,
+                duration: positive(episode.duration),
+                iframe_url: qualities[labels[0]],
+                yani_source_qualities: qualities,
+                skips: skips,
+                data: {player: PLAYER, dubbing: DUBBING},
+                aniliberty: {release_id: release.id, episode_id: episode.id || ''}
+            });
+        });
+        return videos;
+    }
+
+    function create(deps) {
+        deps = deps || {};
+        var api = deps.api || window.LampaYaniApi;
+        var enabled = deps.enabled || function () { return true; };
+        var now = deps.now || function () { return Date.now(); };
+
+        // Episodes for one title, cached for a while either way so pressing
+        // Watch again does not repeat the lookup. Failures resolve empty:
+        // this source is an extra and must never block the others.
+        function videos(card) {
+            if (!enabled() || !card || !card.yani_id || !api || !api.anilibertyRelease) return Promise.resolve([]);
+            var key = String(card.yani_id);
+            var entry = cache[key];
+            if (entry && now() - entry.at < CACHE_TTL) return entry.request;
+            var request = findRelease(card, api).then(toVideos).catch(function (error) {
+                console.warn('[YummyAnime] AniLiberty lookup failed', error);
+                return [];
+            });
+            cache[key] = {at: now(), request: request};
+            return request;
+        }
+
+        // Adds AniLiberty episodes to a YummyAnime videos payload without
+        // touching the cached payload object.
+        function withVideos(card, payload) {
+            return videos(card).then(function (extra) {
+                if (!extra.length) return payload;
+                var list = payload && payload.response ? payload.response : payload;
+                var merged = (Array.isArray(list) ? list : []).concat(extra.map(function (video) {
+                    return Object.assign({}, video, {skips: Object.assign({}, video.skips)});
+                }));
+                return payload && payload.response ? Object.assign({}, payload, {response: merged}) : merged;
+            });
+        }
+
+        return {
+            videos: videos,
+            withVideos: withVideos
+        };
+    }
+
+    window.LampaYani = window.LampaYani || {};
+    window.LampaYani.AniLiberty = window.LampaYaniAniLiberty = {
+        create: create,
+        toVideos: toVideos,
+        sameIds: sameIds,
+        PLAYER: PLAYER
     };
 }(window));
 
@@ -5992,7 +6266,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     param: {name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled(sourceId)},
                     field: {
                         name: label,
-                        description: sourceId === 'cvh' ? t('cvh_source_description') : sourceId === 'sibnet' ? t('sibnet_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
+                        description: sourceId === 'cvh' ? t('cvh_source_description') : sourceId === 'sibnet' ? t('sibnet_source_description') : sourceId === 'aniliberty' ? t('aniliberty_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
                     },
                     onChange: function (value) {
                         if (experimental && triggerSettingEnabled(value, storageKey, false)) {
@@ -9366,6 +9640,45 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             });
         }
 
+        // Removes one tile and keeps focus on the list: on the tile that took
+        // its place, or on the one before it at the end of the list.
+        function removeHistoryTile(rendered, controller) {
+            var neighbor = rendered.next('.card');
+            if (!neighbor.length) neighbor = rendered.prev('.card');
+            var collection = rendered.closest('.scroll');
+            rendered.remove();
+            if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
+            if (neighbor.length && Lampa.Controller && Lampa.Controller.collectionFocus) {
+                if (Lampa.Controller.collectionSet && collection.length) Lampa.Controller.collectionSet(collection);
+                Lampa.Controller.collectionFocus(neighbor[0], collection.length ? collection : neighbor.parent());
+            }
+            publishPlaybackHistoryChange(null);
+        }
+
+        // Long OK on a history tile: remove the title from the history until
+        // it is watched again. Focus starts on Cancel so a held button that
+        // repeats cannot remove anything by itself.
+        function confirmHistoryRemoval(card, rendered) {
+            var sections = window.LampaYaniHomeSections;
+            if (!Lampa.Select || !Lampa.Select.show || !sections || !sections.hideHistoryTitle) return;
+            var controller = Lampa.Controller && Lampa.Controller.enabled ? Lampa.Controller.enabled().name : 'content';
+            Lampa.Select.show({
+                title: t('history_remove_title').replace('{title}', card.title || ''),
+                items: [
+                    {title: t('history_remove_cancel')},
+                    {title: t('history_remove'), subtitle: t('history_remove_hint'), remove: true}
+                ],
+                onBack: function () { if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller); },
+                onSelect: function (item) {
+                    if (item && item.remove && sections.hideHistoryTitle(card.yani_id)) {
+                        removeHistoryTile(rendered, controller);
+                        return;
+                    }
+                    if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
+                }
+            });
+        }
+
         function bindHistoryCardRender(first, second, third) {
             bindYummyCardRender(first, second, third);
             var target = cardRenderTarget(first, second, third);
@@ -9392,6 +9705,19 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                     return false;
                 });
                 card.onEnter = openHistoryEntry;
+                // Lampa's Card calls its own onMenu on a long press; the history
+                // tile replaces that favorites menu with removal. Builds that
+                // pass no Card instance get the long press bound directly.
+                var instance = [first, second, third].filter(function (value) {
+                    return value && typeof value.render === 'function' && !value.jquery && typeof value.onMenu !== 'undefined';
+                })[0];
+                if (instance) {
+                    instance.onMenu = function () { confirmHistoryRemoval(card, rendered); };
+                } else {
+                    rendered.off('hover:long.yaniHistory').on('hover:long.yaniHistory', function () {
+                        confirmHistoryRemoval(card, rendered);
+                    });
+                }
                 renderHistoryProgress(rendered, card.yani_resume || {});
             }
         }
@@ -9473,6 +9799,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var yummyTvAnimeId = deps.yummyTvAnimeId || function () { return ''; };
         var openYummyTv = deps.openYummyTv || function () { return false; };
         var loadVideos = deps.loadVideos || function (id, options) { return LampaYaniApi.videos(id, options); };
+        // Sources outside the YummyAnime API (AniLiberty) add their episodes
+        // to the payload here.
+        var withExtraVideos = deps.withExtraVideos || function (card, payload) { return Promise.resolve(payload); };
         var clearEpisodeProgress = deps.clearEpisodeProgress || function () { return Promise.resolve(); };
         var markEpisodesWatched = deps.markEpisodesWatched || function () { return Promise.resolve(); };
 
@@ -9848,6 +10177,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             episodeFlags(card);
 
             loadVideosForPlayback(card.yani_id).then(function (payload) {
+                return withExtraVideos(card, payload).catch(function () { return payload; });
+            }).then(function (payload) {
                 if (Lampa.Loading && Lampa.Loading.stop) Lampa.Loading.stop();
                 var videos = payload && payload.response ? payload.response : payload;
                 videos = (Array.isArray(videos) ? videos : []).filter(function (video) {
@@ -10341,6 +10672,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         var isDirectVideoUrl = deps.isDirectVideoUrl;
         var isExternalPlayableUrl = deps.isExternalPlayableUrl;
         var isCvhPlaybackSource = deps.isCvhPlaybackSource;
+        var loadTitleVideos = deps.loadTitleVideos || function () { return Promise.resolve([]); };
 
         // Set right before playback is dispatched so the watcher knows which title
         // and episode started, whichever of the three entry points ran.
@@ -10496,20 +10828,44 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             stopPlaybackWatcher();
         }
 
+        // Skip marks in order of trust: YummyAnime's own marks on this video,
+        // then those of another dubbing laid over the same cut, then AniSkip
+        // for whatever is still missing.
+        function resolveSkipIntervals(context, mode, length) {
+            var skip = window.LampaYaniAniSkip;
+            var types = skipTypesForMode(mode);
+            var selected = context.selected || {};
+            function complete(intervals) {
+                return (!types.op || intervals.op) && (!types.ed || intervals.ed);
+            }
+            var own = skip.fromVideo ? skip.fromVideo(selected, length) : {};
+            var withSiblings = complete(own) || !skip.borrowed ? Promise.resolve(own) : Promise.resolve()
+                .then(function () { return loadTitleVideos(context.card); })
+                .then(function (videos) {
+                    var pool = (context.videos || []).concat(Array.isArray(videos) ? videos : []);
+                    return skip.merge(own, skip.borrowed(selected, pool, length));
+                }, function () { return own; });
+            return withSiblings.then(function (intervals) {
+                if (complete(intervals)) return intervals;
+                var ids = (context.card && context.card.yani_remote_ids) || {};
+                var malId = Number(ids.myanimelist_id || ids.mal_id || 0);
+                var episode = Number(selected.number || selected.index || 0);
+                if (!malId || !episode) return intervals;
+                return skip.times(malId, episode, length).then(function (aniskip) {
+                    return skip.merge ? skip.merge(intervals, aniskip) : aniskip;
+                });
+            });
+        }
+
         function loadSkipSegments(generation, context, state, mode, episodeLength) {
             if (!window.LampaYaniAniSkip) return;
-            var ids = (context.card && context.card.yani_remote_ids) || {};
-            var malId = Number(ids.myanimelist_id || ids.mal_id || 0);
-            var selected = context.selected || {};
-            var episode = Number(selected.number || selected.index || 0);
-            if (!malId || !episode) return;
             var length = Math.max(0, Math.round(Number(episodeLength) || 0));
             state.skipLoading = true;
             state.skipReady = false;
             state.skipLength = length;
             state.skipRequest = (state.skipRequest || 0) + 1;
             var request = state.skipRequest;
-            LampaYaniAniSkip.times(malId, episode, length).then(function (intervals) {
+            resolveSkipIntervals(context, mode, length).catch(function () { return {}; }).then(function (intervals) {
                 if (generation !== playbackWatcherGeneration || request !== state.skipRequest) return;
                 var types = skipTypesForMode(mode);
                 var segments = [];
@@ -12731,8 +13087,44 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
          * More than one candidate at the best score means the card is
          * ambiguous; the caller lets the viewer choose instead of guessing.
          */
+        function positiveId(value) {
+            var number = Number(value);
+            return isFinite(number) && number > 0 ? number : 0;
+        }
+
+        // Identifiers a native card may carry, depending on its source:
+        // Kinopoisk-based sources and some online plugins add the Kinopoisk
+        // id, anime sources add Shikimori or MyAnimeList ids.
+        function nativeIds(movie) {
+            return {
+                kp: positiveId(movie.kinopoisk_id || movie.kp_id || movie.kinopoisk_ID),
+                shikimori: positiveId(movie.shikimori_id),
+                mal: positiveId(movie.mal_id || movie.myanimelist_id)
+            };
+        }
+
+        // Candidates with the same id as the native card. YummyAnime search
+        // has no id filter, so ids only confirm what the title search found -
+        // but a confirmed id settles it, whatever the titles say.
+        function idMatches(movie, cards) {
+            var ids = nativeIds(movie);
+            if (!ids.kp && !ids.shikimori && !ids.mal) return [];
+            return (cards || []).filter(function (card) {
+                var remote = card && card.yani_remote_ids || {};
+                return Boolean(ids.kp && positiveId(remote.kp_id) === ids.kp ||
+                    ids.shikimori && positiveId(remote.shikimori_id) === ids.shikimori ||
+                    ids.mal && positiveId(remote.myanimelist_id || remote.mal_id) === ids.mal);
+            });
+        }
+
         function scoreNativeMatches(movie, cards) {
             movie = movie || {};
+            var confirmed = idMatches(movie, cards);
+            if (confirmed.length === 1) {
+                confirmed[0]._match_score = 1000;
+                return confirmed;
+            }
+            if (confirmed.length > 1) cards = confirmed;
             var expected = normalizedTitles(nativeTitleValues(movie));
             var year = yearOf(movie.release_date || movie.first_air_date || movie.year);
             var kind = nativeKind(movie);
@@ -12761,7 +13153,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
                 scored.push(card);
             });
             scored.sort(function (a, b) { return b._match_score - a._match_score; });
-            if (!scored.length) return [];
+            // Several titles share the id and none of them shares a name:
+            // all of them are offered rather than none.
+            if (!scored.length) return confirmed.length > 1 ? confirmed.slice(0, 5) : [];
             var best = scored[0]._match_score;
             return scored.filter(function (card) { return card._match_score === best; }).slice(0, 5);
         }
@@ -15972,6 +16366,38 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         return String(entry && (entry.anime_id || entry.animeId) || '');
     }
 
+    // Titles removed from the watch history by the viewer, as
+    // {anime_id: removed at, ms}. A title comes back once it is watched
+    // again, that is, when it has a record newer than the removal.
+    var HIDDEN_HISTORY_KEY = 'yani_history_hidden';
+    var HIDDEN_HISTORY_LIMIT = 300;
+
+    function hiddenHistory() {
+        if (!window.Lampa || !Lampa.Storage || !Lampa.Storage.get) return {};
+        var value = Lampa.Storage.get(HIDDEN_HISTORY_KEY, {});
+        return value && typeof value === 'object' ? value : {};
+    }
+
+    function hideHistoryTitle(animeId, at) {
+        var key = String(animeId || '');
+        if (!key || !window.Lampa || !Lampa.Storage || !Lampa.Storage.set) return false;
+        var hidden = hiddenHistory();
+        hidden[key] = Number(at) || Date.now();
+        var keys = Object.keys(hidden).sort(function (a, b) { return Number(hidden[b] || 0) - Number(hidden[a] || 0); });
+        keys.slice(HIDDEN_HISTORY_LIMIT).forEach(function (item) { delete hidden[item]; });
+        Lampa.Storage.set(HIDDEN_HISTORY_KEY, hidden);
+        return true;
+    }
+
+    function withoutHiddenTitles(entries) {
+        var hidden = hiddenHistory();
+        if (!Object.keys(hidden).length) return entries || [];
+        return (entries || []).filter(function (entry) {
+            var removedAt = Number(hidden[animeKey(entry)] || 0);
+            return !removedAt || Number(entry && entry.updated_at || 0) > removedAt;
+        });
+    }
+
     function episodeNumber(entry) {
         var number = Number(window.LampaYaniEpisode.normalize(entry && entry.number) || 0);
         return number > 0 ? number : 0;
@@ -16055,6 +16481,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings, knownTitles, options) {
         excludedAnimeIds = excludedAnimeIds || {};
         options = options || {};
+        entries = withoutHiddenTitles(entries);
         var reach = maxWatchedEpisodes(entries);
         var ceilings = episodeCeilings(entries);
         // Counts resolved from the title cards win: history entries only carry
@@ -16484,6 +16911,7 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         historyEntryKey: historyEntryKey,
         isContinueEntry: isContinueEntry,
         continueWatchingEntries: continueWatchingEntries,
+        hideHistoryTitle: hideHistoryTitle,
         continueStats: continueStats,
         importRemoteIntoLocal: importRemoteIntoLocal,
         shouldReplaceLocal: shouldReplaceLocal
@@ -21678,7 +22106,12 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     var installFullRating = standardCard.installFullRating;
 
 
+    var aniLiberty = LampaYaniAniLiberty.create({
+        enabled: function () { return isPlaybackSourceEnabled('aniliberty'); }
+    });
+
     var playbackMenu = LampaYaniPlaybackMenu.create({
+        withExtraVideos: function (card, payload) { return aniLiberty.withVideos(card, payload); },
         t: t,
         showYummySelect: function (params, snapshot) { return showYummySelect(params, snapshot); },
         currentControllerName: function () { return currentControllerName(); },
@@ -23152,8 +23585,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
             : false;
     }
 
-    var PLAYBACK_SOURCE_IDS = ['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'];
-    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', vk: 'VK', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
+    var PLAYBACK_SOURCE_IDS = ['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor', 'aniliberty'];
+    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', vk: 'VK', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor', aniliberty: 'AniLiberty'};
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
@@ -23237,7 +23670,8 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
         videoResolverUrl: function (video) { return videoResolverUrl(video); },
         isDirectVideoUrl: function (url) { return isDirectVideoUrl(url); },
         isExternalPlayableUrl: function (url, source) { return isExternalPlayableUrl(url, source); },
-        isCvhPlaybackSource: function (url, group) { return isCvhPlaybackSource(url, group); }
+        isCvhPlaybackSource: function (url, group) { return isCvhPlaybackSource(url, group); },
+        loadTitleVideos: function (card) { return card && card.yani_id ? videoData.list(card.yani_id) : Promise.resolve([]); }
     });
     var autoNextEnabled = playbackWatcherApi.autoNextEnabled;
     var startPlaybackWatcher = playbackWatcherApi.startPlaybackWatcher;
@@ -23301,7 +23735,9 @@ messages.uk.cvh_region_blocked = 'Відео CVH недоступне у ваш�
     function videoStreamQualities(video) {
         if (!video) return null;
         var data = LampaYaniUiUtils.videoData(video);
-        return video.yani_stream_qualities || data.yani_stream_qualities || null;
+        // A source that publishes its qualities as direct links (AniLiberty)
+        // keeps them on the video; resolving a direct link returns none.
+        return video.yani_stream_qualities || data.yani_stream_qualities || video.yani_source_qualities || null;
     }
 
     function isDirectVideoUrl(url) {

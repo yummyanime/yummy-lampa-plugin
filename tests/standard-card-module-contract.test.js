@@ -117,6 +117,21 @@ assert.strictEqual(api.scoreNativeMatches(
     [{yani_id: 2, title: 'Другой тайтл', yani_titles: ['Другой тайтл', 'ガチアクタ'], release_date: '2025', yani_type: tv}]
 ).length, 0, 'an empty normalized alias must not match everything');
 
+// A Kinopoisk, Shikimori or MAL id on the native card settles the match,
+// even against a remake with the same title or a title written differently.
+const remakes = [
+    {yani_id: 31, title: 'Hunter x Hunter', yani_titles: ['Hunter x Hunter'], release_date: '1999', yani_type: tv, yani_remote_ids: {kp_id: 100, shikimori_id: 136}},
+    {yani_id: 32, title: 'Hunter x Hunter', yani_titles: ['Hunter x Hunter'], release_date: '2011', yani_type: tv, yani_remote_ids: {kp_id: 200, shikimori_id: 11061}}
+];
+assert.strictEqual(ids(api.scoreNativeMatches({name: 'Охотник х Охотник', kinopoisk_id: 100, first_air_date: '2011-10-02'}, remakes)), '31',
+    'the Kinopoisk id wins over the year');
+assert.strictEqual(ids(api.scoreNativeMatches({name: 'Hunter x Hunter', shikimori_id: 11061}, remakes)), '32');
+assert.strictEqual(ids(api.scoreNativeMatches({name: 'Hunter x Hunter', kp_id: 999, first_air_date: '2011-10-02'}, remakes)), '32',
+    'an unknown id falls back to the title and year');
+assert.strictEqual(ids(api.scoreNativeMatches({name: 'Hunter x Hunter', first_air_date: '2011-10-02'},
+    [{yani_id: 33, title: 'Hunter x Hunter', yani_titles: ['Hunter x Hunter'], release_date: '2011', yani_type: tv, yani_remote_ids: {kp_id: 0}}]
+)), '33', 'a missing id on either side changes nothing');
+
 // Remakes: the same exact title years apart does not link.
 assert.strictEqual(ids(api.scoreNativeMatches(
     {name: 'Hunter x Hunter', first_air_date: '2011-10-02'},

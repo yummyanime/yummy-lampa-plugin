@@ -70,8 +70,8 @@ function createMenu(overrides) {
         loadVideos: function () { return Promise.resolve({response: videos}); }
     });
     withHistory.api.openVideos({yani_id: 42, title: 'Test'});
-    await Promise.resolve();
-    await Promise.resolve();
+    // Loading the videos, adding extra sources, then opening the picker.
+    for (let tick = 0; tick < 6; tick++) await Promise.resolve();
     assert.strictEqual(withHistory.shown.length, 1, 'the voice picker must open when several dubbings exist');
     const items = withHistory.shown[0].items;
     const selected = items.filter(function (item) { return item.selected; });
@@ -87,8 +87,8 @@ function createMenu(overrides) {
         loadVideos: function () { return Promise.resolve({response: videos}); }
     });
     byName.api.openVideos({yani_id: 42, title: 'Test'});
-    await Promise.resolve();
-    await Promise.resolve();
+    // Loading the videos, adding extra sources, then opening the picker.
+    for (let tick = 0; tick < 6; tick++) await Promise.resolve();
     const named = byName.shown[0].items.filter(function (item) { return item.selected; })[0];
     assert.ok(named.group.title.indexOf('Studio Band') >= 0, 'a saved voice name must select that dubbing when video_id is missing');
 
@@ -97,8 +97,8 @@ function createMenu(overrides) {
         loadVideos: function () { return Promise.resolve({response: videos}); }
     });
     fresh.api.openVideos({yani_id: 42, title: 'Test'});
-    await Promise.resolve();
-    await Promise.resolve();
+    // Loading the videos, adding extra sources, then opening the picker.
+    for (let tick = 0; tick < 6; tick++) await Promise.resolve();
     assert.strictEqual(fresh.shown[0].items.filter(function (item) { return item.selected; }).length, 0,
         'without playback history the picker must not preselect a dubbing');
 

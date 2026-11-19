@@ -9,6 +9,18 @@ Entries use [Keep a Changelog](https://keepachangelog.com/) categories: **Added*
 
 ## [Unreleased]
 
+## [0.57.0] - 2026-11-19
+
+### Added
+
+- Opening and ending skipping from YummyAnime's own marks on the video, then from another dubbing with the same runtime, with AniSkip only filling the gaps
+- A long OK press on a Watch History tile removes the title until it is watched again
+- AniLibria dubbing straight from AniLiberty with qualities up to 1080p and opening marks
+
+### Changed
+
+- The YummyAnime button on standard Lampa cards now settles the match by a Kinopoisk, Shikimori or MyAnimeList id on the card when there is one
+
 ## [0.56.0] - 2026-11-19
 
 ### Changed

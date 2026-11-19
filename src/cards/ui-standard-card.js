@@ -493,8 +493,44 @@
          * More than one candidate at the best score means the card is
          * ambiguous; the caller lets the viewer choose instead of guessing.
          */
+        function positiveId(value) {
+            var number = Number(value);
+            return isFinite(number) && number > 0 ? number : 0;
+        }
+
+        // Identifiers a native card may carry, depending on its source:
+        // Kinopoisk-based sources and some online plugins add the Kinopoisk
+        // id, anime sources add Shikimori or MyAnimeList ids.
+        function nativeIds(movie) {
+            return {
+                kp: positiveId(movie.kinopoisk_id || movie.kp_id || movie.kinopoisk_ID),
+                shikimori: positiveId(movie.shikimori_id),
+                mal: positiveId(movie.mal_id || movie.myanimelist_id)
+            };
+        }
+
+        // Candidates with the same id as the native card. YummyAnime search
+        // has no id filter, so ids only confirm what the title search found -
+        // but a confirmed id settles it, whatever the titles say.
+        function idMatches(movie, cards) {
+            var ids = nativeIds(movie);
+            if (!ids.kp && !ids.shikimori && !ids.mal) return [];
+            return (cards || []).filter(function (card) {
+                var remote = card && card.yani_remote_ids || {};
+                return Boolean(ids.kp && positiveId(remote.kp_id) === ids.kp ||
+                    ids.shikimori && positiveId(remote.shikimori_id) === ids.shikimori ||
+                    ids.mal && positiveId(remote.myanimelist_id || remote.mal_id) === ids.mal);
+            });
+        }
+
         function scoreNativeMatches(movie, cards) {
             movie = movie || {};
+            var confirmed = idMatches(movie, cards);
+            if (confirmed.length === 1) {
+                confirmed[0]._match_score = 1000;
+                return confirmed;
+            }
+            if (confirmed.length > 1) cards = confirmed;
             var expected = normalizedTitles(nativeTitleValues(movie));
             var year = yearOf(movie.release_date || movie.first_air_date || movie.year);
             var kind = nativeKind(movie);
@@ -523,7 +559,9 @@
                 scored.push(card);
             });
             scored.sort(function (a, b) { return b._match_score - a._match_score; });
-            if (!scored.length) return [];
+            // Several titles share the id and none of them shares a name:
+            // all of them are offered rather than none.
+            if (!scored.length) return confirmed.length > 1 ? confirmed.slice(0, 5) : [];
             var best = scored[0]._match_score;
             return scored.filter(function (card) { return card._match_score === best; }).slice(0, 5);
         }

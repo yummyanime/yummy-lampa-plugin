@@ -360,6 +360,38 @@
         return String(entry && (entry.anime_id || entry.animeId) || '');
     }
 
+    // Titles removed from the watch history by the viewer, as
+    // {anime_id: removed at, ms}. A title comes back once it is watched
+    // again, that is, when it has a record newer than the removal.
+    var HIDDEN_HISTORY_KEY = 'yani_history_hidden';
+    var HIDDEN_HISTORY_LIMIT = 300;
+
+    function hiddenHistory() {
+        if (!window.Lampa || !Lampa.Storage || !Lampa.Storage.get) return {};
+        var value = Lampa.Storage.get(HIDDEN_HISTORY_KEY, {});
+        return value && typeof value === 'object' ? value : {};
+    }
+
+    function hideHistoryTitle(animeId, at) {
+        var key = String(animeId || '');
+        if (!key || !window.Lampa || !Lampa.Storage || !Lampa.Storage.set) return false;
+        var hidden = hiddenHistory();
+        hidden[key] = Number(at) || Date.now();
+        var keys = Object.keys(hidden).sort(function (a, b) { return Number(hidden[b] || 0) - Number(hidden[a] || 0); });
+        keys.slice(HIDDEN_HISTORY_LIMIT).forEach(function (item) { delete hidden[item]; });
+        Lampa.Storage.set(HIDDEN_HISTORY_KEY, hidden);
+        return true;
+    }
+
+    function withoutHiddenTitles(entries) {
+        var hidden = hiddenHistory();
+        if (!Object.keys(hidden).length) return entries || [];
+        return (entries || []).filter(function (entry) {
+            var removedAt = Number(hidden[animeKey(entry)] || 0);
+            return !removedAt || Number(entry && entry.updated_at || 0) > removedAt;
+        });
+    }
+
     function episodeNumber(entry) {
         var number = Number(window.LampaYaniEpisode.normalize(entry && entry.number) || 0);
         return number > 0 ? number : 0;
@@ -443,6 +475,7 @@
     function continueWatchingEntries(entries, excludedAnimeIds, knownCeilings, knownTitles, options) {
         excludedAnimeIds = excludedAnimeIds || {};
         options = options || {};
+        entries = withoutHiddenTitles(entries);
         var reach = maxWatchedEpisodes(entries);
         var ceilings = episodeCeilings(entries);
         // Counts resolved from the title cards win: history entries only carry
@@ -872,6 +905,7 @@
         historyEntryKey: historyEntryKey,
         isContinueEntry: isContinueEntry,
         continueWatchingEntries: continueWatchingEntries,
+        hideHistoryTitle: hideHistoryTitle,
         continueStats: continueStats,
         importRemoteIntoLocal: importRemoteIntoLocal,
         shouldReplaceLocal: shouldReplaceLocal

@@ -90,7 +90,12 @@
     var installFullRating = standardCard.installFullRating;
 
 
+    var aniLiberty = LampaYaniAniLiberty.create({
+        enabled: function () { return isPlaybackSourceEnabled('aniliberty'); }
+    });
+
     var playbackMenu = LampaYaniPlaybackMenu.create({
+        withExtraVideos: function (card, payload) { return aniLiberty.withVideos(card, payload); },
         t: t,
         showYummySelect: function (params, snapshot) { return showYummySelect(params, snapshot); },
         currentControllerName: function () { return currentControllerName(); },
@@ -1564,8 +1569,8 @@
             : false;
     }
 
-    var PLAYBACK_SOURCE_IDS = ['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor'];
-    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', vk: 'VK', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor'};
+    var PLAYBACK_SOURCE_IDS = ['kodik', 'vk', 'alloha', 'cvh', 'sibnet', 'aksor', 'aniliberty'];
+    var PLAYBACK_SOURCE_LABELS = {kodik: 'Kodik', vk: 'VK', alloha: 'Alloha', cvh: 'CVH', sibnet: 'Sibnet', aksor: 'Aksor', aniliberty: 'AniLiberty'};
     var EXPERIMENTAL_PLAYBACK_SOURCE_IDS = ['alloha', 'cvh'];
 
     function playbackSourceDefaultEnabled(sourceId) {
@@ -1649,7 +1654,8 @@
         videoResolverUrl: function (video) { return videoResolverUrl(video); },
         isDirectVideoUrl: function (url) { return isDirectVideoUrl(url); },
         isExternalPlayableUrl: function (url, source) { return isExternalPlayableUrl(url, source); },
-        isCvhPlaybackSource: function (url, group) { return isCvhPlaybackSource(url, group); }
+        isCvhPlaybackSource: function (url, group) { return isCvhPlaybackSource(url, group); },
+        loadTitleVideos: function (card) { return card && card.yani_id ? videoData.list(card.yani_id) : Promise.resolve([]); }
     });
     var autoNextEnabled = playbackWatcherApi.autoNextEnabled;
     var startPlaybackWatcher = playbackWatcherApi.startPlaybackWatcher;
@@ -1713,7 +1719,9 @@
     function videoStreamQualities(video) {
         if (!video) return null;
         var data = LampaYaniUiUtils.videoData(video);
-        return video.yani_stream_qualities || data.yani_stream_qualities || null;
+        // A source that publishes its qualities as direct links (AniLiberty)
+        // keeps them on the video; resolving a direct link returns none.
+        return video.yani_stream_qualities || data.yani_stream_qualities || video.yani_source_qualities || null;
     }
 
     function isDirectVideoUrl(url) {

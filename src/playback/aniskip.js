@@ -118,9 +118,77 @@
         });
     }
 
+    // Durations closer than this belong to the same cut of an episode, so the
+    // opening sits at the same second in both files.
+    var SAME_CUT_SECONDS = 2;
+
+    /**
+     * Skip marks YummyAnime stores on the video itself:
+     * `skips: {opening: {time, length}, ending: {time, length}}`. They are
+     * measured on that very file, so they win over AniSkip, which is matched
+     * to the episode only by its length.
+     */
+    function fromVideo(video, episodeLength) {
+        var skips = video && video.skips;
+        var intervals = {};
+        if (!skips || typeof skips !== 'object') return intervals;
+        var limit = Number(episodeLength) || Number(video.duration) || 0;
+        [['op', skips.opening], ['ed', skips.ending]].forEach(function (pair) {
+            var mark = pair[1];
+            if (!mark || typeof mark !== 'object') return;
+            var start = Number(mark.time);
+            var length = Number(mark.length);
+            if (!isFinite(start) || !isFinite(length) || start < 0 || length <= 0) return;
+            var end = start + length;
+            if (limit > 0 && end > limit + SAME_CUT_SECONDS) return;
+            intervals[pair[0]] = {start: start, end: limit > 0 ? Math.min(end, limit) : end};
+        });
+        return intervals;
+    }
+
+    function sameEpisode(left, right) {
+        var episode = window.LampaYaniEpisode;
+        if (episode && episode.same) return episode.same(episode.valueOf(left), episode.valueOf(right));
+        return String(left && left.number || '') !== '' && String(left.number) === String(right && right.number);
+    }
+
+    /**
+     * Marks of another dubbing of the same episode. Dubbings are often laid
+     * over the same video; when the durations match to the second the
+     * opening is at the same place, otherwise the marks are not borrowed.
+     */
+    function borrowed(video, videos, episodeLength) {
+        var duration = Number(video && video.duration) || Number(episodeLength) || 0;
+        var intervals = {};
+        if (!(duration > 0)) return intervals;
+        (videos || []).forEach(function (other) {
+            if (!other || other === video || !sameEpisode(video, other)) return;
+            if (video.video_id && other.video_id === video.video_id) return;
+            var otherDuration = Number(other.duration) || 0;
+            if (!(otherDuration > 0) || Math.abs(otherDuration - duration) > SAME_CUT_SECONDS) return;
+            var marks = fromVideo(other, duration);
+            if (marks.op && !intervals.op) intervals.op = marks.op;
+            if (marks.ed && !intervals.ed) intervals.ed = marks.ed;
+        });
+        return intervals;
+    }
+
+    // Fills the types missing from `base` with those found in `extra`.
+    function merge(base, extra) {
+        var result = {};
+        ['op', 'ed'].forEach(function (type) {
+            if (base && base[type]) result[type] = base[type];
+            else if (extra && extra[type]) result[type] = extra[type];
+        });
+        return result;
+    }
+
     window.LampaYani = window.LampaYani || {};
     window.LampaYani.AniSkip = window.LampaYaniAniSkip = {
         times: times,
-        parse: parse
+        parse: parse,
+        fromVideo: fromVideo,
+        borrowed: borrowed,
+        merge: merge
     };
 }(window));

@@ -193,7 +193,7 @@
                     param: {name: storageKey, type: 'trigger', default: playbackSourceDefaultEnabled(sourceId)},
                     field: {
                         name: label,
-                        description: sourceId === 'cvh' ? t('cvh_source_description') : sourceId === 'sibnet' ? t('sibnet_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
+                        description: sourceId === 'cvh' ? t('cvh_source_description') : sourceId === 'sibnet' ? t('sibnet_source_description') : sourceId === 'aniliberty' ? t('aniliberty_source_description') : experimental ? t('source_external_support_description') : t('source_visibility_description')
                     },
                     onChange: function (value) {
                         if (experimental && triggerSettingEnabled(value, storageKey, false)) {

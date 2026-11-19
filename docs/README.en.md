@@ -27,20 +27,21 @@ Screenshots for catalogs and the public README:
 - a dedicated My Lists section with recent horizontal rows for signed-in users;
 - viewing comments;
 - dubbing and source selection, then playback in the internal Lampa player or an external Android player;
-- per-source visibility toggles so Kodik, VK, Alloha, CVH, Sibnet and Aksor can be hidden from the dubbing list; CVH is enabled by default on Android, Android TV and LG WebOS, while Alloha remains disabled by default;
+- per-source visibility toggles so Kodik, VK, Alloha, CVH, Sibnet, Aksor and AniLiberty can be hidden from the dubbing list; CVH is enabled by default on Android, Android TV and LG WebOS, while Alloha remains disabled by default;
 - preferred-player setting on Android: ask every time, internal Lampa player, or external Android player (system app chooser); locked to internal Lampa outside Android;
 - blocking Alloha in media players when no direct stream is available, with a clear Lampac warning;
 - optional self-hosted Lampac resolution of Alloha sources into direct HLS;
 - self-hosted resolver service in `server/` that serves Alloha as a plain HLS stream;
-- opening and ending skipping from AniSkip timestamps in the internal player;
+- opening and ending skipping in the internal player: YummyAnime's own marks on the video first, then the marks of another dubbing with the same runtime, then AniSkip;
+- AniLibria dubbing straight from AniLiberty (HLS up to 1080p with opening marks) when YummyAnime links the release or a search finds it with the same MyAnimeList or Shikimori id; its progress stays on the device;
 - automatic next-episode playback with its stream resolved in advance;
 - optional, disabled-by-default YummyTV app integration;
-- YummyAnime button on standard Lampa cards and Online registration when that module is available;
+- YummyAnime button on standard Lampa cards (a Kinopoisk, Shikimori or MyAnimeList id on the card settles the match) and Online registration when that module is available;
 - all video sources and dubbings returned by the YummyAnime API (filtered by the Show sources settings);
 - local playback history, one-click resume, episode duration and view counts;
 - optional automatic internal-player progress synchronization for authorized YummyAnime users, with manual account-page sync when disabled;
 - standard Lampa detail cards for matched YummyAnime catalog and schedule entries;
-- a Watch History section built from local and account history: titles in progress first by date, finished titles marked Watched;
+- a Watch History section built from local and account history, newest first, finished titles marked Watched; a long OK press removes a title until it is watched again;
 - progress of anime watched in Lampa through other sources or torrents is picked up from Lampa's own timeline and added to the YummyAnime history and, with automatic sync on, to the account (first season of a series; `Use progress from Lampa` setting);
 - YummyAnime actions and correctly normalized read-only comments on standard Lampa cards;
 - paginated comments and nested read-only reply threads;
@@ -136,12 +137,12 @@ The extension treats two different things separately:
 
 | Concept | Meaning | Examples |
 | --- | --- | --- |
-| **Source** | Video service / aggregator that provides the stream or embed | Kodik, VK, Alloha, CVH, Sibnet, Aksor |
+| **Source** | Video service / aggregator that provides the stream or embed | Kodik, VK, Alloha, CVH, Sibnet, Aksor, AniLiberty |
 | **Player** | Where the direct stream is actually played | Internal Lampa player, external Android player |
 
 In settings:
 
-1. **Show sources** — toggles for Kodik, VK, Alloha, CVH, Sibnet and Aksor. VK is enabled by default and supported wrapper pages are resolved into direct MP4/HLS streams. CVH is resolved into direct MP4 qualities and defaults to enabled on Android, Android TV and LG WebOS; other platforms keep it opt-in because its API has no CORS access. Alloha remains disabled by default. Disabled sources are omitted from the dubbing list when you press Watch.
+1. **Show sources** — toggles for Kodik, VK, Alloha, CVH, Sibnet, Aksor and AniLiberty. VK is enabled by default and supported wrapper pages are resolved into direct MP4/HLS streams. CVH is resolved into direct MP4 qualities and defaults to enabled on Android, Android TV and LG WebOS; other platforms keep it opt-in because its API has no CORS access. Alloha remains disabled by default. AniLiberty is enabled by default and appears only for titles that have its release. Disabled sources are omitted from the dubbing list when you press Watch.
 2. **Preferred player** — ask every time, internal Lampa player, or external Android player.
 
 On Android, the preferred-player setting is fully editable. On every other platform the setting is inactive, locked to the internal Lampa player, and external playback is never offered.

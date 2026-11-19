@@ -678,6 +678,45 @@
             });
         }
 
+        // Removes one tile and keeps focus on the list: on the tile that took
+        // its place, or on the one before it at the end of the list.
+        function removeHistoryTile(rendered, controller) {
+            var neighbor = rendered.next('.card');
+            if (!neighbor.length) neighbor = rendered.prev('.card');
+            var collection = rendered.closest('.scroll');
+            rendered.remove();
+            if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
+            if (neighbor.length && Lampa.Controller && Lampa.Controller.collectionFocus) {
+                if (Lampa.Controller.collectionSet && collection.length) Lampa.Controller.collectionSet(collection);
+                Lampa.Controller.collectionFocus(neighbor[0], collection.length ? collection : neighbor.parent());
+            }
+            publishPlaybackHistoryChange(null);
+        }
+
+        // Long OK on a history tile: remove the title from the history until
+        // it is watched again. Focus starts on Cancel so a held button that
+        // repeats cannot remove anything by itself.
+        function confirmHistoryRemoval(card, rendered) {
+            var sections = window.LampaYaniHomeSections;
+            if (!Lampa.Select || !Lampa.Select.show || !sections || !sections.hideHistoryTitle) return;
+            var controller = Lampa.Controller && Lampa.Controller.enabled ? Lampa.Controller.enabled().name : 'content';
+            Lampa.Select.show({
+                title: t('history_remove_title').replace('{title}', card.title || ''),
+                items: [
+                    {title: t('history_remove_cancel')},
+                    {title: t('history_remove'), subtitle: t('history_remove_hint'), remove: true}
+                ],
+                onBack: function () { if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller); },
+                onSelect: function (item) {
+                    if (item && item.remove && sections.hideHistoryTitle(card.yani_id)) {
+                        removeHistoryTile(rendered, controller);
+                        return;
+                    }
+                    if (Lampa.Controller && Lampa.Controller.toggle) Lampa.Controller.toggle(controller);
+                }
+            });
+        }
+
         function bindHistoryCardRender(first, second, third) {
             bindYummyCardRender(first, second, third);
             var target = cardRenderTarget(first, second, third);
@@ -704,6 +743,19 @@
                     return false;
                 });
                 card.onEnter = openHistoryEntry;
+                // Lampa's Card calls its own onMenu on a long press; the history
+                // tile replaces that favorites menu with removal. Builds that
+                // pass no Card instance get the long press bound directly.
+                var instance = [first, second, third].filter(function (value) {
+                    return value && typeof value.render === 'function' && !value.jquery && typeof value.onMenu !== 'undefined';
+                })[0];
+                if (instance) {
+                    instance.onMenu = function () { confirmHistoryRemoval(card, rendered); };
+                } else {
+                    rendered.off('hover:long.yaniHistory').on('hover:long.yaniHistory', function () {
+                        confirmHistoryRemoval(card, rendered);
+                    });
+                }
                 renderHistoryProgress(rendered, card.yani_resume || {});
             }
         }
